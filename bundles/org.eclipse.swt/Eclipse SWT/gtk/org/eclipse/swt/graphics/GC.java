@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Brahim Djoudi   - fix of bug #335769 (8/2017)
  *******************************************************************************/
 package org.eclipse.swt.graphics;
 
