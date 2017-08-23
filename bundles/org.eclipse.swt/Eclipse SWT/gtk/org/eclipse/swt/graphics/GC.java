@@ -678,7 +678,7 @@ void drawArcInPixels(int x, int y, int width, int height, int startAngle, int ar
 	}
 	if (width == 0 || height == 0 || arcAngle == 0) return;
 	long /*int*/ cairo = data.cairo;
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	if (width == height) {
         if (arcAngle >= 0) {
             Cairo.cairo_arc_negative(cairo, x + xOffset + width / 2f, y + yOffset + height / 2f, width / 2f, -startAngle * (float)Math.PI / 180, -(startAngle + arcAngle) * (float)Math.PI / 180);
@@ -897,7 +897,7 @@ public void drawLine(int x1, int y1, int x2, int y2) {
 void drawLineInPixels(int x1, int y1, int x2, int y2) {
 	checkGC(DRAW);
 	long /*int*/ cairo = data.cairo;
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	Cairo.cairo_move_to(cairo, x1 + xOffset, y1 + yOffset);
 	Cairo.cairo_line_to(cairo, x2 + xOffset, y2 + yOffset);
 	Cairo.cairo_stroke(cairo);
@@ -940,7 +940,7 @@ void drawOvalInPixels(int x, int y, int width, int height) {
 		height = -height;
 	}
 	long /*int*/ cairo = data.cairo;
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	if (width == height) {
 		Cairo.cairo_arc_negative(cairo, x + xOffset + width / 2f, y + yOffset + height / 2f, width / 2f, 0, -2 * (float)Math.PI);
 	} else {
@@ -984,7 +984,7 @@ public void drawPath(Path path) {
 	checkGC(DRAW);
 	long /*int*/ cairo = data.cairo;
 	Cairo.cairo_save(cairo);
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	Cairo.cairo_translate(cairo, xOffset, yOffset);
 	long /*int*/ copy = Cairo.cairo_copy_path(path.handle);
 	if (copy == 0) SWT.error(SWT.ERROR_NO_HANDLES);
@@ -1086,7 +1086,7 @@ void drawPolylineInPixels(int[] pointArray) {
 void drawPolyline(long /*int*/ cairo, int[] pointArray, boolean close) {
 	int count = pointArray.length / 2;
 	if (count == 0) return;
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	Cairo.cairo_move_to(cairo, pointArray[0] + xOffset, pointArray[1] + yOffset);
 	for (int i = 1, j=2; i < count; i++, j += 2) {
 		Cairo.cairo_line_to(cairo, pointArray[j] + xOffset, pointArray[j + 1] + yOffset);
@@ -1124,7 +1124,7 @@ void drawRectangleInPixels(int x, int y, int width, int height) {
 		height = -height;
 	}
 	long /*int*/ cairo = data.cairo;
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	Cairo.cairo_rectangle(cairo, x + xOffset, y + yOffset, width, height);
 	Cairo.cairo_stroke(cairo);
 }
@@ -1198,7 +1198,7 @@ void drawRoundRectangleInPixels(int x, int y, int width, int height, int arcWidt
 	if (naw < 0) naw = 0 - naw;
 	if (nah < 0) nah = 0 - nah;
 	long /*int*/ cairo = data.cairo;
-	double xOffset = data.cairoXoffset, yOffset = data.cairoYoffset;
+	final double xOffset = 0, yOffset = 0; // bug #335769
 	if (naw == 0 || nah == 0) {
 		Cairo.cairo_rectangle(cairo, x + xOffset, y + yOffset, width, height);
 	} else {
