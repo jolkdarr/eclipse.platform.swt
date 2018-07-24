@@ -144,18 +144,17 @@ void open(String name) {
 
 	try {
 		FileInputStream stream= new FileInputStream(file.getPath());
-		try {
-			Reader in = new BufferedReader(new InputStreamReader(stream));
+		try (Reader in = new BufferedReader(new InputStreamReader(stream))) {
+
 			char[] readBuffer= new char[2048];
-			StringBuffer buffer= new StringBuffer((int) file.length());
+			StringBuilder buffer= new StringBuilder((int) file.length());
 			int n;
 			while ((n = in.read(readBuffer)) > 0) {
 				buffer.append(readBuffer, 0, n);
 			}
 			textString = buffer.toString();
 			stream.close();
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			// Err_file_io
 			String message = MessageFormat.format(resources.getString("Err_file_io"), file.getName());
 			displayError(message);

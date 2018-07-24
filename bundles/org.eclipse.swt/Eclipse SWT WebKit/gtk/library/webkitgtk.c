@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2009, 2017 IBM Corporation and others. All rights reserved.
+ * Copyright (c) 2009, 2018 IBM Corporation and others. All rights reserved.
  * The contents of this file are made available under the terms
  * of the GNU Lesser General Public License (LGPL) Version 2.1 that
  * accompanies this distribution (lgpl-v21.txt).  The LGPL is also
@@ -1436,6 +1436,66 @@ JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1network_1re
 }
 #endif
 
+#ifndef NO__1webkit_1download_1get_1received_1data_1length
+JNIEXPORT jlong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1received_1data_1length)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jlong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1get_1received_1data_1length_FUNC);
+/*
+	rc = (jlong)webkit_download_get_received_data_length(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_get_received_data_length)
+		if (fp) {
+			rc = (jlong)((jlong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1get_1received_1data_1length_FUNC);
+	return rc;
+}
+#endif
+
+#ifndef NO__1webkit_1download_1get_1request
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1request)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1get_1request_FUNC);
+/*
+	rc = (jintLong)webkit_download_get_request(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_get_request)
+		if (fp) {
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1get_1request_FUNC);
+	return rc;
+}
+#endif
+
+#ifndef NO__1webkit_1download_1get_1response
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1response)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1get_1response_FUNC);
+/*
+	rc = (jintLong)webkit_download_get_response(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_get_response)
+		if (fp) {
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1get_1response_FUNC);
+	return rc;
+}
+#endif
+
 #ifndef NO__1webkit_1download_1get_1status
 JNIEXPORT jint JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1status)
 	(JNIEnv *env, jclass that, jintLong arg0)
@@ -1496,6 +1556,26 @@ JNIEXPORT jlong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1total_1size)
 }
 #endif
 
+#ifndef NO__1webkit_1download_1get_1type
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1type)
+	(JNIEnv *env, jclass that)
+{
+	jintLong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1get_1type_FUNC);
+/*
+	rc = (jintLong)webkit_download_get_type();
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_get_type)
+		if (fp) {
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)())fp)();
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1get_1type_FUNC);
+	return rc;
+}
+#endif
+
 #ifndef NO__1webkit_1download_1get_1uri
 JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1uri)
 	(JNIEnv *env, jclass that, jintLong arg0)
@@ -1512,6 +1592,26 @@ JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1uri)
 		}
 	}
 	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1get_1uri_FUNC);
+	return rc;
+}
+#endif
+
+#ifndef NO__1webkit_1download_1get_1web_1view
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1get_1web_1view)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1get_1web_1view_FUNC);
+/*
+	rc = (jintLong)webkit_download_get_web_view(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_get_web_view)
+		if (fp) {
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1get_1web_1view_FUNC);
 	return rc;
 }
 #endif
@@ -1533,6 +1633,46 @@ JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1download_1new)
 	}
 	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1new_FUNC);
 	return rc;
+}
+#endif
+
+#ifndef NO__1webkit_1download_1set_1allow_1overwrite
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1download_1set_1allow_1overwrite)
+	(JNIEnv *env, jclass that, jintLong arg0, jboolean arg1)
+{
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1set_1allow_1overwrite_FUNC);
+/*
+	webkit_download_set_allow_overwrite(arg0, arg1);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_set_allow_overwrite)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jintLong, jboolean))fp)(arg0, arg1);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1set_1allow_1overwrite_FUNC);
+}
+#endif
+
+#ifndef NO__1webkit_1download_1set_1destination
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1download_1set_1destination)
+	(JNIEnv *env, jclass that, jintLong arg0, jbyteArray arg1)
+{
+	jbyte *lparg1=NULL;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1download_1set_1destination_FUNC);
+	if (arg1) if ((lparg1 = (*env)->GetByteArrayElements(env, arg1, NULL)) == NULL) goto fail;
+/*
+	webkit_download_set_destination(arg0, lparg1);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_download_set_destination)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jintLong, jbyte *))fp)(arg0, lparg1);
+		}
+	}
+fail:
+	if (arg1 && lparg1) (*env)->ReleaseByteArrayElements(env, arg1, lparg1, 0);
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1download_1set_1destination_FUNC);
 }
 #endif
 
@@ -2116,6 +2256,26 @@ fail:
 }
 #endif
 
+#ifndef NO__1webkit_1uri_1response_1get_1content_1length
+JNIEXPORT jlong JNICALL WebKitGTK_NATIVE(_1webkit_1uri_1response_1get_1content_1length)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jlong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1uri_1response_1get_1content_1length_FUNC);
+/*
+	rc = (jlong)webkit_uri_response_get_content_length(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_uri_response_get_content_length)
+		if (fp) {
+			rc = (jlong)((jlong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1uri_1response_1get_1content_1length_FUNC);
+	return rc;
+}
+#endif
+
 #ifndef NO__1webkit_1uri_1response_1get_1mime_1type
 JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1uri_1response_1get_1mime_1type)
 	(JNIEnv *env, jclass that, jintLong arg0)
@@ -2136,46 +2296,26 @@ JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1uri_1response_1get_1mime_1
 }
 #endif
 
-#ifndef NO__1webkit_1user_1content_1manager_1new
-JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1user_1content_1manager_1new)
-	(JNIEnv *env, jclass that)
+#ifndef NO__1webkit_1web_1context_1allow_1tls_1certificate_1for_1host
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1allow_1tls_1certificate_1for_1host)
+	(JNIEnv *env, jclass that, jintLong arg0, jintLong arg1, jbyteArray arg2)
 {
+	jbyte *lparg2=NULL;
 	jintLong rc = 0;
-	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1user_1content_1manager_1new_FUNC);
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1allow_1tls_1certificate_1for_1host_FUNC);
+	if (arg2) if ((lparg2 = (*env)->GetByteArrayElements(env, arg2, NULL)) == NULL) goto fail;
 /*
-	rc = (jintLong)webkit_user_content_manager_new();
+	rc = (jintLong)webkit_web_context_allow_tls_certificate_for_host(arg0, arg1, lparg2);
 */
 	{
-		WebKitGTK_LOAD_FUNCTION(fp, webkit_user_content_manager_new)
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_allow_tls_certificate_for_host)
 		if (fp) {
-			rc = (jintLong)((jintLong (CALLING_CONVENTION*)())fp)();
-		}
-	}
-	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1user_1content_1manager_1new_FUNC);
-	return rc;
-}
-#endif
-
-#ifndef NO__1webkit_1user_1content_1manager_1register_1script_1message_1handler
-JNIEXPORT jboolean JNICALL WebKitGTK_NATIVE(_1webkit_1user_1content_1manager_1register_1script_1message_1handler)
-	(JNIEnv *env, jclass that, jintLong arg0, jbyteArray arg1)
-{
-	jbyte *lparg1=NULL;
-	jboolean rc = 0;
-	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1user_1content_1manager_1register_1script_1message_1handler_FUNC);
-	if (arg1) if ((lparg1 = (*env)->GetByteArrayElements(env, arg1, NULL)) == NULL) goto fail;
-/*
-	rc = (jboolean)webkit_user_content_manager_register_script_message_handler(arg0, lparg1);
-*/
-	{
-		WebKitGTK_LOAD_FUNCTION(fp, webkit_user_content_manager_register_script_message_handler)
-		if (fp) {
-			rc = (jboolean)((jboolean (CALLING_CONVENTION*)(jintLong, jbyte *))fp)(arg0, lparg1);
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong, jintLong, jbyte *))fp)(arg0, arg1, lparg2);
 		}
 	}
 fail:
-	if (arg1 && lparg1) (*env)->ReleaseByteArrayElements(env, arg1, lparg1, 0);
-	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1user_1content_1manager_1register_1script_1message_1handler_FUNC);
+	if (arg2 && lparg2) (*env)->ReleaseByteArrayElements(env, arg2, lparg2, 0);
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1allow_1tls_1certificate_1for_1host_FUNC);
 	return rc;
 }
 #endif
@@ -2200,23 +2340,101 @@ JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1get_1default
 }
 #endif
 
-#ifndef NO__1webkit_1web_1context_1set_1favicon_1database_1directory
-JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1set_1favicon_1database_1directory)
-	(JNIEnv *env, jclass that, jintLong arg0, jintLong arg1)
+#ifndef NO__1webkit_1web_1context_1get_1type
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1get_1type)
+	(JNIEnv *env, jclass that)
 {
 	jintLong rc = 0;
-	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1set_1favicon_1database_1directory_FUNC);
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1get_1type_FUNC);
 /*
-	rc = (jintLong)webkit_web_context_set_favicon_database_directory(arg0, arg1);
+	rc = (jintLong)webkit_web_context_get_type();
 */
 	{
-		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_set_favicon_database_directory)
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_get_type)
 		if (fp) {
-			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong, jintLong))fp)(arg0, arg1);
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)())fp)();
 		}
 	}
-	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1set_1favicon_1database_1directory_FUNC);
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1get_1type_FUNC);
 	return rc;
+}
+#endif
+
+#ifndef NO__1webkit_1web_1context_1get_1website_1data_1manager
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1get_1website_1data_1manager)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1get_1website_1data_1manager_FUNC);
+/*
+	rc = (jintLong)webkit_web_context_get_website_data_manager(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_get_website_data_manager)
+		if (fp) {
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1get_1website_1data_1manager_FUNC);
+	return rc;
+}
+#endif
+
+#ifndef NO__1webkit_1web_1context_1set_1tls_1errors_1policy
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1set_1tls_1errors_1policy)
+	(JNIEnv *env, jclass that, jintLong arg0, jint arg1)
+{
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1set_1tls_1errors_1policy_FUNC);
+/*
+	webkit_web_context_set_tls_errors_policy(arg0, arg1);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_set_tls_errors_policy)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jintLong, jint))fp)(arg0, arg1);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1set_1tls_1errors_1policy_FUNC);
+}
+#endif
+
+#ifndef NO__1webkit_1web_1context_1set_1web_1extensions_1directory
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1set_1web_1extensions_1directory)
+	(JNIEnv *env, jclass that, jintLong arg0, jbyteArray arg1)
+{
+	jbyte *lparg1=NULL;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1set_1web_1extensions_1directory_FUNC);
+	if (arg1) if ((lparg1 = (*env)->GetByteArrayElements(env, arg1, NULL)) == NULL) goto fail;
+/*
+	webkit_web_context_set_web_extensions_directory(arg0, lparg1);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_set_web_extensions_directory)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jintLong, jbyte *))fp)(arg0, lparg1);
+		}
+	}
+fail:
+	if (arg1 && lparg1) (*env)->ReleaseByteArrayElements(env, arg1, lparg1, 0);
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1set_1web_1extensions_1directory_FUNC);
+}
+#endif
+
+#ifndef NO__1webkit_1web_1context_1set_1web_1extensions_1initialization_1user_1data
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1context_1set_1web_1extensions_1initialization_1user_1data)
+	(JNIEnv *env, jclass that, jlong arg0, jlong arg1)
+{
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1context_1set_1web_1extensions_1initialization_1user_1data_FUNC);
+/*
+	webkit_web_context_set_web_extensions_initialization_user_data(arg0, arg1);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_context_set_web_extensions_initialization_user_data)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jlong, jlong))fp)(arg0, arg1);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1context_1set_1web_1extensions_1initialization_1user_1data_FUNC);
 }
 #endif
 
@@ -2583,6 +2801,26 @@ fail:
 }
 #endif
 
+#ifndef NO__1webkit_1web_1view_1get_1context
+JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1get_1context)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1view_1get_1context_FUNC);
+/*
+	rc = (jintLong)webkit_web_view_get_context(arg0);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_view_get_context)
+		if (fp) {
+			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1view_1get_1context_FUNC);
+	return rc;
+}
+#endif
+
 #ifndef NO__1webkit_1web_1view_1get_1dom_1document
 JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1get_1dom_1document)
 	(JNIEnv *env, jclass that, jintLong arg0)
@@ -2859,6 +3097,34 @@ JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1go_1forward)
 }
 #endif
 
+#ifndef NO__1webkit_1web_1view_1load_1bytes
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1load_1bytes)
+	(JNIEnv *env, jclass that, jintLong arg0, jintLong arg1, jbyteArray arg2, jbyteArray arg3, jbyteArray arg4)
+{
+	jbyte *lparg2=NULL;
+	jbyte *lparg3=NULL;
+	jbyte *lparg4=NULL;
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1view_1load_1bytes_FUNC);
+	if (arg2) if ((lparg2 = (*env)->GetByteArrayElements(env, arg2, NULL)) == NULL) goto fail;
+	if (arg3) if ((lparg3 = (*env)->GetByteArrayElements(env, arg3, NULL)) == NULL) goto fail;
+	if (arg4) if ((lparg4 = (*env)->GetByteArrayElements(env, arg4, NULL)) == NULL) goto fail;
+/*
+	webkit_web_view_load_bytes(arg0, arg1, lparg2, lparg3, lparg4);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_view_load_bytes)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jintLong, jintLong, jbyte *, jbyte *, jbyte *))fp)(arg0, arg1, lparg2, lparg3, lparg4);
+		}
+	}
+fail:
+	if (arg4 && lparg4) (*env)->ReleaseByteArrayElements(env, arg4, lparg4, 0);
+	if (arg3 && lparg3) (*env)->ReleaseByteArrayElements(env, arg3, lparg3, 0);
+	if (arg2 && lparg2) (*env)->ReleaseByteArrayElements(env, arg2, lparg2, 0);
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1view_1load_1bytes_FUNC);
+}
+#endif
+
 #ifndef NO__1webkit_1web_1view_1load_1html
 JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1load_1html)
 	(JNIEnv *env, jclass that, jintLong arg0, jbyteArray arg1, jbyteArray arg2)
@@ -2975,26 +3241,6 @@ JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1new)
 }
 #endif
 
-#ifndef NO__1webkit_1web_1view_1new_1with_1user_1content_1manager
-JNIEXPORT jintLong JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1new_1with_1user_1content_1manager)
-	(JNIEnv *env, jclass that, jintLong arg0)
-{
-	jintLong rc = 0;
-	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1web_1view_1new_1with_1user_1content_1manager_FUNC);
-/*
-	rc = (jintLong)webkit_web_view_new_with_user_content_manager(arg0);
-*/
-	{
-		WebKitGTK_LOAD_FUNCTION(fp, webkit_web_view_new_with_user_content_manager)
-		if (fp) {
-			rc = (jintLong)((jintLong (CALLING_CONVENTION*)(jintLong))fp)(arg0);
-		}
-	}
-	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1view_1new_1with_1user_1content_1manager_FUNC);
-	return rc;
-}
-#endif
-
 #ifndef NO__1webkit_1web_1view_1reload
 JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1reload)
 	(JNIEnv *env, jclass that, jintLong arg0)
@@ -3074,6 +3320,24 @@ JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1web_1view_1stop_1loading)
 		}
 	}
 	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1web_1view_1stop_1loading_FUNC);
+}
+#endif
+
+#ifndef NO__1webkit_1website_1data_1manager_1clear
+JNIEXPORT void JNICALL WebKitGTK_NATIVE(_1webkit_1website_1data_1manager_1clear)
+	(JNIEnv *env, jclass that, jintLong arg0, jintLong arg1, jintLong arg2, jintLong arg3, jintLong arg4, jintLong arg5)
+{
+	WebKitGTK_NATIVE_ENTER(env, that, _1webkit_1website_1data_1manager_1clear_FUNC);
+/*
+	webkit_website_data_manager_clear(arg0, arg1, arg2, arg3, arg4, arg5);
+*/
+	{
+		WebKitGTK_LOAD_FUNCTION(fp, webkit_website_data_manager_clear)
+		if (fp) {
+			((void (CALLING_CONVENTION*)(jintLong, jintLong, jintLong, jintLong, jintLong, jintLong))fp)(arg0, arg1, arg2, arg3, arg4, arg5);
+		}
+	}
+	WebKitGTK_NATIVE_EXIT(env, that, _1webkit_1website_1data_1manager_1clear_FUNC);
 }
 #endif
 

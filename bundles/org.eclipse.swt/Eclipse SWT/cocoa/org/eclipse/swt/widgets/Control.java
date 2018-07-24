@@ -2502,18 +2502,39 @@ long /*int*/ menuForEvent (long /*int*/ id, long /*int*/ sel, long /*int*/ theEv
 	event.y = y;
 	NSEvent nsEvent = new NSEvent(theEvent);
 	event.detail = nsEvent.buttonNumber() > 0 ? SWT.MENU_MOUSE : SWT.MENU_KEYBOARD;
-	sendEvent (SWT.MenuDetect, event);
+
+	int count = 0;
+	if (display.popups != null) {
+		while (count < display.popups.length && display.popups[count] != null) {
+			count++;
+		}
+	}
+
+	sendEvent(SWT.MenuDetect, event);
 	//widget could be disposed at this point
 	if (isDisposed ()) return 0;
-	if (!event.doit) return 0;
 	Menu menu = getMenu ();
-	if (menu != null && !menu.isDisposed ()) {
+	if (event.doit && menu != null && !menu.isDisposed ()) {
 		if (x != event.x || y != event.y) {
 			menu.setLocation (event.x, event.y);
 		}
-		menu.setVisible(true);
-		return 0;
+		return menu.nsMenu.id;
 	}
+
+	// There is either no popup menu set for the Control or event.doit = false.
+	// If a popup was triggered in the MenuDetect listener, return it.
+	int count2 = 0;
+	if (display.popups != null) {
+		while (count2 < display.popups.length && display.popups[count2] != null) {
+			count2++;
+		}
+	}
+	if (count2 != count && count2 > 0) {
+		Menu menu1 = display.popups[count2 - 1];
+		display.popups[count2 - 1] = null;
+		return menu1.nsMenu.id;
+	}
+	if (!event.doit) return 0;
 	return super.menuForEvent (id, sel, theEvent);
 }
 
@@ -3563,7 +3584,6 @@ void setBackground () {
  * if the argument is null.
  * <p>
  * Note: This operation is a hint and may be overridden by the platform.
- * For example, on MAC the background of a Button cannot be changed.
  * </p>
  * @param color the new color (or null)
  *
@@ -4326,6 +4346,11 @@ public void setTextDirection(int textDirection) {
  * The mnemonic indicator (character '&amp;') is not displayed in a tool tip.
  * To display a single '&amp;' in the tool tip, the character '&amp;' can be
  * escaped by doubling it in the string.
+ * </p>
+ * <p>
+ * NOTE: This operation is a hint and behavior is platform specific, on Windows
+ * for CJK-style mnemonics of the form " (&C)" at the end of the tooltip text
+ * are not shown in tooltip.
  * </p>
  *
  * @param string the new tool tip text (or null)
@@ -5206,4 +5231,28 @@ void updateLayout (boolean all) {
 	/* Do nothing */
 }
 
+static double /*float*/ calcDiff (double /*float*/ component, double /*float*/ factor, boolean wantDarker) {
+	if (wantDarker) {
+		return component * -1 * factor;
+	} else {
+		return (1f - component) * factor;
+	}
+}
+
+static double /*float*/ [] getLighterOrDarkerColor (double /*float*/ [] pixel, double /*float*/ factor, boolean wantDarker) {
+	double /*float*/ red = pixel[0];
+	double /*float*/ green = pixel[1];
+	double /*float*/ blue = pixel[2];
+	red += calcDiff(red, factor, wantDarker);
+	green += calcDiff(green, factor, wantDarker);
+	blue += calcDiff(blue, factor, wantDarker);
+	return new double /*float*/ [] { red, green, blue, pixel[3] };
+}
+
+/**
+ * @return luma according to ITU BT.709: Y = 0.2126 R + 0.7152 G + 0.0722 B
+ */
+static double luma (double[] rgbColor) {
+	return 0.2126f * rgbColor[0] + 0.7152f * rgbColor[1] + 0.0722f * rgbColor[2];
+}
 }

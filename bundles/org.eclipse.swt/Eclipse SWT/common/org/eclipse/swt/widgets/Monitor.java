@@ -25,6 +25,7 @@ public final class Monitor {
 	long /*int*/ handle;
 	int x, y, width, height;
 	int clientX, clientY, clientWidth, clientHeight;
+	int zoom;
 
 /**
  * Prevents uninitialized instances from being created outside the package.
@@ -71,6 +72,17 @@ public Rectangle getClientArea () {
 	return new Rectangle (clientX, clientY, clientWidth, clientHeight);
 }
 
+/**
+ * Returns the zoom value for the monitor
+ *
+ * @return monitor's zoom value
+ *
+ * @since 3.107
+ */
+public int getZoom () {
+	return zoom;
+}
+
 void setBounds (Rectangle rect) {
 	x = rect.x;
 	y = rect.y;
@@ -94,6 +106,7 @@ void setClientArea (Rectangle rect) {
  * @return the receiver's hash
  *
  * @see #equals(Object)
+ *
  */
 @Override
 public int hashCode () {

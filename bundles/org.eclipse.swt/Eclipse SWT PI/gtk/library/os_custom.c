@@ -19,6 +19,15 @@
 
 #define OS_NATIVE(func) Java_org_eclipse_swt_internal_gtk_OS_##func
 
+JavaVM *cached_jvm = NULL;
+
+JNIEXPORT void JNICALL OS_NATIVE(_1cachejvmptr)
+	(JNIEnv *env, jclass that)
+{
+	/* cache the JavaVM pointer */
+	if (cached_jvm == NULL) (*env)->GetJavaVM(env, &cached_jvm);
+}
+
 #ifndef NO__1call_1get_1size
 JNIEXPORT void JNICALL OS_NATIVE(_1call_1get_1size)
 	(JNIEnv *env, jclass that, jintLong arg0, jintLong arg1, jintLong arg2, jintLong arg3, jintLong arg4, jintLong arg5, jintLong arg6, jintLong arg7)
@@ -318,6 +327,7 @@ static void swt_fixed_set_property (GObject *object, guint prop_id, const GValue
 static void swt_fixed_finalize (GObject *object);
 static void swt_fixed_realize (GtkWidget *widget);
 static void swt_fixed_map (GtkWidget *widget);
+static AtkObject *swt_fixed_get_accessible (GtkWidget *widget);
 static void swt_fixed_get_preferred_width (GtkWidget *widget, gint *minimum, gint *natural);
 static void swt_fixed_get_preferred_height (GtkWidget *widget, gint *minimum, gint *natural);
 static void swt_fixed_size_allocate (GtkWidget *widget, GtkAllocation *allocation);
@@ -349,6 +359,9 @@ static void swt_fixed_class_init (SwtFixedClass *class) {
 	widget_class->get_preferred_width = swt_fixed_get_preferred_width;
 	widget_class->get_preferred_height = swt_fixed_get_preferred_height;
 	widget_class->size_allocate = swt_fixed_size_allocate;
+
+	/* Accessibility implementation */
+	widget_class->get_accessible = swt_fixed_get_accessible;
 
 	/* Container implementation */
 	container_class->add = swt_fixed_add;
@@ -420,6 +433,7 @@ static void swt_fixed_finalize (GObject *object) {
 
 	g_object_unref (priv->hadjustment);
 	g_object_unref (priv->vadjustment);
+	g_clear_object (&widget->accessible);
 
 	G_OBJECT_CLASS (swt_fixed_parent_class)->finalize (object);
 }
@@ -538,6 +552,16 @@ static void swt_fixed_map (GtkWidget *widget) {
 		//cases.
 		gdk_window_show_unraised (gtk_widget_get_window (widget));
 	}
+}
+
+/* Accessibility */
+static AtkObject *swt_fixed_get_accessible (GtkWidget *widget) {
+	SwtFixed *fixed = SWT_FIXED (widget);
+
+	if (!fixed->accessible) {
+		fixed->accessible = swt_fixed_accessible_new (widget);
+	}
+	return fixed->accessible;
 }
 
 static void swt_fixed_get_preferred_width (GtkWidget *widget, gint *minimum, gint *natural) {
@@ -722,6 +746,1142 @@ static void swt_fixed_forall (GtkContainer *container, gboolean include_internal
 }
 
 
+#endif
+#ifndef NO_SwtFixedAccessible
+
+static void swt_fixed_accessible_class_init (SwtFixedAccessibleClass *klass);
+static void swt_fixed_accessible_finalize (GObject *object);
+static void swt_fixed_accessible_initialize (AtkObject *obj, gpointer data);
+static AtkAttributeSet *swt_fixed_accessible_get_attributes (AtkObject *obj);
+static const gchar *swt_fixed_accessible_get_description (AtkObject *obj);
+static gint swt_fixed_accessible_get_index_in_parent (AtkObject *obj);
+static gint swt_fixed_accessible_get_n_children (AtkObject *obj);
+static const gchar *swt_fixed_accessible_get_name (AtkObject *obj);
+static AtkObject *swt_fixed_accessible_get_parent (AtkObject *obj);
+static AtkRole swt_fixed_accessible_get_role (AtkObject *obj);
+static AtkObject *swt_fixed_accessible_ref_child (AtkObject *obj, gint i);
+static AtkStateSet *swt_fixed_accesssible_ref_state_set (AtkObject *accessible);
+static void swt_fixed_accessible_action_iface_init (AtkActionIface *iface);
+static void swt_fixed_accessible_component_iface_init (AtkComponentIface *iface);
+static void swt_fixed_accessible_editable_text_iface_init (AtkEditableTextIface *iface);
+static void swt_fixed_accessible_hypertext_iface_init (AtkHypertextIface *iface);
+static void swt_fixed_accessible_selection_iface_init (AtkSelectionIface *iface);
+static void swt_fixed_accessible_table_iface_init (AtkTableIface *iface);
+static void swt_fixed_accessible_text_iface_init (AtkTextIface *iface);
+static void swt_fixed_accessible_value_iface_init (AtkValueIface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (SwtFixedAccessible, swt_fixed_accessible, GTK_TYPE_CONTAINER_ACCESSIBLE,
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_ACTION, swt_fixed_accessible_action_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_COMPONENT, swt_fixed_accessible_component_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_EDITABLE_TEXT, swt_fixed_accessible_editable_text_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_HYPERTEXT, swt_fixed_accessible_hypertext_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_SELECTION, swt_fixed_accessible_selection_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_TABLE, swt_fixed_accessible_table_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_TEXT, swt_fixed_accessible_text_iface_init)
+			 G_IMPLEMENT_INTERFACE (ATK_TYPE_VALUE, swt_fixed_accessible_value_iface_init))
+
+struct _SwtFixedAccessiblePrivate {
+	// A boolean flag which is set to TRUE when an Accessible Java
+	// object has been created for this SwtFixedAccessible instance
+	gboolean has_accessible;
+
+	// The GtkWidget this SwtFixedAccessible instance maps to.
+	GtkWidget *widget;
+};
+
+// Fully qualified Java class name for the Java implementation of ATK functions
+const char *ACCESSIBILITY_CLASS_NAME = "org/eclipse/swt/accessibility/AccessibleObject";
+
+static void swt_fixed_accessible_init (SwtFixedAccessible *accessible) {
+	// Initialize the SwtFixedAccessiblePrivate struct
+	accessible->priv = G_TYPE_INSTANCE_GET_PRIVATE (accessible, SWT_TYPE_FIXED_ACCESSIBLE, SwtFixedAccessiblePrivate);
+}
+
+static void swt_fixed_accessible_class_init (SwtFixedAccessibleClass *klass) {
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	AtkObjectClass *atk_class = ATK_OBJECT_CLASS (klass);
+
+	// Override GObject functions
+	object_class->finalize = swt_fixed_accessible_finalize;
+
+	// Override AtkObject functions
+	atk_class->initialize = swt_fixed_accessible_initialize;
+	atk_class->get_attributes = swt_fixed_accessible_get_attributes;
+	atk_class->get_description = swt_fixed_accessible_get_description;
+	atk_class->get_index_in_parent = swt_fixed_accessible_get_index_in_parent;
+	atk_class->get_n_children = swt_fixed_accessible_get_n_children;
+	atk_class->get_name = swt_fixed_accessible_get_name;
+	atk_class->get_parent = swt_fixed_accessible_get_parent;
+	atk_class->get_role = swt_fixed_accessible_get_role;
+	atk_class->ref_child = swt_fixed_accessible_ref_child;
+	atk_class->ref_state_set = swt_fixed_accesssible_ref_state_set;
+
+	g_type_class_add_private (klass, sizeof (SwtFixedAccessiblePrivate));
+}
+
+AtkObject *swt_fixed_accessible_new (GtkWidget *widget) {
+	AtkObject *accessible;
+
+	g_return_val_if_fail (SWT_IS_FIXED (widget), NULL);
+
+	// Create the SwtFixedAccessible instance and call the initializer
+	accessible = g_object_new (SWT_TYPE_FIXED_ACCESSIBLE, NULL);
+	atk_object_initialize (accessible, widget);
+
+	return accessible;
+}
+
+static void swt_fixed_accessible_finalize (GObject *object) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (object);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	// Call the Java implementation to ensure AccessibleObjects are removed
+	// from the HashMap on the Java side.
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("gObjectClass_finalize", "(J)J", object);
+		if (returned_value != 0) g_critical ("Undefined behavior calling gObjectClass_finalize from C\n");
+	}
+
+	// Chain up to the parent class
+	G_OBJECT_CLASS (swt_fixed_accessible_parent_class)->finalize (object);
+	return;
+}
+
+// This method is called from Java when an Accessible Java object that corresponds
+// to this SwtFixedAccessible instance has been created.
+void swt_fixed_accessible_register_accessible (AtkObject *obj, gboolean is_native, GtkWidget *to_map) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	private->has_accessible = TRUE;
+
+	if (!is_native) {
+		gtk_accessible_set_widget (GTK_ACCESSIBLE (obj), to_map);
+		private->widget = to_map;
+	} else {
+		// TODO_a11y: implement support for native GTK widgets on the Java side,
+		// some work might need to be done here.
+	}
+	return;
+}
+
+static void swt_fixed_accessible_initialize (AtkObject *obj, gpointer data) {
+	// Call parent class initializer function
+	if (ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->initialize != NULL) {
+		ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->initialize (obj, data);
+	}
+
+	SwtFixedAccessiblePrivate *private = SWT_FIXED_ACCESSIBLE (obj)->priv;
+	// If this SwtFixedAccessible instance has a corresponding Accessible
+	// Java object created for it, then we can map it to its widget. Otherwise,
+	// map it to NULL. This means that only widgets with an Accessible Java object
+	// created get ATK function/interface implementations.
+	if (private->has_accessible) {
+		gtk_accessible_set_widget (GTK_ACCESSIBLE (obj), GTK_WIDGET (data));
+	} else {
+		gtk_accessible_set_widget (GTK_ACCESSIBLE (obj), NULL);
+	}
+}
+
+static AtkAttributeSet *swt_fixed_accessible_get_attributes (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_attributes", "(J)J", obj);
+		return (AtkAttributeSet *) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_attributes (obj);
+	}
+}
+
+static const gchar *swt_fixed_accessible_get_description (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_description", "(J)J", obj);
+		return (const gchar *) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_description (obj);
+	}
+}
+
+static gint swt_fixed_accessible_get_index_in_parent (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_index_in_parent", "(J)J", obj);
+		return (gint) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_index_in_parent (obj);
+	}
+}
+
+static gint swt_fixed_accessible_get_n_children (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_n_children", "(J)J", obj);
+		return (gint) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_n_children (obj);
+	}
+}
+
+static const gchar *swt_fixed_accessible_get_name (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_name", "(J)J", obj);
+		return (const gchar *) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_name (obj);
+	}
+}
+
+static AtkObject *swt_fixed_accessible_get_parent (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_parent", "(J)J", obj);
+		return (AtkObject *) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_parent (obj);
+	}
+}
+
+static AtkRole swt_fixed_accessible_get_role (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_get_role", "(J)J", obj);
+		return returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->get_role (obj);
+	}
+}
+
+static AtkObject *swt_fixed_accessible_ref_child (AtkObject *obj, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_ref_child", "(JJ)J", obj, i);
+		return (AtkObject *) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->ref_child (obj, i);
+	}
+}
+
+static AtkStateSet *swt_fixed_accesssible_ref_state_set (AtkObject *obj) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkObject_ref_state_set", "(J)J", obj);
+		return (AtkStateSet *) returned_value;
+	} else {
+		return ATK_OBJECT_CLASS (swt_fixed_accessible_parent_class)->ref_state_set (obj);
+	}
+}
+
+static gboolean swt_fixed_accessible_action_do_action (AtkAction *action, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (action);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkAction_do_action", "(JJ)J", action, i);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static const gchar *swt_fixed_accessible_action_get_description (AtkAction *action, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (action);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkAction_get_description", "(JJ)J", action, i);
+	}
+	return (const gchar *) returned_value;
+}
+
+static const gchar *swt_fixed_accessible_action_get_keybinding (AtkAction *action, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (action);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkAction_get_keybinding", "(JJ)J", action, i);
+	}
+	return (const gchar *) returned_value;
+}
+
+static gint swt_fixed_accessible_action_get_n_actions (AtkAction *action) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (action);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkAction_get_n_actions", "(J)J", action);
+	}
+	return (gint) returned_value;
+}
+
+static const gchar *swt_fixed_accessible_action_get_name (AtkAction *action, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (action);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkAction_get_name", "(JJ)J", action, i);
+	}
+	return (const gchar *) returned_value;
+}
+
+static void swt_fixed_accessible_component_get_extents (AtkComponent *component, gint *x, gint *y,
+		gint *width, gint *height, AtkCoordType coord_type) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (component);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkComponent_get_extents", "(JJJJJJ)J", component, x, y,
+			width, height, coord_type);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_component_get_position (AtkComponent *component, gint *x, gint *y,
+		AtkCoordType coord_type) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (component);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkComponent_get_position", "(JJJJ)J", component, x, y, coord_type);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_component_get_size (AtkComponent *component, gint *width, gint *height) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (component);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		// Note we are calling the Java method with 4 arguments: on GTK2 atk_component_get_size
+		// accepts 4 parameters, on GTK3 it only accepts 3.
+		call_accessible_object_function("atkComponent_get_size", "(JJJJ)J", component, width, height, 0);
+	}
+	return;
+}
+
+static AtkObject *swt_fixed_accessible_component_ref_accessible_at_point (AtkComponent *component, gint x,
+		gint y, AtkCoordType coord_type) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (component);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkComponent_ref_accessible_at_point", "(JJJJ)J",
+				component, x, y, coord_type);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static void swt_fixed_accessible_editable_text_copy_text (AtkEditableText *text, gint start_pos, gint end_pos) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkEditableText_copy_text", "(JJJ)J", text, start_pos, end_pos);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_editable_text_cut_text (AtkEditableText *text, gint start_pos, gint end_pos) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkEditableText_cut_text", "(JJJ)J", text, start_pos, end_pos);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_editable_text_delete_text (AtkEditableText *text, gint start_pos, gint end_pos) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkEditableText_delete_text", "(JJJ)J", text, start_pos, end_pos);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_editable_text_insert_text (AtkEditableText *text, const gchar *string,
+		gint length, gint *position) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkEditableText_insert_text", "(JJJJ)J", text, string, length, position);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_editable_text_paste_text (AtkEditableText *text, gint position) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkEditableText_paste_text", "(JJ)J", text, position);
+	}
+	return;
+}
+
+static gboolean swt_fixed_accessible_editable_text_set_run_attributes (AtkEditableText *text,
+		AtkAttributeSet *attrib_set, gint start_offset, gint end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkEditableText_set_run_attributes", "(JJJJ)J",
+				attrib_set, start_offset, end_offset);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static void swt_fixed_accessible_editable_text_set_text_contents (AtkEditableText *text, const gchar *string) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkEditableText_set_text_contents", "(JJ)J", text, string);
+	}
+	return;
+}
+
+static AtkHyperlink *swt_fixed_accessible_hypertext_get_link (AtkHypertext *hypertext, gint link_index) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (hypertext);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkHypertext_get_link", "(JJ)J", hypertext, link_index);
+	}
+	return (AtkHyperlink *) returned_value;
+}
+
+static gint swt_fixed_accessible_hypertext_get_link_index (AtkHypertext *hypertext, gint char_index) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (hypertext);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkHypertext_get_link_index", "(JJ)J", hypertext, char_index);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_hypertext_get_n_links (AtkHypertext *hypertext) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (hypertext);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkHypertext_get_n_links", "(J)J", hypertext);
+	}
+	return (gint) returned_value;
+}
+
+static gboolean swt_fixed_accessible_selection_is_child_selected (AtkSelection *selection, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (selection);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkSelection_is_child_selected", "(JJ)J", selection, i);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static AtkObject *swt_fixed_accessible_selection_ref_selection (AtkSelection *selection, gint i) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (selection);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkSelection_ref_selection", "(JJ)J", selection, i);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static AtkObject *swt_fixed_accessible_table_ref_at (AtkTable *table, gint row, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_ref_at", "(JJJ)J", table, row, column);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_index_at (AtkTable *table, gint row, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_index_at", "(JJJ)J", table, row, column);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_column_at_index (AtkTable *table, gint index) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_column_at_index", "(JJ)J", table, index);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_row_at_index (AtkTable *table, gint index) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_row_at_index", "(JJ)J", table, index);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_n_columns (AtkTable *table) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_n_columns", "(J)J", table);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_n_rows (AtkTable *table) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_n_rows", "(J)J", table);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_column_extent_at (AtkTable *table, gint row, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_column_extent_at", "(JJJ)J",
+			table, row, column);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_row_extent_at (AtkTable *table, gint row, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_row_extent_at", "(JJJ)J",
+			table, row, column);
+	}
+	return (gint) returned_value;
+}
+
+static AtkObject *swt_fixed_accessible_table_get_caption (AtkTable *table) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_caption", "(J)J", table);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static AtkObject *swt_fixed_accessible_table_get_summary (AtkTable *table) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_summary", "(J)J", table);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static const gchar *swt_fixed_accessible_table_get_column_description (AtkTable *table, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_column_description", "(JJ)J",
+			table, column);
+	}
+	return (const gchar *) returned_value;
+}
+
+static AtkObject *swt_fixed_accessible_table_get_column_header (AtkTable *table, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_column_header", "(JJ)J",
+			table, column);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static const gchar *swt_fixed_accessible_table_get_row_description (AtkTable *table, gint row) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_row_description", "(JJ)J",
+			table, row);
+	}
+	return (const gchar *) returned_value;
+}
+
+static AtkObject *swt_fixed_accessible_table_get_row_header (AtkTable *table, gint row) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_row_header", "(JJ)J",
+			table, row);
+	}
+	return (AtkObject *) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_selected_rows (AtkTable *table, gint **selected) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_selected_rows", "(JJ)J",
+			table, selected);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_table_get_selected_columns (AtkTable *table, gint **selected) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_get_selected_columns", "(JJ)J",
+			table, selected);
+	}
+	return (gint) returned_value;
+}
+
+static gboolean swt_fixed_accessible_table_is_column_selected (AtkTable *table, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_is_column_selected", "(JJ)J",
+			table, column);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_table_is_row_selected (AtkTable *table, gint row) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_is_row_selected", "(JJ)J",
+			table, row);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_table_is_selected (AtkTable *table, gint row, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_is_selected", "(JJJ)J",
+			table, row, column);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_table_add_row_selection (AtkTable *table, gint row) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_add_row_selection", "(JJ)J",
+			table, row);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_table_remove_row_selection (AtkTable *table, gint row) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_remove_row_selection", "(JJ)J",
+			table, row);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_table_add_column_selection (AtkTable *table, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_add_column_selection", "(JJ)J",
+			table, column);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_table_remove_column_selection (AtkTable *table, gint column) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (table);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkTable_remove_row_selection", "(JJ)J",
+			table, column);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_text_add_selection (AtkText *text, gint start_offset, gint end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_add_selection", "(JJJ)J",
+			text, start_offset, end_offset);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static AtkTextRange **swt_fixed_accessible_text_get_bounded_ranges (AtkText *text, AtkTextRectangle *rect,
+		AtkCoordType coord_type, AtkTextClipType x_clip_type, AtkTextClipType y_clip_type) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_bounded_ranges", "(JJJJJ)J",
+			text, rect, coord_type, x_clip_type, y_clip_type);
+	}
+	return (AtkTextRange **) returned_value;
+}
+
+static gint swt_fixed_accessible_text_get_caret_offset (AtkText *text) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_caret_offset", "(J)J", text);
+	}
+	return (gint) returned_value;
+}
+
+static gunichar swt_fixed_accessible_text_get_character_at_offset (AtkText *text, gint offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_character_at_offset", "(JJ)J", text, offset);
+	}
+	return (gunichar) returned_value;
+}
+
+static gint swt_fixed_accessible_text_get_character_count (AtkText *text) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_character_count", "(J)J", text);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_text_get_n_selections (AtkText *text) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_n_selections", "(J)J", text);
+	}
+	return (gint) returned_value;
+}
+
+static gint swt_fixed_accessible_text_get_offset_at_point (AtkText *text, gint x, gint y,
+		AtkCoordType coords) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_offset_at_point", "(JJJJ)J", text, x, y, coords);
+	}
+	return (gint) returned_value;
+}
+
+static void swt_fixed_accessible_text_get_range_extents (AtkText *text, gint start_offset, gint end_offset,
+		AtkCoordType coord_type, AtkTextRectangle *rect) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkText_get_range_extents", "(JJJJJ)J", text,
+			start_offset, end_offset, coord_type, rect);
+	}
+	return;
+}
+
+static AtkAttributeSet *swt_fixed_accessible_text_get_run_attributes (AtkText *text, gint offset, gint *start_offset,
+		gint *end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_run_attributes", "(JJJJ)J", text,
+			offset, start_offset, end_offset);
+	}
+	return (AtkAttributeSet *) returned_value;
+}
+
+static gchar *swt_fixed_accessible_text_get_selection (AtkText *text, gint selection_num, gint *start_offset,
+		gint *end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_selection", "(JJJJ)J", text,
+			selection_num, start_offset, end_offset);
+	}
+	return (gchar *) returned_value;
+}
+
+static gchar *swt_fixed_accessible_text_get_text (AtkText *text, gint start_offset, gint end_offset) {
+	return NULL;
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_text", "(JJJ)J", text,
+			start_offset, end_offset);
+	}
+	return (gchar *) returned_value;
+}
+
+static gchar *swt_fixed_accessible_text_get_text_after_offset (AtkText *text, gint offset,
+		AtkTextBoundary boundary_type, gint *start_offset, gint *end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_text_after_offset", "(JJJJJ)J", text,
+			offset, boundary_type, start_offset, end_offset);
+	}
+	return (gchar *) returned_value;
+}
+
+static gchar *swt_fixed_accessible_text_get_text_at_offset (AtkText *text, gint offset,
+		AtkTextBoundary boundary_type, gint *start_offset, gint *end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_text_at_offset", "(JJJJJ)J", text,
+			offset, boundary_type, start_offset, end_offset);
+	}
+	return (gchar *) returned_value;
+}
+
+static gchar *swt_fixed_accessible_text_get_text_before_offset (AtkText *text, gint offset,
+		AtkTextBoundary boundary_type, gint *start_offset, gint *end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_get_text_before_offset", "(JJJJJ)J", text,
+			offset, boundary_type, start_offset, end_offset);
+	}
+	return (gchar *) returned_value;
+}
+
+static gboolean swt_fixed_accessible_text_remove_selection (AtkText *text, gint selection_num) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_remove_selection", "(JJ)J", text, selection_num);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_text_set_caret_offset (AtkText *text, gint offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_set_caret_offset", "(JJ)J", text, offset);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static gboolean swt_fixed_accessible_text_set_selection (AtkText *text, gint selection_num,
+		gint start_offset, gint end_offset) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (text);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkText_set_selection", "(JJJJ)J", text,
+			selection_num, start_offset, end_offset);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+static void swt_fixed_accessible_value_get_current_value (AtkValue *obj, GValue *value) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkValue_get_current_value", "(JJ)J", obj, value);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_value_get_maximum_value (AtkValue *obj, GValue *value) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkValue_get_maximum_value", "(JJ)J", obj, value);
+	}
+	return;
+}
+
+static void swt_fixed_accessible_value_get_minimum_value (AtkValue *obj, GValue *value) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+
+	if (private->has_accessible) {
+		call_accessible_object_function("atkValue_get_minimum_value", "(JJ)J", obj, value);
+	}
+	return;
+}
+
+static gboolean swt_fixed_accessible_value_set_current_value (AtkValue *obj, const GValue *value) {
+	SwtFixedAccessible *fixed = SWT_FIXED_ACCESSIBLE (obj);
+	SwtFixedAccessiblePrivate *private = fixed->priv;
+	jintLong returned_value = 0;
+
+	if (private->has_accessible) {
+		returned_value = call_accessible_object_function("atkValue_set_current_value", "(JJ)J", obj, value);
+	}
+	return ((gint) returned_value == 1) ? TRUE : FALSE;
+}
+
+// Interfaces initializers and implementations
+static void swt_fixed_accessible_action_iface_init (AtkActionIface *iface) {
+	iface->do_action = swt_fixed_accessible_action_do_action;
+	iface->get_description = swt_fixed_accessible_action_get_description;
+	iface->get_keybinding = swt_fixed_accessible_action_get_keybinding;
+	iface->get_n_actions = swt_fixed_accessible_action_get_n_actions;
+	iface->get_name = swt_fixed_accessible_action_get_name;
+}
+
+static void swt_fixed_accessible_component_iface_init (AtkComponentIface *iface) {
+	iface->get_extents = swt_fixed_accessible_component_get_extents;
+	iface->get_position = swt_fixed_accessible_component_get_position;
+	iface->get_size = swt_fixed_accessible_component_get_size;
+	iface->ref_accessible_at_point = swt_fixed_accessible_component_ref_accessible_at_point;
+}
+
+static void swt_fixed_accessible_editable_text_iface_init (AtkEditableTextIface *iface) {
+	iface->copy_text = swt_fixed_accessible_editable_text_copy_text;
+	iface->cut_text = swt_fixed_accessible_editable_text_cut_text;
+	iface->delete_text = swt_fixed_accessible_editable_text_delete_text;
+	iface->insert_text = swt_fixed_accessible_editable_text_insert_text;
+	iface->paste_text = swt_fixed_accessible_editable_text_paste_text;
+	iface->set_run_attributes = swt_fixed_accessible_editable_text_set_run_attributes;
+	iface->set_text_contents = swt_fixed_accessible_editable_text_set_text_contents;
+}
+
+static void swt_fixed_accessible_hypertext_iface_init (AtkHypertextIface *iface) {
+	iface->get_link = swt_fixed_accessible_hypertext_get_link;
+	iface->get_link_index = swt_fixed_accessible_hypertext_get_link_index;
+	iface->get_n_links = swt_fixed_accessible_hypertext_get_n_links;
+}
+
+static void swt_fixed_accessible_selection_iface_init (AtkSelectionIface *iface) {
+	iface->is_child_selected = swt_fixed_accessible_selection_is_child_selected;
+	iface->ref_selection = swt_fixed_accessible_selection_ref_selection;
+}
+
+static void swt_fixed_accessible_table_iface_init (AtkTableIface *iface) {
+	iface->ref_at = swt_fixed_accessible_table_ref_at;
+	iface->get_index_at = swt_fixed_accessible_table_get_index_at;
+	iface->get_column_at_index = swt_fixed_accessible_table_get_column_at_index;
+	iface->get_row_at_index = swt_fixed_accessible_table_get_row_at_index;
+	iface->get_n_columns = swt_fixed_accessible_table_get_n_columns;
+	iface->get_n_rows = swt_fixed_accessible_table_get_n_rows;
+	iface->get_column_extent_at = swt_fixed_accessible_table_get_column_extent_at;
+	iface->get_row_extent_at = swt_fixed_accessible_table_get_row_extent_at;
+	iface->get_caption = swt_fixed_accessible_table_get_caption;
+	iface->get_summary = swt_fixed_accessible_table_get_summary;
+	iface->get_column_description = swt_fixed_accessible_table_get_column_description;
+	iface->get_column_header = swt_fixed_accessible_table_get_column_header;
+	iface->get_row_description = swt_fixed_accessible_table_get_row_description;
+	iface->get_row_header = swt_fixed_accessible_table_get_row_header;
+	iface->get_selected_columns = swt_fixed_accessible_table_get_selected_columns;
+	iface->get_selected_rows = swt_fixed_accessible_table_get_selected_rows;
+	iface->is_column_selected = swt_fixed_accessible_table_is_column_selected;
+	iface->is_row_selected = swt_fixed_accessible_table_is_row_selected;
+	iface->is_selected = swt_fixed_accessible_table_is_selected;
+	iface->add_row_selection = swt_fixed_accessible_table_add_row_selection;
+	iface->remove_row_selection = swt_fixed_accessible_table_remove_row_selection;
+	iface->add_column_selection = swt_fixed_accessible_table_add_column_selection;
+	iface->remove_column_selection = swt_fixed_accessible_table_remove_column_selection;
+}
+
+static void swt_fixed_accessible_text_iface_init (AtkTextIface *iface) {
+	iface->add_selection = swt_fixed_accessible_text_add_selection;
+	iface->get_bounded_ranges = swt_fixed_accessible_text_get_bounded_ranges;
+	iface->get_caret_offset = swt_fixed_accessible_text_get_caret_offset;
+	iface->get_character_at_offset = swt_fixed_accessible_text_get_character_at_offset;
+	iface->get_character_count = swt_fixed_accessible_text_get_character_count;
+	iface->get_n_selections = swt_fixed_accessible_text_get_n_selections;
+	iface->get_offset_at_point = swt_fixed_accessible_text_get_offset_at_point;
+	iface->get_range_extents = swt_fixed_accessible_text_get_range_extents;
+	iface->get_run_attributes = swt_fixed_accessible_text_get_run_attributes;
+	iface->get_selection = swt_fixed_accessible_text_get_selection;
+	// TODO_a11y: add support for get_string_at_offset once Orca is updated
+	iface->get_text_before_offset = swt_fixed_accessible_text_get_text_before_offset;
+	iface->get_text_at_offset = swt_fixed_accessible_text_get_text_at_offset;
+	iface->get_text_after_offset = swt_fixed_accessible_text_get_text_after_offset;
+	iface->get_text = swt_fixed_accessible_text_get_text;
+	iface->remove_selection = swt_fixed_accessible_text_remove_selection;
+	iface->set_caret_offset = swt_fixed_accessible_text_set_caret_offset;
+	iface->set_selection = swt_fixed_accessible_text_set_selection;
+}
+
+static void swt_fixed_accessible_value_iface_init (AtkValueIface *iface) {
+	/*
+	 * TODO_a11y: add support for get_range, get_value_and_text, and set_value
+	 * once Orca is updated.
+	 */
+	iface->get_current_value = swt_fixed_accessible_value_get_current_value;
+	iface->get_maximum_value = swt_fixed_accessible_value_get_maximum_value;
+	iface->get_minimum_value = swt_fixed_accessible_value_get_minimum_value;
+	iface->set_current_value = swt_fixed_accessible_value_set_current_value;
+}
+
+jintLong call_accessible_object_function (const char *method_name, const char *method_signature,...) {
+	jintLong result = 0;
+	va_list arg_list;
+	jclass cls;
+	JNIEnv *env;
+	jmethodID mid;
+
+	if (method_name == NULL || method_signature == NULL) {
+		g_critical("Error calling Java method with JNI, check method name and signature\n");
+		return 0;
+	}
+
+	// Get the JNIEnv pointer
+	if ((*cached_jvm)->GetEnv(cached_jvm, (void **)&env, JNI_VERSION_1_2)) {
+		g_critical("Error fetching the JNIEnv pointer\n");
+		return 0;
+	}
+
+	// Find the class pointer
+	cls = (*env)->FindClass(env, ACCESSIBILITY_CLASS_NAME);
+	if (cls == NULL) {
+		g_critical("JNI class pointer is NULL for class %s\n", ACCESSIBILITY_CLASS_NAME);
+		return 0;
+	}
+
+	// Find the method ID
+	mid = (*env)->GetStaticMethodID(env, cls, method_name, method_signature);
+
+	// If the method ID isn't NULL
+	if (mid == NULL) {
+		g_critical("JNI method ID pointer is NULL for method %s\n", method_name);
+		return 0;
+	} else {
+		va_start(arg_list, method_signature);
+		result = (*env)->CallStaticLongMethodV(env, cls, mid, arg_list);
+		va_end(arg_list);
+	}
+
+	return result;
+}
 #endif
 
 //Add ability to debug gtk warnings for SWT snippets via SWT_FATAL_WARNINGS=1

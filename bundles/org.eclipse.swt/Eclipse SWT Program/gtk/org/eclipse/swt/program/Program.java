@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -146,21 +146,21 @@ public static Program[] getPrograms() {
 public ImageData getImageData() {
 	if (iconPath == null) return null;
 	ImageData data = null;
-	long /*int*/ icon_theme =OS.gtk_icon_theme_get_default();
+	long /*int*/ icon_theme =GTK.gtk_icon_theme_get_default();
 	byte[] icon = Converter.wcsToMbcs (iconPath, true);
 	long /*int*/ gicon = OS.g_icon_new_for_string(icon, null);
 	if (gicon != 0) {
-		long /*int*/ gicon_info = OS.gtk_icon_theme_lookup_by_gicon (icon_theme, gicon, 16/*size*/, 0);
+		long /*int*/ gicon_info = GTK.gtk_icon_theme_lookup_by_gicon (icon_theme, gicon, 16/*size*/, 0);
 		if (gicon_info != 0) {
-			long /*int*/ pixbuf = OS.gtk_icon_info_load_icon(gicon_info, null);
+			long /*int*/ pixbuf = GTK.gtk_icon_info_load_icon(gicon_info, null);
 			if (pixbuf != 0) {
-				int stride = OS.gdk_pixbuf_get_rowstride(pixbuf);
-				long /*int*/ pixels = OS.gdk_pixbuf_get_pixels(pixbuf);
-				int height = OS.gdk_pixbuf_get_height(pixbuf);
-				int width = OS.gdk_pixbuf_get_width(pixbuf);
-				boolean hasAlpha = OS.gdk_pixbuf_get_has_alpha(pixbuf);
+				int stride = GDK.gdk_pixbuf_get_rowstride(pixbuf);
+				long /*int*/ pixels = GDK.gdk_pixbuf_get_pixels(pixbuf);
+				int height = GDK.gdk_pixbuf_get_height(pixbuf);
+				int width = GDK.gdk_pixbuf_get_width(pixbuf);
+				boolean hasAlpha = GDK.gdk_pixbuf_get_has_alpha(pixbuf);
 				byte[] srcData = new byte[stride * height];
-				OS.memmove(srcData, pixels, srcData.length);
+				C.memmove(srcData, pixels, srcData.length);
 				OS.g_object_unref(pixbuf);
 				if (hasAlpha) {
 					PaletteData palette = new PaletteData(0xFF000000, 0xFF0000, 0xFF00);
@@ -182,10 +182,10 @@ public ImageData getImageData() {
 					data.bytesPerLine = stride;
 				}
 			}
-			if (OS.GTK_VERSION >= OS.VERSION(3, 8, 0)) {
+			if (GTK.GTK_VERSION >= OS.VERSION(3, 8, 0)) {
 				OS.g_object_unref(gicon_info);
 			} else {
-				OS.gtk_icon_info_free(gicon_info);
+				GTK.gtk_icon_info_free(gicon_info);
 			}
 		}
 		OS.g_object_unref(gicon);
@@ -270,19 +270,19 @@ static Program gio_getProgram (Display display, long /*int*/ application) {
 	byte[] buffer;
 	long /*int*/ applicationName = OS.g_app_info_get_name (application);
 	if (applicationName != 0) {
-		length = OS.strlen (applicationName);
+		length = C.strlen (applicationName);
 		if (length > 0) {
 			buffer = new byte [length];
-			OS.memmove (buffer, applicationName, length);
+			C.memmove (buffer, applicationName, length);
 			program.name = new String (Converter.mbcsToWcs (buffer));
 		}
 	}
 	long /*int*/ applicationCommand = OS.g_app_info_get_executable (application);
 	if (applicationCommand != 0) {
-		length = OS.strlen (applicationCommand);
+		length = C.strlen (applicationCommand);
 		if (length > 0) {
 			buffer = new byte [length];
-			OS.memmove (buffer, applicationCommand, length);
+			C.memmove (buffer, applicationCommand, length);
 			program.command = new String (Converter.mbcsToWcs (buffer));
 		}
 	}
@@ -291,10 +291,10 @@ static Program gio_getProgram (Display display, long /*int*/ application) {
 	if (icon != 0) {
 		long /*int*/ icon_name = OS.g_icon_to_string(icon);
 		if (icon_name != 0) {
-			length = OS.strlen(icon_name);
+			length = C.strlen(icon_name);
 			if (length > 0) {
 				buffer = new byte[length];
-				OS.memmove(buffer, icon_name, length);
+				C.memmove(buffer, icon_name, length);
 				program.iconPath = new String(Converter.mbcsToWcs(buffer));
 			}
 			OS.g_free(icon_name);

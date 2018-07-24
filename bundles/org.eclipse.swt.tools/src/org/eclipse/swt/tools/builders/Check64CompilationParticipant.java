@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2016 IBM Corporation and others.
+ * Copyright (c) 2008, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -46,7 +46,7 @@ static String loadFile (String file) {
 	if (file == null) return null;
 	try (FileReader fr = new FileReader(file);
 		BufferedReader br = new BufferedReader(fr)) {
-		StringBuffer str = new StringBuffer();
+		StringBuilder str = new StringBuilder();
 		char[] buffer = new char[1024];
 		int read;
 		while ((read = br.read(buffer)) != -1) {
@@ -61,7 +61,7 @@ static String loadFile (String file) {
 
 void build(IJavaProject project, String root) throws CoreException {
 	try {
-		StringBuffer sourcePath = new StringBuffer(), cp = new StringBuffer();
+		StringBuilder sourcePath = new StringBuilder(), cp = new StringBuilder();
 		IClasspathEntry[] entries = project.getResolvedClasspath(true);
 		for (int i = 0; i < entries.length; i++) {
 			IClasspathEntry entry = entries[i]; 
@@ -199,12 +199,11 @@ boolean is64Type(String type) {
 			type.equals("int[]") || type.equals("long[]") || type.equals("float[]") || type.equals("double[]");
 }
 
-void createBadOverwrittenMethodProblems(IJavaProject project, String root) throws CoreException {
+void createBadOverwrittenMethodProblems(IJavaProject project) throws CoreException {
 	if (sources == null) return;
 	IProject proj = project.getProject();
 	HashMap<String, TypeDeclaration> cache = new HashMap<>();
-	for (Iterator<String> iterator = sources.iterator(); iterator.hasNext();) {
-		String path = iterator.next();
+	for (String path: sources) {
 		IResource resource = getResourceWithoutErrors(proj, path, false);
 		if (resource == null) continue;
 		TypeDeclaration type = loadType(cache, path);
@@ -221,8 +220,7 @@ void createBadOverwrittenMethodProblems(IJavaProject project, String root) throw
 		}
 		for (int i = 0; i < methods.length; i++) {
 			MethodDeclaration method = methods[i];
-			for (Iterator<TypeDeclaration> iterator2 = superclasses.iterator(); iterator2.hasNext();) {
-				TypeDeclaration supertype = iterator2.next();
+			for (TypeDeclaration supertype : superclasses) {
 				MethodDeclaration[] supermethods = supertype.getMethods();
 				for (int j = 0; j < supermethods.length; j++) {
 					MethodDeclaration supermethod = supermethods[j];
@@ -313,7 +311,7 @@ public void buildFinished(IJavaProject project) {
 		String root = project.getProject().getLocation().toPortableString() + buildDir;
 		build(project, root);		
 		createProblems(project, root);
-		createBadOverwrittenMethodProblems(project, root);
+		createBadOverwrittenMethodProblems(project);
 		sources = null;
 //		System.out.println("compiling time=" + (System.currentTimeMillis() - time));
 	} catch (Exception e) {

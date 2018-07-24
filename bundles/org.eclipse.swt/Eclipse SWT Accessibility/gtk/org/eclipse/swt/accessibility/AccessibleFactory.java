@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,10 +12,11 @@ package org.eclipse.swt.accessibility;
 
 
 import java.util.*;
+
+import org.eclipse.swt.*;
 import org.eclipse.swt.internal.*;
 import org.eclipse.swt.internal.accessibility.gtk.*;
 import org.eclipse.swt.internal.gtk.*;
-import org.eclipse.swt.*;
 
 class AccessibleFactory {
 	static final Map<LONG, Accessible> Accessibles = new HashMap<> (9);
@@ -303,9 +304,9 @@ class AccessibleFactory {
 
 	static String getTypeName (long /*int*/ type) {
 		long /*int*/ typeName = OS.g_type_name (type);
-		int widgetTypeNameLength = OS.strlen (typeName);
+		int widgetTypeNameLength = C.strlen (typeName);
 		byte[] buffer = new byte [widgetTypeNameLength];
-		OS.memmove (buffer, typeName, widgetTypeNameLength);
+		C.memmove (buffer, typeName, widgetTypeNameLength);
 		return new String(Converter.mbcsToWcs(buffer));
 	}
 
@@ -331,26 +332,26 @@ class AccessibleFactory {
 		}
 		/* if an atk object has already been created for this widget then just return it */
 		if (accessible.accessibleObject != null) {
-			return accessible.accessibleObject.handle;
+			return accessible.accessibleObject.atkHandle;
 		}
 		long /*int*/ widgetType = OS.G_OBJECT_TYPE (widget);
 		long /*int*/ parentType = getParentType (widgetType);
-		if (parentType == 0) parentType = ATK.GTK_TYPE_ACCESSIBLE();
+		if (parentType == 0) parentType = GTK.GTK_TYPE_ACCESSIBLE();
 		long /*int*/ type = getType (getTypeName(widgetType), accessible, parentType, ACC.CHILDID_SELF);
 		AccessibleObject object = new AccessibleObject (type, widget, accessible, false);
 		accessible.accessibleObject = object;
 		accessible.addRelations ();
-		return object.handle;
+		return object.atkHandle;
 	}
 
 	static AccessibleObject createChildAccessible (Accessible accessible, int childId) {
-		long /*int*/ childType = getType (CHILD_TYPENAME, accessible, ATK.GTK_TYPE_ACCESSIBLE(), childId);
+		long /*int*/ childType = getType (CHILD_TYPENAME, accessible, GTK.GTK_TYPE_ACCESSIBLE(), childId);
 		return new AccessibleObject(childType, 0, accessible, true);
 	}
 
 	static void createAccessible (Accessible accessible) {
 		long /*int*/ controlHandle = accessible.getControlHandle ();
-		OS.gtk_widget_get_accessible(controlHandle);
+		GTK.gtk_widget_get_accessible(controlHandle);
 	}
 
 	static long /*int*/ getType (String widgetTypeName, Accessible accessible, long /*int*/ parentType, int childId) {

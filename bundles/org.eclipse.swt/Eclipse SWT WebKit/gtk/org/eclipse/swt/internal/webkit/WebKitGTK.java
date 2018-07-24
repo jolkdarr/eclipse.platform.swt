@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others. All rights reserved.
+ * Copyright (c) 2000, 2018 IBM Corporation and others. All rights reserved.
  * The contents of this file are made available under the terms
  * of the GNU Lesser General Public License (LGPL) Version 2.1 that
  * accompanies this distribution (lgpl-v21.txt).  The LGPL is also
@@ -20,14 +20,52 @@ import org.eclipse.swt.internal.gtk.*;
 
 public class WebKitGTK extends C {
 
+	public static boolean LibraryLoaded;
+	public static boolean WEBKIT1, WEBKIT2;
+	public static final String Webkit1AssertMsg = "Webkit2 code reached by webkit1"; // $NON-NLS-1$
+	public static final String Webkit2AssertMsg = "Webkit1 code reached by webkit2"; // $NON-NLS-1$
 
-	// Bug 519124
+	/**
+	 * Internal version of "Webkit glue code", used mainly during webkit2 port.
+	 * Used to make it easier to support users on bugzilla. Updated by hand.
+	 */
+	public static final String swtWebkitGlueCodeVersion = " SWT Glue code version: 54.0";
+	public static final String swtWebkitGlueCodeVersionInfo = " info: +BrowserFunction/GDBus, +WebkitExtension Folder versioning, +WebKitExtension OSGI support, +setUrl(..postData..), -setCookie(), -getCookie +mouseDown/Focus";
+
+
+	/**
+	 * Temporary variable used during webkit2 port, to debug various problems for situations when it's time consuming to rebuild/debug.
+	 * e.g debug issues in compiled eclipse builds, OSGI loading of the extension etc..
+	 * Should be removed once webkit2 (and it's enhancements) are completed, no need to keep these msgs around.
+	 */
 	static {
-		String swt_lib_versions = OS.getEnvironmentalVariable ("SWT_LIB_VERSIONS"); // Note, this is read in multiple places.
-		if (swt_lib_versions != null && swt_lib_versions.equals("1")) {
-			System.out.println("SWT_LIB_WebkitGtk:"+webkit_get_major_version()+"."+webkit_get_minor_version()+"."+webkit_micro_version() + "  (Version >=2.5 is Webkit2)");
+		try {
+			Library.loadLibrary ("swt-webkit"); // $NON-NLS-1$
+			LibraryLoaded = true;
+		} catch (Throwable e) {
 		}
-	}
+
+		if (LibraryLoaded) {
+			String webkit2 = System.getenv("SWT_WEBKIT2"); // $NON-NLS-1$
+			int webkit2VersionFunction = webkit_get_major_version();
+			if (webkit2VersionFunction != 0) { // SWT_WEBKIT2 env variable is not set but webkit2 was loaded as fallback
+				webkit2 = "1";
+			}
+			WEBKIT2 = webkit2 != null && webkit2.equals("1") && GTK.GTK3; // $NON-NLS-1$
+			WEBKIT1 = !WEBKIT2;
+		}
+
+		String swt_lib_versions = OS.getEnvironmentalVariable (OS.SWT_LIB_VERSIONS); // Note, this is read in multiple places.
+		if (swt_lib_versions != null && swt_lib_versions.equals("1")) {
+			if (WEBKIT1) {
+				System.out.println("SWT_LIB  Webkit1   Webkitgtk:"+ webkit_major_version() +"."+ webkit_minor_version() + "." + webkit_micro_version() + "  (webkitgtk < 2.5 is Webkit1)");
+			}
+			if (WEBKIT2) {
+				System.out.println("SWT_LIB  Webkit2   Webkitgtk:"+ webkit_get_major_version()+"."+ webkit_get_minor_version() + "."
+						+ webkit_get_micro_version() + "  (webkitgtk >=2.5 is Webkit2) " + swtWebkitGlueCodeVersion + swtWebkitGlueCodeVersionInfo);
+			}
+		}
+	};
 
 	/** Constants */
 	public static final int kJSTypeUndefined = 0;
@@ -56,48 +94,92 @@ public class WebKitGTK extends C {
 	public static final int WEBKIT_CREDENTIAL_PERSISTENCE_FOR_SESSION = 1;
 	public static final int WEBKIT_CREDENTIAL_PERSISTENCE_PERMANENT = 2;
 
+	public static final int WEBKIT_TLS_ERRORS_POLICY_IGNORE = 0;
+
+	public static final int G_TLS_CERTIFICATE_UNKNOWN_CA = 0;
+	public static final int G_TLS_CERTIFICATE_BAD_IDENTITY = 1;
+	public static final int G_TLS_CERTIFICATE_NOT_ACTIVATED = 2;
+	public static final int G_TLS_CERTIFICATE_EXPIRED = 3;
+	public static final int G_TLS_CERTIFICATE_REVOKED = 4;
+	public static final int G_TLS_CERTIFICATE_INSECURE = 5;
+	public static final int G_TLS_CERTIFICATE_GENERIC_ERROR = 6;
+	public static final int G_TLS_CERTIFICATE_VALIDATE_ALL = 7;
+
+	public static final int WEBKIT_WEBSITE_DATA_COOKIES = 1 << 8; // Webkit2
+
 
 	/** Signals */
-	public static final byte[] authenticate = ascii ("authenticate"); // $NON-NLS-1$		// Webkit1 (soup) & Webkit2 WebkitWebView
-	public static final byte[] close_web_view = ascii ("close-web-view"); // $NON-NLS-1$
-	public static final byte[] console_message = ascii ("console-message"); // $NON-NLS-1$
-	public static final byte[] context_menu = ascii ("context-menu"); // $NON-NLS-1$
-	public static final byte[] close = ascii ("close"); // $NON-NLS-1$
-	public static final byte[] create = ascii ("create"); // $NON-NLS-1$
-	public static final byte[] create_web_view = ascii ("create-web-view"); // $NON-NLS-1$
-	public static final byte[] decide_policy = ascii ("decide-policy"); // $NON-NLS-1$
-	public static final byte[] download_requested = ascii ("download-requested"); // $NON-NLS-1$
-	public static final byte[] download_started = ascii ("download-started"); // $NON-NLS-1$
 
+	// Authentication.
+	public static final byte[] authenticate = ascii ("authenticate"); // $NON-NLS-1$		// Webkit1 & Webkit2
+
+	// TLS load failure signal
+	// Webkit2 only
+	public static final byte[] load_failed_with_tls_errors = ascii ("load-failed-with-tls-errors"); // $NON-NLS-1$
+
+	// Close webview
+	public static final byte[] close_web_view = ascii ("close-web-view"); // $NON-NLS-1$   // Webkit1
+	public static final byte[] close = ascii ("close"); // $NON-NLS-1$					   // Webkit2
+
+	// Supress javascript execution warnings from bleeding into SWT's console.
+	public static final byte[] console_message = ascii ("console-message"); // $NON-NLS-1$ // Webkit1. (On W2 see 'console-message-sent'). Not printed to stderr by the looks.
+
+	// Context menu signals.
+	public static final byte[] populate_popup = ascii ("populate-popup"); // $NON-NLS-1$   // Webkit1, deprecated in 1.10.
+	public static final byte[] context_menu = ascii ("context-menu"); // $NON-NLS-1$       // Webkit2.
+
+	// Create webView
+	public static final byte[] create_web_view = ascii ("create-web-view"); // $NON-NLS-1$ // Webkit1
+	public static final byte[] create = ascii ("create"); // $NON-NLS-1$				   // Webkit2
+
+	// Policy decision signals.
+	public static final byte[] mime_type_policy_decision_requested = ascii ("mime-type-policy-decision-requested"); // $NON-NLS-1$   // Webkit1
+	public static final byte[] navigation_policy_decision_requested = ascii ("navigation-policy-decision-requested"); // $NON-NLS-1$ // Webkit1
+	public static final byte[] decide_policy = ascii ("decide-policy"); // $NON-NLS-1$		// Webkit2
+	public static final byte[] decide_destination = ascii ("decide-destination"); // $NON-NLS-1$	// Webkit2
+
+	// Download signal
+	public static final byte[] download_requested = ascii ("download-requested"); // $NON-NLS-1$	// Webkit1
+	public static final byte[] download_started = ascii ("download-started"); // $NON-NLS-1$		// Webkit2  (has 3 signals for downloading)
+	public static final byte[] failed = ascii ("failed"); // $NON-NLS-1$							// Webkit2
+	public static final byte[] finished = ascii ("finished"); // $NON-NLS-1$						// Webkit2
+
+	// Webkit2 extension
+	public static final byte[] initialize_web_extensions = ascii ("initialize-web-extensions");         // Webkit2. Extension exists only on w2. Since 2.4
+
+	// Status text signals
 	public static final byte[] hovering_over_link = ascii ("hovering-over-link"); // $NON-NLS-1$   		// Webkit1 -> StatusTextListener.changed()
 	public static final byte[] mouse_target_changed = ascii ("mouse-target-changed"); // $NON-NLS-1$	// Webkit2 -> StatusTextListener.changed()
+	/*  Webkit1 only.
+	 *  On webkit2 & newer browsers 'window.status=txt' has no effect anymore.
+	 *  Status bar only updated when you hover mouse over hyperlink. See signals above.*/
+	public static final byte[] status_bar_text_changed = ascii ("status-bar-text-changed"); // $NON-NLS-1$    // Webkit1. Doesn't exist on W2 due to security risk.
 
-	/** Webkit2 only, to implement equivalent of webkit1 window_object_cleared*/
-	public static final byte[] load_changed = ascii ("load-changed"); // $NON-NLS-1$
-	public static final byte[] mime_type_policy_decision_requested = ascii ("mime-type-policy-decision-requested"); // $NON-NLS-1$
-	public static final byte[] navigation_policy_decision_requested = ascii ("navigation-policy-decision-requested"); // $NON-NLS-1$
-	public static final byte[] notify_load_status = ascii ("notify::load-status"); // $NON-NLS-1$
+	// Load changed/page reload.
+	public static final byte[] window_object_cleared = ascii ("window-object-cleared"); // $NON-NLS-1$  // Webkit1. On W2 this is found in the webextension. On w2, 'load-changed' is used.
+	public static final byte[] load_changed = ascii ("load-changed"); // $NON-NLS-1$ // Webkit2 only, to implement equivalent of webkit1 window_object_cleared
 
+	// Load progress/estimation/notification mechanism.
+	public static final byte[] notify_load_status = ascii ("notify::load-status"); // $NON-NLS-1$                           // Webkit1
 	public static final byte[] notify_progress = ascii ("notify::progress"); // $NON-NLS-1$									// ->Webkit1 Progress.changed()
 	public static final byte[] notify_estimated_load_progress = ascii ("notify::estimated-load-progress"); // $NON-NLS-1$   // ->Webkit2 Progress.changed()
 
-	public static final byte[] notify_title = ascii ("notify::title"); // $NON-NLS-1$
-	public static final byte[] populate_popup = ascii ("populate-popup"); // $NON-NLS-1$
-	public static final byte[] resource_request_starting = ascii ("resource-request-starting"); // $NON-NLS-1$
-	public static final byte[] resource_load_started = ascii ("resource-load-started"); // $NON-NLS-1$
-	/** Webkit1 only. On webkit2 & newer browsers 'window.status=txt' has no effect anymore.
-	 *  Status bar only updated when you hover mouse over hyperlink.*/
-	public static final byte[] status_bar_text_changed = ascii ("status-bar-text-changed"); // $NON-NLS-1$
+	// Notify that the webpage title has changed.
+	public static final byte[] notify_title = ascii ("notify::title"); // $NON-NLS-1$	// Webkit1, Webkit2.
 
+	// Intercept a page load request to inject postData and custom headers.
+	public static final byte[] resource_request_starting = ascii ("resource-request-starting"); // $NON-NLS-1$ // Webkit1.
+	public static final byte[] resource_load_started = ascii ("resource-load-started"); // $NON-NLS-1$         // Webkit1. (unused, left over?)
+	// api for this doesn't exist in Webkitgtk (2.18). Bug 527738.
+
+
+	// Signal to indicate when the view should be shown to user. I.e, page load is complete.
 	public static final byte[] web_view_ready = ascii ("web-view-ready"); // $NON-NLS-1$	// Webkit1
 	public static final byte[] ready_to_show = ascii ("ready-to-show"); // $NON-NLS-1$		// Webkit2
 
-	/** Webkit1 only. On Webkit2 this is found in a webextension. Instead 'load_changed' is used on webkit2 **/
-	public static final byte[] window_object_cleared = ascii ("window-object-cleared"); // $NON-NLS-1$
 
 
-
-	// Properties:
+	/** Properties: */
 	// Webkit1: https://webkitgtk.org/reference/webkitgtk/unstable/WebKitWebSettings.html#WebKitWebSettings.properties
 	// Webkit2: https://webkitgtk.org/reference/webkit2gtk/unstable/WebKitSettings.html#WebKitSettings.properties
 	//
@@ -118,7 +200,7 @@ public class WebKitGTK extends C {
 	public static final byte[] enable_webgl = ascii("enable-webgl"); // $NON-NLS-1$				// Webkit1 & Webkit2
 
 	public static final byte[] enable_universal_access_from_file_uris = ascii ("enable-universal-access-from-file-uris"); // $NON-NLS-1$  // Webkit1
-	public static final byte[] allow_universal_access_from_file_urls = ascii ("allow-universal-access-from-file-urls"); // $NON-NLS-1$    // Webkit2
+	public static final byte[] allow_universal_access_from_file_urls = ascii ("allow-universal-access-from-file-urls"); // $NON-NLS-1$    // Webkit2 Since 2.14
 
 	public static final byte[] user_agent = ascii ("user-agent"); // $NON-NLS-1$				// Webkit1 & Webkit2
 
@@ -138,16 +220,17 @@ public class WebKitGTK extends C {
 	public static final byte[] SOUP_SESSION_PROXY_URI = ascii ("proxy-uri"); // $NON-NLS-1$		// libsoup
 
 	/** DOM events */
-	public static final byte[] dragstart = ascii ("dragstart"); // $NON-NLS-1$
-	public static final byte[] keydown = ascii ("keydown"); // $NON-NLS-1$
-	public static final byte[] keypress = ascii ("keypress"); // $NON-NLS-1$
-	public static final byte[] keyup = ascii ("keyup"); // $NON-NLS-1$
-	public static final byte[] mousedown = ascii ("mousedown"); // $NON-NLS-1$
-	public static final byte[] mousemove = ascii ("mousemove"); // $NON-NLS-1$
-	public static final byte[] mouseup = ascii ("mouseup"); // $NON-NLS-1$
-	public static final byte[] mousewheel = ascii ("mousewheel"); // $NON-NLS-1$
+	public static final byte[] dragstart = ascii ("dragstart"); // $NON-NLS-1$		// Webkit1
+	public static final byte[] keydown = ascii ("keydown"); // $NON-NLS-1$			// Webkit1
+	public static final byte[] keypress = ascii ("keypress"); // $NON-NLS-1$        // Webkit1
+	public static final byte[] keyup = ascii ("keyup"); // $NON-NLS-1$              // Webkit1
+	public static final byte[] mousedown = ascii ("mousedown"); // $NON-NLS-1$      // Webkit1
+	public static final byte[] mousemove = ascii ("mousemove"); // $NON-NLS-1$      // Webkit1
+	public static final byte[] mouseup = ascii ("mouseup"); // $NON-NLS-1$          // Webkit1
+	public static final byte[] mousewheel = ascii ("mousewheel"); // $NON-NLS-1$    // Webkit1
 
-protected static byte [] ascii (String name) {
+
+	protected static byte [] ascii (String name) {
 	int length = name.length ();
 	char [] chars = new char [length];
 	name.getChars (0, length, chars, 0);
@@ -340,6 +423,7 @@ public static final void JSStringRelease (long /*int*/ string) {
 /** @method flags=dynamic */
 public static final native void _webkit_javascript_result_unref(long /*int*/ js_result);
 public static final void webkit_javascript_result_unref(long /*int*/ js_result) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_javascript_result_unref (js_result);
@@ -685,6 +769,7 @@ public static final long /*int*/ soup_uri_to_string (long /*int*/ uri, int just_
 /** @method flags=dynamic */
 public static final native void _webkit_authentication_request_authenticate (long /*int*/ request, long /*int*/ credential);
 public static final void webkit_authentication_request_authenticate (long /*int*/ request, long /*int*/ credential) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_authentication_request_authenticate (request, credential);
@@ -696,6 +781,7 @@ public static final void webkit_authentication_request_authenticate (long /*int*
 /** @method flags=dynamic */
 public static final native void _webkit_authentication_request_cancel (long /*int*/ request);
 public static final void webkit_authentication_request_cancel (long /*int*/ request) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_authentication_request_cancel (request);
@@ -707,6 +793,7 @@ public static final void webkit_authentication_request_cancel (long /*int*/ requ
 /** @method flags=dynamic */
 public static final native boolean _webkit_authentication_request_is_retry (long /*int*/ request);
 public static final boolean webkit_authentication_request_is_retry (long /*int*/ request) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_authentication_request_is_retry (request);
@@ -718,6 +805,7 @@ public static final boolean webkit_authentication_request_is_retry (long /*int*/
 /** @method flags=dynamic */
 public static final native void _webkit_credential_free (long /*int*/ credential);
 public static final void webkit_credential_free (long /*int*/ credential) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_credential_free (credential);
@@ -727,8 +815,34 @@ public static final void webkit_credential_free (long /*int*/ credential) {
 }
 
 /** @method flags=dynamic */
+public static final native long /*int*/ _webkit_web_context_allow_tls_certificate_for_host(long /*int*/ webKitWebContext, long /*int*/ GTlsCertificate, byte[] constGCharHost);
+public static final long /*int*/ webkit_web_context_allow_tls_certificate_for_host(long /*int*/ webKitWebContext, long /*int*/ GTlsCertificate, byte[] constGCharHost) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	// since 2.6
+	lock.lock();
+	try {
+		return _webkit_web_context_allow_tls_certificate_for_host(webKitWebContext, GTlsCertificate, constGCharHost);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
+public static final native long /*int*/ _webkit_web_context_get_type ();
+public static final long /*int*/ webkit_web_context_get_type () {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_web_context_get_type ();
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native long /*int*/ _webkit_credential_new (byte[] username, byte[] password, int persistence);
 public static final long /*int*/ webkit_credential_new (byte[] username, byte[] password, int persistence) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_credential_new (username, password, persistence);
@@ -862,6 +976,7 @@ public static final long webkit_dom_ui_event_get_key_code (long /*int*/ self) {
 /** @method flags=dynamic */
 public static final native void _webkit_download_cancel (long /*int*/ download);
 public static final void webkit_download_cancel (long /*int*/ download) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_download_cancel (download);
@@ -873,6 +988,7 @@ public static final void webkit_download_cancel (long /*int*/ download) {
 /** @method flags=dynamic */
 public static final native long _webkit_download_get_current_size (long /*int*/ download);
 public static final long webkit_download_get_current_size (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_get_current_size (download);
@@ -882,8 +998,21 @@ public static final long webkit_download_get_current_size (long /*int*/ download
 }
 
 /** @method flags=dynamic */
+public static final native long _webkit_download_get_received_data_length (long /*int*/ download);
+public static final long webkit_download_get_received_data_length (long /*int*/ download) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_download_get_received_data_length (download);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native long /*int*/ _webkit_download_get_network_request (long /*int*/ download);
 public static final long /*int*/ webkit_download_get_network_request (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_get_network_request (download);
@@ -895,6 +1024,7 @@ public static final long /*int*/ webkit_download_get_network_request (long /*int
 /** @method flags=dynamic */
 public static final native int _webkit_download_get_status (long /*int*/ download);
 public static final int webkit_download_get_status (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_get_status (download);
@@ -906,6 +1036,7 @@ public static final int webkit_download_get_status (long /*int*/ download) {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_download_get_suggested_filename (long /*int*/ download);
 public static final long /*int*/ webkit_download_get_suggested_filename (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_get_suggested_filename (download);
@@ -915,8 +1046,33 @@ public static final long /*int*/ webkit_download_get_suggested_filename (long /*
 }
 
 /** @method flags=dynamic */
+public static final native long /*int*/ _webkit_download_get_request (long /*int*/ download);
+public static final long /*int*/ webkit_download_get_request (long /*int*/ download) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_download_get_request (download);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
+public static final native long /*int*/ _webkit_download_get_response (long /*int*/ download);
+public static final long /*int*/ webkit_download_get_response (long /*int*/ download) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_download_get_response (download);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native long _webkit_download_get_total_size (long /*int*/ download);
 public static final long webkit_download_get_total_size (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_get_total_size (download);
@@ -926,8 +1082,33 @@ public static final long webkit_download_get_total_size (long /*int*/ download) 
 }
 
 /** @method flags=dynamic */
+public static final native long /*int*/ _webkit_download_get_type ();
+public static final long /*int*/ webkit_download_get_type () {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_download_get_type ();
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
+public static final native long _webkit_uri_response_get_content_length (long /*int*/ response);
+public static final long webkit_uri_response_get_content_length (long /*int*/ response) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_uri_response_get_content_length (response);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native long /*int*/ _webkit_download_get_uri (long /*int*/ download);
 public static final long /*int*/ webkit_download_get_uri (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_get_uri (download);
@@ -937,8 +1118,21 @@ public static final long /*int*/ webkit_download_get_uri (long /*int*/ download)
 }
 
 /** @method flags=dynamic */
+public static final native long /*int*/ _webkit_download_get_web_view (long /*int*/ download);
+public static final long /*int*/ webkit_download_get_web_view (long /*int*/ download) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_download_get_web_view (download);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native long /*int*/ _webkit_download_new (long /*int*/ request);
 public static final long /*int*/ webkit_download_new (long /*int*/ request) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_download_new (request);
@@ -948,8 +1142,21 @@ public static final long /*int*/ webkit_download_new (long /*int*/ request) {
 }
 
 /** @method flags=dynamic */
+public static final native void _webkit_download_set_allow_overwrite (long /*int*/ download, boolean allowed);
+public static final void webkit_download_set_allow_overwrite (long /*int*/ download, boolean allowed) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		_webkit_download_set_allow_overwrite (download, allowed);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native void _webkit_download_set_destination_uri (long /*int*/ download, byte[] destination_uri);
 public static final void webkit_download_set_destination_uri (long /*int*/ download, byte[] destination_uri) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_download_set_destination_uri (download, destination_uri);
@@ -959,8 +1166,21 @@ public static final void webkit_download_set_destination_uri (long /*int*/ downl
 }
 
 /** @method flags=dynamic */
+public static final native void _webkit_download_set_destination (long /*int*/ download, byte[] destination_uri);
+public static final void webkit_download_set_destination (long /*int*/ download, byte[] destination_uri) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		_webkit_download_set_destination (download, destination_uri);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native void _webkit_download_start (long /*int*/ download);
 public static final void webkit_download_start (long /*int*/ download) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_download_start (download);
@@ -972,6 +1192,7 @@ public static final void webkit_download_start (long /*int*/ download) {
 /** @method flags=dynamic */
 public static final native void _webkit_favicon_database_set_path (long /*int*/ database, long /*int*/ path);
 public static final void webkit_favicon_database_set_path (long /*int*/ database, long /*int*/ path) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_favicon_database_set_path (database, path);
@@ -983,6 +1204,7 @@ public static final void webkit_favicon_database_set_path (long /*int*/ database
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_get_default_session ();
 public static final long /*int*/ webkit_get_default_session () {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_get_default_session ();
@@ -994,6 +1216,7 @@ public static final long /*int*/ webkit_get_default_session () {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_get_favicon_database ();
 public static final long /*int*/ webkit_get_favicon_database () {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_get_favicon_database ();
@@ -1005,6 +1228,7 @@ public static final long /*int*/ webkit_get_favicon_database () {
 /** @method flags=dynamic */
 public static final native boolean _webkit_hit_test_result_context_is_link (long /*int*/ hit_test_result);
 public static final boolean webkit_hit_test_result_context_is_link (long /*int*/ hit_test_result) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_hit_test_result_context_is_link (hit_test_result);
@@ -1016,6 +1240,7 @@ public static final boolean webkit_hit_test_result_context_is_link (long /*int*/
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_hit_test_result_get_link_uri (long /*int*/ hit_test_result);
 public static final long /*int*/ webkit_hit_test_result_get_link_uri (long /*int*/ hit_test_result) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_hit_test_result_get_link_uri (hit_test_result);
@@ -1027,6 +1252,7 @@ public static final long /*int*/ webkit_hit_test_result_get_link_uri (long /*int
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_hit_test_result_get_link_title (long /*int*/ hit_test_result);
 public static final long /*int*/ webkit_hit_test_result_get_link_title (long /*int*/ hit_test_result) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_hit_test_result_get_link_title (hit_test_result);
@@ -1038,6 +1264,7 @@ public static final long /*int*/ webkit_hit_test_result_get_link_title (long /*i
 /** @method flags=dynamic */
 public static final native int _webkit_major_version ();
 public static final int webkit_major_version () {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_major_version ();
@@ -1049,6 +1276,7 @@ public static final int webkit_major_version () {
 /** @method flags=dynamic */
 public static final native int _webkit_get_major_version ();
 public static final int webkit_get_major_version () {
+//	assert WEBKIT2;  //Corner case, this function is called in order to determine WEBKIT2 flag. Can't use in assert.
 	lock.lock();
 	try {
 		return _webkit_get_major_version ();
@@ -1060,6 +1288,7 @@ public static final int webkit_get_major_version () {
 /** @method flags=dynamic */
 public static final native int _webkit_micro_version ();
 public static final int webkit_micro_version () {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_micro_version ();
@@ -1071,6 +1300,7 @@ public static final int webkit_micro_version () {
 /** @method flags=dynamic */
 public static final native int _webkit_get_micro_version ();
 public static final int webkit_get_micro_version () {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_get_micro_version ();
@@ -1082,6 +1312,7 @@ public static final int webkit_get_micro_version () {
 /** @method flags=dynamic */
 public static final native int _webkit_minor_version ();
 public static final int webkit_minor_version () {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_minor_version ();
@@ -1093,6 +1324,7 @@ public static final int webkit_minor_version () {
 /** @method flags=dynamic */
 public static final native int _webkit_get_minor_version ();
 public static final int webkit_get_minor_version () {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_get_minor_version ();
@@ -1104,6 +1336,7 @@ public static final int webkit_get_minor_version () {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_navigation_policy_decision_get_request (long /*int*/ decision);
 public static final long /*int*/ webkit_navigation_policy_decision_get_request (long /*int*/ decision) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_navigation_policy_decision_get_request (decision);
@@ -1115,6 +1348,7 @@ public static final long /*int*/ webkit_navigation_policy_decision_get_request (
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_network_request_get_message (long /*int*/ request);
 public static final long /*int*/ webkit_network_request_get_message (long /*int*/ request) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_network_request_get_message (request);
@@ -1126,6 +1360,7 @@ public static final long /*int*/ webkit_network_request_get_message (long /*int*
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_network_request_get_uri (long /*int*/ request);
 public static final long /*int*/ webkit_network_request_get_uri (long /*int*/ request) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_network_request_get_uri (request);
@@ -1137,6 +1372,7 @@ public static final long /*int*/ webkit_network_request_get_uri (long /*int*/ re
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_network_request_new (byte[] uri);
 public static final long /*int*/ webkit_network_request_new (byte[] uri) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_network_request_new (uri);
@@ -1148,6 +1384,7 @@ public static final long /*int*/ webkit_network_request_new (byte[] uri) {
 /** @method flags=dynamic */
 public static final native void _webkit_policy_decision_download (long /*int*/ decision);
 public static final void webkit_policy_decision_download (long /*int*/ decision) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_policy_decision_download (decision);
@@ -1159,6 +1396,7 @@ public static final void webkit_policy_decision_download (long /*int*/ decision)
 /** @method flags=dynamic */
 public static final native void _webkit_policy_decision_ignore (long /*int*/ decision);
 public static final void webkit_policy_decision_ignore (long /*int*/ decision) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_policy_decision_ignore (decision);
@@ -1170,6 +1408,8 @@ public static final void webkit_policy_decision_ignore (long /*int*/ decision) {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_soup_auth_dialog_get_type ();
 public static final long /*int*/ webkit_soup_auth_dialog_get_type () {
+	// Can't find reference for this. Currently used only by webkit1 thou, probably webkit1-only.
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_soup_auth_dialog_get_type ();
@@ -1181,6 +1421,7 @@ public static final long /*int*/ webkit_soup_auth_dialog_get_type () {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_context_get_default ();
 public static final long /*int*/ webkit_web_context_get_default () {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_context_get_default ();
@@ -1190,11 +1431,24 @@ public static final long /*int*/ webkit_web_context_get_default () {
 }
 
 /** @method flags=dynamic */
-public static final native long /*int*/ _webkit_web_context_set_favicon_database_directory (long /*int*/ context, long /*int*/ path);
-public static final long /*int*/ webkit_web_context_set_favicon_database_directory (long /*int*/ context, long /*int*/ path) {
+public static final native long /*int*/ _webkit_web_context_get_website_data_manager (long /*int*/ context);
+public static final long /*int*/ webkit_web_context_get_website_data_manager (long /*int*/ context) {
+	assert WEBKIT2 : Webkit2AssertMsg; // Since 2.10
+lock.lock();
+try {
+	return _webkit_web_context_get_website_data_manager (context);
+} finally {
+	lock.unlock();
+}
+}
+
+/** @method flags=dynamic */
+public static final native void _webkit_web_context_set_tls_errors_policy(long /*int*/ context, int policy);
+public static final void webkit_web_context_set_tls_errors_policy (long /*int*/ context, int policy) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
-		return _webkit_web_context_set_favicon_database_directory (context, path);
+		_webkit_web_context_set_tls_errors_policy (context, policy);
 	} finally {
 		lock.unlock();
 	}
@@ -1204,6 +1458,7 @@ public static final long /*int*/ webkit_web_context_set_favicon_database_directo
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_data_source_get_data (long /*int*/ data_source);
 public static final long /*int*/ webkit_web_data_source_get_data (long /*int*/ data_source) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_data_source_get_data (data_source);
@@ -1215,6 +1470,7 @@ public static final long /*int*/ webkit_web_data_source_get_data (long /*int*/ d
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_data_source_get_encoding (long /*int*/ data_source);
 public static final long /*int*/ webkit_web_data_source_get_encoding (long /*int*/ data_source) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_data_source_get_encoding (data_source);
@@ -1226,6 +1482,7 @@ public static final long /*int*/ webkit_web_data_source_get_encoding (long /*int
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_data_source (long /*int*/ frame);
 public static final long /*int*/ webkit_web_frame_get_data_source (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_data_source (frame);
@@ -1237,6 +1494,7 @@ public static final long /*int*/ webkit_web_frame_get_data_source (long /*int*/ 
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_global_context (long /*int*/ frame);
 public static final long /*int*/ webkit_web_frame_get_global_context (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_global_context (frame);
@@ -1248,6 +1506,7 @@ public static final long /*int*/ webkit_web_frame_get_global_context (long /*int
 /** @method flags=dynamic */
 public static final native int _webkit_web_frame_get_load_status (long /*int*/ frame);
 public static final int webkit_web_frame_get_load_status (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_load_status (frame);
@@ -1259,6 +1518,7 @@ public static final int webkit_web_frame_get_load_status (long /*int*/ frame) {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_parent (long /*int*/ frame);
 public static final long /*int*/ webkit_web_frame_get_parent (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_parent (frame);
@@ -1270,6 +1530,7 @@ public static final long /*int*/ webkit_web_frame_get_parent (long /*int*/ frame
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_title (long /*int*/ frame);
 public static final long /*int*/ webkit_web_frame_get_title (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_title (frame);
@@ -1281,6 +1542,8 @@ public static final long /*int*/ webkit_web_frame_get_title (long /*int*/ frame)
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_type ();
 public static final long /*int*/ webkit_web_frame_get_type () {
+	// Can't find reference. Probably a webkit1 macro.
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_type ();
@@ -1292,6 +1555,7 @@ public static final long /*int*/ webkit_web_frame_get_type () {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_uri (long /*int*/ frame);
 public static final long /*int*/ webkit_web_frame_get_uri (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_uri (frame);
@@ -1303,6 +1567,7 @@ public static final long /*int*/ webkit_web_frame_get_uri (long /*int*/ frame) {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_frame_get_web_view (long /*int*/ frame);
 public static final long /*int*/ webkit_web_frame_get_web_view (long /*int*/ frame) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_frame_get_web_view (frame);
@@ -1314,6 +1579,7 @@ public static final long /*int*/ webkit_web_frame_get_web_view (long /*int*/ fra
 /** @method flags=dynamic */
 public static final native void _webkit_web_policy_decision_download (long /*int*/ decision);
 public static final void webkit_web_policy_decision_download (long /*int*/ decision) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_web_policy_decision_download (decision);
@@ -1325,6 +1591,7 @@ public static final void webkit_web_policy_decision_download (long /*int*/ decis
 /** @method flags=dynamic */
 public static final native void _webkit_web_policy_decision_ignore (long /*int*/ decision);
 public static final void webkit_web_policy_decision_ignore (long /*int*/ decision) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_web_policy_decision_ignore (decision);
@@ -1336,6 +1603,7 @@ public static final void webkit_web_policy_decision_ignore (long /*int*/ decisio
 /** @method flags=dynamic */
 public static final native int _webkit_web_view_can_go_back (long /*int*/ web_view);
 public static final int webkit_web_view_can_go_back (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_can_go_back (web_view);
@@ -1347,6 +1615,7 @@ public static final int webkit_web_view_can_go_back (long /*int*/ web_view) {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_main_resource (long /*int*/ web_view);
 public static final long /*int*/ webkit_web_view_get_main_resource (long /*int*/ web_view) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_main_resource (web_view);
@@ -1356,8 +1625,21 @@ public static final long /*int*/ webkit_web_view_get_main_resource (long /*int*/
 }
 
 /** @method flags=dynamic */
+public static final native long /*int*/ _webkit_web_view_get_context (long /*int*/ web_view);
+public static final long /*int*/ webkit_web_view_get_context (long /*int*/ web_view) {
+	assert WEBKIT2 : Webkit2AssertMsg;
+	lock.lock();
+	try {
+		return _webkit_web_view_get_context (web_view);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native int _webkit_web_view_can_go_forward (long /*int*/ web_view);
 public static final int webkit_web_view_can_go_forward (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_can_go_forward (web_view);
@@ -1369,6 +1651,7 @@ public static final int webkit_web_view_can_go_forward (long /*int*/ web_view) {
 /** @method flags=dynamic */
 public static final native int _webkit_web_view_can_show_mime_type (long /*int*/ web_view, long /*int*/ mime_type);
 public static final int webkit_web_view_can_show_mime_type (long /*int*/ web_view, long /*int*/ mime_type) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_can_show_mime_type (web_view, mime_type);
@@ -1379,7 +1662,8 @@ public static final int webkit_web_view_can_show_mime_type (long /*int*/ web_vie
 
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_execute_script (long /*int*/ web_view, byte[] script);
-public static final void webkit_web_view_execute_script (long /*int*/ web_view, byte[] script) {
+public static final void webkit_web_view_execute_script (long /*int*/ web_view, byte[] script) { // never called
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_web_view_execute_script (web_view, script);
@@ -1391,6 +1675,8 @@ public static final void webkit_web_view_execute_script (long /*int*/ web_view, 
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_dom_document (long /*int*/ web_view);
 public static final long /*int*/ webkit_web_view_get_dom_document (long /*int*/ web_view) {
+	assert WEBKIT1 : Webkit1AssertMsg;
+	//TODO - guard from being called on webkit2 (webkit_web_view_get_dom_document)
 	lock.lock();
 	try {
 		return _webkit_web_view_get_dom_document (web_view);
@@ -1402,6 +1688,7 @@ public static final long /*int*/ webkit_web_view_get_dom_document (long /*int*/ 
 /** @method flags=dynamic */
 public static final native double /*int*/ _webkit_web_view_get_estimated_load_progress (long /*int*/ web_view);
 public static final double /*int*/ webkit_web_view_get_estimated_load_progress (long /*int*/ web_view) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_estimated_load_progress (web_view);
@@ -1413,6 +1700,7 @@ public static final double /*int*/ webkit_web_view_get_estimated_load_progress (
 /** @method flags=dynamic */
 public static final native int _webkit_web_view_get_load_status (long /*int*/ web_view);
 public static final int webkit_web_view_get_load_status (long /*int*/ web_view) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_load_status (web_view);
@@ -1424,6 +1712,7 @@ public static final int webkit_web_view_get_load_status (long /*int*/ web_view) 
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_main_frame (long /*int*/ web_view);
 public static final long /*int*/ webkit_web_view_get_main_frame (long /*int*/ web_view) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_main_frame (web_view);
@@ -1435,6 +1724,7 @@ public static final long /*int*/ webkit_web_view_get_main_frame (long /*int*/ we
 /** @method flags=dynamic */
 public static final native double _webkit_web_view_get_progress (long /*int*/ web_view);
 public static final double webkit_web_view_get_progress (long /*int*/ web_view) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_progress (web_view);
@@ -1445,7 +1735,8 @@ public static final double webkit_web_view_get_progress (long /*int*/ web_view) 
 
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_settings (long /*int*/ web_view);
-public static final long /*int*/ webkit_web_view_get_settings (long /*int*/ web_view) {	// Webkit1 & Webkit2
+public static final long /*int*/ webkit_web_view_get_settings (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_settings (web_view);
@@ -1457,6 +1748,7 @@ public static final long /*int*/ webkit_web_view_get_settings (long /*int*/ web_
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_title (long /*int*/ web_view);
 public static final long /*int*/ webkit_web_view_get_title (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_title (web_view);
@@ -1468,6 +1760,8 @@ public static final long /*int*/ webkit_web_view_get_title (long /*int*/ web_vie
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_type ();
 public static final long /*int*/ webkit_web_view_get_type () {
+	// TODO Bug 514859 Investigate if this is a webkit1 only function or if it can be used on webkit2 also.
+	// can't find reference for it. Could be a macro.
 	lock.lock();
 	try {
 		return _webkit_web_view_get_type ();
@@ -1479,6 +1773,7 @@ public static final long /*int*/ webkit_web_view_get_type () {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_uri (long /*int*/ web_view);
 public static final long /*int*/ webkit_web_view_get_uri (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_uri (web_view);
@@ -1487,10 +1782,10 @@ public static final long /*int*/ webkit_web_view_get_uri (long /*int*/ web_view)
 	}
 }
 
-// Webkit1 only.
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_window_features (long /*int*/ web_view);
 public static final long /*int*/ webkit_web_view_get_window_features (long /*int*/ web_view) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_window_features (web_view);
@@ -1499,11 +1794,11 @@ public static final long /*int*/ webkit_web_view_get_window_features (long /*int
 	}
 }
 
-// Webkit2 only.
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_get_window_properties (long /*int*/ webView);
 /** WebKitWindowProperties * webkit_web_view_get_window_properties (WebKitWebView *web_view); */
 public static final long /*int*/ webkit_web_view_get_window_properties (long /*int*/ webView) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_get_window_properties (webView);
@@ -1512,13 +1807,13 @@ public static final long /*int*/ webkit_web_view_get_window_properties (long /*i
 	}
 }
 
-// Webkit2 only.
 /**
  * @method flags=dynamic
  * @param rectangle cast=(GdkRectangle *),flags=no_in
  */
 public static final native void _webkit_window_properties_get_geometry (long /*int*/ webKitWindowProperties, GdkRectangle rectangle);
 public static final void webkit_window_properties_get_geometry (long /*int*/ webKitWindowProperties, GdkRectangle rectangle ) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_window_properties_get_geometry (webKitWindowProperties, rectangle);
@@ -1532,6 +1827,7 @@ public static final void webkit_window_properties_get_geometry (long /*int*/ web
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_go_back (long /*int*/ web_view);
 public static final void webkit_web_view_go_back (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_go_back (web_view);
@@ -1543,6 +1839,7 @@ public static final void webkit_web_view_go_back (long /*int*/ web_view) {
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_go_forward (long /*int*/ web_view);
 public static final void webkit_web_view_go_forward (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_go_forward (web_view);
@@ -1554,6 +1851,7 @@ public static final void webkit_web_view_go_forward (long /*int*/ web_view) {
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_load_html (long /*int*/ web_view, byte[] content, byte[] base_uri);
 public static final void webkit_web_view_load_html (long /*int*/ web_view, byte[] content, byte[] base_uri) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_load_html (web_view, content, base_uri);
@@ -1563,8 +1861,21 @@ public static final void webkit_web_view_load_html (long /*int*/ web_view, byte[
 }
 
 /** @method flags=dynamic */
+public static final native void _webkit_web_view_load_bytes (long /*int*/ web_view, long /*int*/ bytes, byte [] mime_type, byte [] encoding, byte [] base_uri);
+public static final void webkit_web_view_load_bytes (long /*int*/ web_view, long /*int*/ bytes, byte [] mime_type, byte [] encoding, byte [] base_uri) {
+	assert WEBKIT1 || WEBKIT2;
+	lock.lock();
+	try {
+		_webkit_web_view_load_bytes (web_view, bytes, mime_type, encoding, base_uri);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native void _webkit_web_view_load_string (long /*int*/ web_view, byte[] content, byte[] mime_type, byte[] encoding, byte[] base_uri);
 public static final void webkit_web_view_load_string (long /*int*/ web_view, byte[] content, byte[] mime_type, byte[] encoding, byte[] base_uri) {
+	assert WEBKIT1 : Webkit1AssertMsg;
 	lock.lock();
 	try {
 		_webkit_web_view_load_string (web_view, content, mime_type, encoding, base_uri);
@@ -1576,6 +1887,7 @@ public static final void webkit_web_view_load_string (long /*int*/ web_view, byt
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_load_request (long /*int*/ web_view, long /*int*/ request);
 public static final void webkit_web_view_load_request (long /*int*/ web_view, long /*int*/ request) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_load_request (web_view, request);
@@ -1587,6 +1899,7 @@ public static final void webkit_web_view_load_request (long /*int*/ web_view, lo
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_load_uri (long /*int*/ web_view, byte[] uri);
 public static final void webkit_web_view_load_uri (long /*int*/ web_view, byte[] uri) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_load_uri (web_view, uri);
@@ -1598,6 +1911,7 @@ public static final void webkit_web_view_load_uri (long /*int*/ web_view, byte[]
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_view_new ();
 public static final long /*int*/ webkit_web_view_new () {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		return _webkit_web_view_new ();
@@ -1606,16 +1920,32 @@ public static final long /*int*/ webkit_web_view_new () {
 	}
 }
 
-/** @method flags=dynamic */
-public static final native long /*int*/ _webkit_user_content_manager_new();
-public static final long /*int*/ webkit_user_content_manager_new() {
+
+/** @method flags=dynamic */ // @param context cast=(WebKitWebContext*)  @param directory cast=(const gchar *)
+public static final native void _webkit_web_context_set_web_extensions_directory (long /*int*/ context, byte[] directory);
+public static final void webkit_web_context_set_web_extensions_directory (long /*int*/ context, byte[] directory) {
+	assert WEBKIT2;
 	lock.lock();
 	try {
-		return _webkit_user_content_manager_new ();
+		_webkit_web_context_set_web_extensions_directory (context, directory);
 	} finally {
 		lock.unlock();
 	}
 }
+
+/** @method flags=dynamic */
+public static final native void _webkit_web_context_set_web_extensions_initialization_user_data(long /* int */ context, long /* int */ user_data);
+public static final void webkit_web_context_set_web_extensions_initialization_user_data(long /* int */ context,
+		long /* int */ user_data) {
+	assert WEBKIT2;
+	lock.lock();
+	try {
+		_webkit_web_context_set_web_extensions_initialization_user_data(context, user_data);
+	} finally {
+		lock.unlock();
+	}
+}
+
 
 /**
  * @method flags=dynamic
@@ -1624,6 +1954,7 @@ public static final long /*int*/ webkit_user_content_manager_new() {
 public static final native long /*int*/ _webkit_javascript_result_get_global_context(long /*int*/ js_result);
 /** JSGlobalContextRef webkit_javascript_result_get_global_context (WebKitJavascriptResult *js_result);  */
 public static final long /*int*/ webkit_javascript_result_get_global_context(long /*int*/ js_result) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_javascript_result_get_global_context (js_result);
@@ -1639,6 +1970,7 @@ public static final long /*int*/ webkit_javascript_result_get_global_context(lon
 public static final native long /*int*/ _webkit_javascript_result_get_value(long /*int*/ js_result);
 /** JSValueRef webkit_javascript_result_get_value (WebKitJavascriptResult *js_result); */
 public static final long /*int*/ webkit_javascript_result_get_value(long /*int*/ js_result) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_javascript_result_get_value (js_result);
@@ -1648,30 +1980,9 @@ public static final long /*int*/ webkit_javascript_result_get_value(long /*int*/
 }
 
 /** @method flags=dynamic */
-public static final native boolean _webkit_user_content_manager_register_script_message_handler(long /*int*/ WebKitUserContentManager, byte[] name);
-public static final boolean webkit_user_content_manager_register_script_message_handler(long /*int*/ WebKitUserContentManager, byte[] name) {
-	lock.lock();
-	try {
-		return _webkit_user_content_manager_register_script_message_handler (WebKitUserContentManager, name);
-	} finally {
-		lock.unlock();
-	}
-}
-
-/** @method flags=dynamic */
-public static final native long /*int*/ _webkit_web_view_new_with_user_content_manager (long /*int*/ WebKitUserContentManager);
-public static final long /*int*/ webkit_web_view_new_with_user_content_manager (long /*int*/ WebKitUserContentManager) {
-	lock.lock();
-	try {
-		return _webkit_web_view_new_with_user_content_manager (WebKitUserContentManager);
-	} finally {
-		lock.unlock();
-	}
-}
-
-/** @method flags=dynamic */
 public static final native void _webkit_web_view_reload (long /*int*/ web_view);
 public static final void webkit_web_view_reload (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_reload (web_view);
@@ -1685,6 +1996,7 @@ public static final void webkit_web_view_reload (long /*int*/ web_view) {
 public static final native void _webkit_web_view_run_javascript (long /*int*/ web_view, byte [] script, long /*int*/ cancellable, long /*int*/  callback, long /*int*/ user_data);
 /** 			    void webkit_web_view_run_javascript (WebKitWebView *web_view, const gchar *script, GCancellable *cancellable, GAsyncReadyCallback callback, gpointer user_data); **/
 public static final void webkit_web_view_run_javascript (long /*int*/ web_view, byte[] script, long /*int*/ cancellable, long /*int*/  callback, long /*int*/ user_data) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		_webkit_web_view_run_javascript (web_view, script, cancellable, callback, user_data);
@@ -1696,6 +2008,7 @@ public static final void webkit_web_view_run_javascript (long /*int*/ web_view, 
 /** @method flags=dynamic */
 public static final native void _webkit_web_resource_get_data (long /*int*/ webKitWebResource, long /*int*/ gCancellable, long /*int*/ GAsyncReadyCallback, long /*int*/ user_data);
 public static final void webkit_web_resource_get_data (long /*int*/ webKitWebResource, long /*int*/ gCancellable, long /*int*/ GAsyncReadyCallback, long /*int*/ user_data) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_resource_get_data (webKitWebResource, gCancellable, GAsyncReadyCallback, user_data);
@@ -1707,6 +2020,7 @@ public static final void webkit_web_resource_get_data (long /*int*/ webKitWebRes
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_web_resource_get_data_finish(long /*int*/ WebKitWebResource, long /*int*/ GAsyncResult, long /*int*/[] gsize, long /*int*/ GError[]);
 public static final long /*int*/ webkit_web_resource_get_data_finish(long /*int*/ WebKitWebResource, long /*int*/ GAsyncResult, long /*int*/[] gsize, long /*int*/ GError[]) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_resource_get_data_finish(WebKitWebResource, GAsyncResult, gsize, GError);
@@ -1723,6 +2037,7 @@ public static final long /*int*/ webkit_web_resource_get_data_finish(long /*int*
 public static final native long /*int*/ _webkit_web_view_run_javascript_finish(long /*int*/ web_view, long /*int*/ GAsyncResult, long /*int*/[] gerror);
 /**WebKitJavascriptResult * webkit_web_view_run_javascript_finish (WebKitWebView *web_view, GAsyncResult *result, GError **error);*/
 public static long /*int*/ webkit_web_view_run_javascript_finish(long /*int*/ web_view, long /*int*/ GAsyncResult, long /*int*/[] gerror) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_web_view_run_javascript_finish (web_view, GAsyncResult, gerror);
@@ -1734,6 +2049,7 @@ public static long /*int*/ webkit_web_view_run_javascript_finish(long /*int*/ we
 /** @method flags=dynamic */
 public static final native void _webkit_web_view_stop_loading (long /*int*/ web_view);
 public static final void webkit_web_view_stop_loading (long /*int*/ web_view) {
+	assert WEBKIT1 || WEBKIT2;
 	lock.lock();
 	try {
 		_webkit_web_view_stop_loading (web_view);
@@ -1743,8 +2059,21 @@ public static final void webkit_web_view_stop_loading (long /*int*/ web_view) {
 }
 
 /** @method flags=dynamic */
+public static final native void _webkit_website_data_manager_clear (long /*int*/ manager, long /*int*/ types, long /*int*/ timespan, long /*int*/ cancellable, long /*int*/ callback, long /*int*/ user_data);
+public static final void webkit_website_data_manager_clear (long /*int*/ manager, long /*int*/ types, long /*int*/ timespan, long /*int*/ cancellable, long /*int*/ callback, long /*int*/ user_data) {
+	assert WEBKIT2 : Webkit2AssertMsg; // Since 2.16
+	lock.lock();
+	try {
+		_webkit_website_data_manager_clear (manager, types, timespan, cancellable, callback, user_data);
+	} finally {
+		lock.unlock();
+	}
+}
+
+/** @method flags=dynamic */
 public static final native long /*int*/ _webkit_response_policy_decision_get_request (long /*int*/ decision);
-public static final long /*int*/  webkit_response_policy_decision_get_request (long /*int*/ decision) {
+public static final long /*int*/  webkit_response_policy_decision_get_request (long /*int*/ decision) { // never called
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_response_policy_decision_get_request (decision);
@@ -1756,6 +2085,7 @@ public static final long /*int*/  webkit_response_policy_decision_get_request (l
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_response_policy_decision_get_response (long /*int*/ decision);
 public static final long /*int*/  webkit_response_policy_decision_get_response (long /*int*/ decision) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_response_policy_decision_get_response (decision);
@@ -1767,6 +2097,7 @@ public static final long /*int*/  webkit_response_policy_decision_get_response (
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_uri_request_new (byte[] uri);
 public static final long /*int*/  webkit_uri_request_new (byte[] uri) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_uri_request_new (uri);
@@ -1778,6 +2109,7 @@ public static final long /*int*/  webkit_uri_request_new (byte[] uri) {
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_uri_request_get_http_headers (long /*int*/ request);
 public static final long /*int*/  webkit_uri_request_get_http_headers (long /*int*/ request) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_uri_request_get_http_headers (request);
@@ -1789,6 +2121,7 @@ public static final long /*int*/  webkit_uri_request_get_http_headers (long /*in
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_uri_request_get_uri (long /*int*/ request);
 public static final long /*int*/  webkit_uri_request_get_uri (long /*int*/ request) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_uri_request_get_uri (request);
@@ -1800,6 +2133,7 @@ public static final long /*int*/  webkit_uri_request_get_uri (long /*int*/ reque
 /** @method flags=dynamic */
 public static final native long /*int*/ _webkit_uri_response_get_mime_type (long /*int*/ responce);
 public static final long /*int*/  webkit_uri_response_get_mime_type (long /*int*/ response) {
+	assert WEBKIT2 : Webkit2AssertMsg;
 	lock.lock();
 	try {
 		return _webkit_uri_response_get_mime_type (response);
@@ -1876,4 +2210,5 @@ public static final long /*int*/ SoupMessage_request_headers (long /*int*/ messa
 		lock.unlock();
 	}
 }
+
 }

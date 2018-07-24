@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others. All rights reserved.
+ * Copyright (c) 2000, 2018 IBM Corporation and others. All rights reserved.
  * The contents of this file are made available under the terms
  * of the GNU Lesser General Public License (LGPL) Version 2.1 that
  * accompanies this distribution (lgpl-v21.txt).  The LGPL is also
@@ -21,42 +21,10 @@
 
 #ifdef NATIVE_STATS
 
-char * OS_nativeFunctionNames[] = {
-#ifndef JNI64
-	"Call__IIII",
-#else
-	"Call__JJII",
-#endif
-#ifndef JNI64
-	"Call__IIIJ",
-#else
-	"Call__JJIJ",
-#endif
+char * GDK_nativeFunctionNames[] = {
 	"GDK_1EVENT_1TYPE",
 	"GDK_1EVENT_1WINDOW",
 	"GDK_1IS_1X11_1DISPLAY",
-	"GDK_1WINDOWING_1WAYLAND",
-	"GDK_1WINDOWING_1X11",
-	"GInterfaceInfo_1sizeof",
-	"GPollFD_1sizeof",
-	"GTK_1ACCEL_1LABEL_1GET_1ACCEL_1STRING",
-	"GTK_1ACCEL_1LABEL_1SET_1ACCEL_1STRING",
-	"GTK_1ENTRY_1IM_1CONTEXT",
-	"GTK_1TEXTVIEW_1IM_1CONTEXT",
-	"GTK_1TYPE_1ACCESSIBLE",
-	"GTK_1WIDGET_1GET_1CLASS",
-	"GTK_1WIDGET_1REQUISITION_1HEIGHT",
-	"GTK_1WIDGET_1REQUISITION_1WIDTH",
-	"GTypeInfo_1sizeof",
-	"GTypeQuery_1sizeof",
-	"G_1OBJECT_1CLASS_1CONSTRUCTOR",
-	"G_1OBJECT_1CLASS_1SET_1CONSTRUCTOR",
-	"G_1TYPE_1BOOLEAN",
-	"G_1TYPE_1DOUBLE",
-	"G_1TYPE_1FLOAT",
-	"G_1TYPE_1INT",
-	"G_1TYPE_1INT64",
-	"G_1VALUE_1TYPE",
 	"GdkColor_1sizeof",
 	"GdkDragContext_1sizeof",
 	"GdkEventAny_1sizeof",
@@ -66,7 +34,6 @@ char * OS_nativeFunctionNames[] = {
 	"GdkEventFocus_1sizeof",
 	"GdkEventKey_1sizeof",
 	"GdkEventMotion_1sizeof",
-	"GdkEventProperty_1sizeof",
 	"GdkEventScroll_1sizeof",
 	"GdkEventWindowState_1sizeof",
 	"GdkEvent_1sizeof",
@@ -75,312 +42,12 @@ char * OS_nativeFunctionNames[] = {
 	"GdkRGBA_1sizeof",
 	"GdkRectangle_1sizeof",
 	"GdkWindowAttr_1sizeof",
-	"GtkAllocation_1sizeof",
-	"GtkBorder_1sizeof",
-	"GtkCellRendererPixbufClass_1sizeof",
-	"GtkCellRendererPixbuf_1sizeof",
-	"GtkCellRendererTextClass_1sizeof",
-	"GtkCellRendererText_1sizeof",
-	"GtkCellRendererToggleClass_1sizeof",
-	"GtkCellRendererToggle_1sizeof",
-	"GtkRequisition_1sizeof",
-	"GtkTargetEntry_1sizeof",
-	"GtkTextIter_1sizeof",
-	"GtkTreeIter_1sizeof",
-	"PangoAttrColor_1sizeof",
-	"PangoAttrInt_1sizeof",
-	"PangoAttribute_1sizeof",
-	"PangoItem_1sizeof",
-	"PangoLayoutLine_1sizeof",
-	"PangoLayoutRun_1sizeof",
-	"PangoLogAttr_1sizeof",
-	"PangoRectangle_1sizeof",
-	"RTLD_1GLOBAL",
-	"RTLD_1LAZY",
-	"RTLD_1NOW",
-	"XAnyEvent_1sizeof",
-	"XEvent_1sizeof",
-	"XExposeEvent_1sizeof",
-	"XFocusChangeEvent_1sizeof",
-	"X_1EVENT_1TYPE",
-	"X_1EVENT_1WINDOW",
-	"_1Call",
-	"_1FcConfigAppFontAddFile",
 	"_1GDK_1PIXMAP_1XID",
 	"_1GDK_1TYPE_1COLOR",
 	"_1GDK_1TYPE_1PIXBUF",
 	"_1GDK_1TYPE_1RGBA",
-	"_1GET_1FUNCTION_1POINTER_1gtk_1false",
-	"_1GString_1len",
-	"_1GString_1str",
-	"_1GTK_1ACCESSIBLE",
-	"_1GTK_1IS_1ACCEL_1LABEL",
-	"_1GTK_1IS_1BUTTON",
-	"_1GTK_1IS_1CELL_1RENDERER_1PIXBUF",
-	"_1GTK_1IS_1CELL_1RENDERER_1TEXT",
-	"_1GTK_1IS_1CELL_1RENDERER_1TOGGLE",
-	"_1GTK_1IS_1CONTAINER",
-	"_1GTK_1IS_1IMAGE_1MENU_1ITEM",
-	"_1GTK_1IS_1LABEL",
-	"_1GTK_1IS_1MENU_1ITEM",
-	"_1GTK_1IS_1PLUG",
-	"_1GTK_1IS_1SCROLLED_1WINDOW",
-	"_1GTK_1IS_1WINDOW",
-	"_1GTK_1STOCK_1CANCEL",
-	"_1GTK_1STOCK_1OK",
-	"_1GTK_1TYPE_1CELL_1RENDERER_1PIXBUF",
-	"_1GTK_1TYPE_1CELL_1RENDERER_1TEXT",
-	"_1GTK_1TYPE_1CELL_1RENDERER_1TOGGLE",
-	"_1GTK_1TYPE_1FIXED",
-	"_1GTK_1TYPE_1IM_1MULTICONTEXT",
-	"_1GTK_1TYPE_1MENU",
-	"_1GTK_1TYPE_1WIDGET",
-	"_1GTK_1WIDGET_1SET_1FLAGS",
-	"_1GTK_1WIDGET_1UNSET_1FLAGS",
-	"_1G_1OBJECT_1CLASS",
-	"_1G_1OBJECT_1GET_1CLASS",
-	"_1G_1OBJECT_1TYPE",
-	"_1G_1OBJECT_1TYPE_1NAME",
-	"_1G_1TYPE_1CHECK_1INSTANCE_1TYPE",
-	"_1G_1TYPE_1STRING",
-	"_1PANGO_1PIXELS",
-	"_1PANGO_1TYPE_1FONT_1DESCRIPTION",
-	"_1PANGO_1TYPE_1FONT_1FACE",
-	"_1PANGO_1TYPE_1FONT_1FAMILY",
-	"_1PANGO_1TYPE_1LAYOUT",
-	"_1XCheckIfEvent",
-	"_1XDefaultRootWindow",
-	"_1XDefaultScreen",
-	"_1XFlush",
-	"_1XFree",
-	"_1XGetWindowProperty",
-	"_1XKeysymToKeycode",
-	"_1XQueryPointer",
-	"_1XSetErrorHandler",
-	"_1XSetIOErrorHandler",
-	"_1XSetInputFocus",
-	"_1XSetTransientForHint",
-	"_1XSynchronize",
-	"_1XTestFakeKeyEvent",
-	"_1access",
-	"_1atk_1object_1add_1relationship",
-	"_1atk_1object_1remove_1relationship",
-#ifndef JNI64
-	"_1call__IIIII",
-#else
-	"_1call__JJJJJ",
-#endif
-#ifndef JNI64
-	"_1call__IIIIIII",
-#else
-	"_1call__JJJJJJJ",
-#endif
-#ifndef JNI64
-	"_1call__IIIIIIII",
-#else
-	"_1call__JJJJJJJJ",
-#endif
-	"_1call_1get_1size",
-	"_1dlopen",
-	"_1g_1app_1info_1create_1from_1commandline",
-	"_1g_1app_1info_1get_1all",
-	"_1g_1app_1info_1get_1default_1for_1type",
-	"_1g_1app_1info_1get_1executable",
-	"_1g_1app_1info_1get_1icon",
-	"_1g_1app_1info_1get_1name",
-	"_1g_1app_1info_1launch",
-	"_1g_1app_1info_1launch_1default_1for_1uri",
-	"_1g_1app_1info_1should_1show",
-	"_1g_1app_1info_1supports_1uris",
-	"_1g_1cclosure_1new",
-	"_1g_1closure_1ref",
-	"_1g_1closure_1sink",
-	"_1g_1closure_1unref",
-	"_1g_1content_1type_1equals",
-	"_1g_1content_1type_1is_1a",
-	"_1g_1error_1free",
-	"_1g_1error_1get_1message",
-	"_1g_1file_1get_1uri",
-	"_1g_1file_1info_1get_1content_1type",
-	"_1g_1file_1new_1for_1commandline_1arg",
-	"_1g_1file_1new_1for_1path",
-	"_1g_1file_1new_1for_1uri",
-	"_1g_1file_1query_1info",
-	"_1g_1file_1test",
-	"_1g_1filename_1display_1name",
-	"_1g_1filename_1from_1uri",
-	"_1g_1filename_1from_1utf8",
-	"_1g_1filename_1to_1uri",
-	"_1g_1filename_1to_1utf8",
-	"_1g_1free",
-	"_1g_1hash_1table_1get_1values",
-	"_1g_1icon_1new_1for_1string",
-	"_1g_1icon_1to_1string",
-	"_1g_1idle_1add",
-	"_1g_1list_1append",
-	"_1g_1list_1data",
-	"_1g_1list_1free",
-	"_1g_1list_1free_11",
-	"_1g_1list_1last",
-	"_1g_1list_1length",
-	"_1g_1list_1next",
-	"_1g_1list_1nth",
-	"_1g_1list_1nth_1data",
-	"_1g_1list_1prepend",
-	"_1g_1list_1previous",
-	"_1g_1list_1remove_1link",
-	"_1g_1list_1set_1next",
-	"_1g_1list_1set_1previous",
-	"_1g_1log_1default_1handler",
-	"_1g_1log_1remove_1handler",
-	"_1g_1log_1set_1handler",
-	"_1g_1main_1context_1acquire",
-	"_1g_1main_1context_1check",
-	"_1g_1main_1context_1default",
-	"_1g_1main_1context_1get_1poll_1func",
-	"_1g_1main_1context_1iteration",
-	"_1g_1main_1context_1prepare",
-	"_1g_1main_1context_1query",
-	"_1g_1main_1context_1release",
-	"_1g_1malloc",
-	"_1g_1object_1class_1find_1property",
-#ifndef JNI64
-	"_1g_1object_1get__I_3B_3II",
-#else
-	"_1g_1object_1get__J_3B_3IJ",
-#endif
-#ifndef JNI64
-	"_1g_1object_1get__I_3B_3JI",
-#else
-	"_1g_1object_1get__J_3B_3JJ",
-#endif
-	"_1g_1object_1get_1qdata",
-	"_1g_1object_1new",
-	"_1g_1object_1notify",
-	"_1g_1object_1ref",
-	"_1g_1object_1ref_1sink",
-#ifndef JNI64
-	"_1g_1object_1set__I_3BFI",
-#else
-	"_1g_1object_1set__J_3BFJ",
-#endif
-#ifndef JNI64
-	"_1g_1object_1set__I_3BII",
-#else
-	"_1g_1object_1set__J_3BIJ",
-#endif
-#ifndef JNI64
-	"_1g_1object_1set__I_3BJI",
-#else
-	"_1g_1object_1set__J_3BJJ",
-#endif
-#ifndef JNI64
-	"_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkColor_2I",
-#else
-	"_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkColor_2J",
-#endif
-#ifndef JNI64
-	"_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2I",
-#else
-	"_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2J",
-#endif
-#ifndef JNI64
-	"_1g_1object_1set__I_3BZI",
-#else
-	"_1g_1object_1set__J_3BZJ",
-#endif
-#ifndef JNI64
-	"_1g_1object_1set__I_3B_3BI",
-#else
-	"_1g_1object_1set__J_3B_3BJ",
-#endif
-	"_1g_1object_1set_1qdata",
-	"_1g_1object_1unref",
-	"_1g_1quark_1from_1string",
-	"_1g_1set_1prgname",
-	"_1g_1signal_1add_1emission_1hook",
-	"_1g_1signal_1connect",
-	"_1g_1signal_1connect_1closure",
-	"_1g_1signal_1connect_1closure_1by_1id",
-#ifndef JNI64
-	"_1g_1signal_1emit_1by_1name__I_3B",
-#else
-	"_1g_1signal_1emit_1by_1name__J_3B",
-#endif
-#ifndef JNI64
-	"_1g_1signal_1emit_1by_1name__I_3BI",
-#else
-	"_1g_1signal_1emit_1by_1name__J_3BJ",
-#endif
-#ifndef JNI64
-	"_1g_1signal_1emit_1by_1name__I_3BII",
-#else
-	"_1g_1signal_1emit_1by_1name__J_3BJJ",
-#endif
-#ifndef JNI64
-	"_1g_1signal_1emit_1by_1name__I_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2",
-#else
-	"_1g_1signal_1emit_1by_1name__J_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2",
-#endif
-#ifndef JNI64
-	"_1g_1signal_1emit_1by_1name__I_3B_3B",
-#else
-	"_1g_1signal_1emit_1by_1name__J_3B_3B",
-#endif
-	"_1g_1signal_1handler_1disconnect",
-	"_1g_1signal_1handler_1find",
-	"_1g_1signal_1handlers_1block_1matched",
-	"_1g_1signal_1handlers_1unblock_1matched",
-	"_1g_1signal_1lookup",
-	"_1g_1signal_1remove_1emission_1hook",
-	"_1g_1signal_1stop_1emission_1by_1name",
-	"_1g_1slist_1append",
-	"_1g_1slist_1data",
-	"_1g_1slist_1free",
-	"_1g_1slist_1length",
-	"_1g_1slist_1next",
-	"_1g_1source_1remove",
-	"_1g_1strfreev",
-	"_1g_1string_1free",
-	"_1g_1string_1new_1len",
-	"_1g_1strtod",
-	"_1g_1thread_1init",
-	"_1g_1thread_1supported",
-	"_1g_1timeout_1add",
-	"_1g_1type_1add_1interface_1static",
-	"_1g_1type_1class_1peek",
-	"_1g_1type_1class_1peek_1parent",
-	"_1g_1type_1class_1ref",
-	"_1g_1type_1class_1unref",
-	"_1g_1type_1from_1name",
-	"_1g_1type_1interface_1peek_1parent",
-	"_1g_1type_1is_1a",
-	"_1g_1type_1name",
-	"_1g_1type_1parent",
-	"_1g_1type_1query",
-	"_1g_1type_1register_1static",
-	"_1g_1utf16_1offset_1to_1pointer",
-	"_1g_1utf16_1offset_1to_1utf8_1offset",
-	"_1g_1utf16_1pointer_1to_1offset",
-	"_1g_1utf16_1strlen",
-	"_1g_1utf16_1to_1utf8",
-	"_1g_1utf8_1offset_1to_1utf16_1offset",
-	"_1g_1utf8_1pointer_1to_1offset",
-	"_1g_1utf8_1strlen",
-#ifndef JNI64
-	"_1g_1utf8_1to_1utf16__II_3I_3I_3I",
-#else
-	"_1g_1utf8_1to_1utf16__JJ_3J_3J_3J",
-#endif
-#ifndef JNI64
-	"_1g_1utf8_1to_1utf16___3BI_3I_3I_3I",
-#else
-	"_1g_1utf8_1to_1utf16___3BJ_3J_3J_3J",
-#endif
-	"_1g_1value_1peek_1pointer",
 	"_1gdk_1atom_1intern",
 	"_1gdk_1atom_1name",
-	"_1gdk_1beep",
 	"_1gdk_1bitmap_1create_1from_1data",
 	"_1gdk_1cairo_1create",
 	"_1gdk_1cairo_1get_1clip_1rectangle",
@@ -409,8 +76,13 @@ char * OS_nativeFunctionNames[] = {
 	"_1gdk_1device_1manager_1get_1client_1pointer",
 	"_1gdk_1device_1ungrab",
 	"_1gdk_1device_1warp",
+	"_1gdk_1display_1beep",
 	"_1gdk_1display_1get_1default",
+	"_1gdk_1display_1get_1default_1group",
+	"_1gdk_1display_1get_1default_1seat",
 	"_1gdk_1display_1get_1device_1manager",
+	"_1gdk_1display_1get_1monitor",
+	"_1gdk_1display_1get_1primary_1monitor",
 	"_1gdk_1display_1supports_1cursor_1color",
 	"_1gdk_1display_1warp_1pointer",
 	"_1gdk_1drag_1context_1get_1actions",
@@ -431,7 +103,9 @@ char * OS_nativeFunctionNames[] = {
 	"_1gdk_1event_1free",
 	"_1gdk_1event_1get",
 	"_1gdk_1event_1get_1coords",
+	"_1gdk_1event_1get_1event_1type",
 	"_1gdk_1event_1get_1scroll_1deltas",
+	"_1gdk_1event_1get_1seat",
 	"_1gdk_1event_1get_1state",
 	"_1gdk_1event_1get_1time",
 	"_1gdk_1event_1handler_1set",
@@ -449,9 +123,11 @@ char * OS_nativeFunctionNames[] = {
 	"_1gdk_1keyboard_1ungrab",
 	"_1gdk_1keymap_1get_1default",
 	"_1gdk_1keymap_1get_1entries_1for_1keyval",
-	"_1gdk_1keymap_1translate_1keyboard_1state",
 	"_1gdk_1keyval_1to_1lower",
 	"_1gdk_1keyval_1to_1unicode",
+	"_1gdk_1monitor_1get_1geometry",
+	"_1gdk_1monitor_1get_1scale_1factor",
+	"_1gdk_1monitor_1get_1width_1mm",
 	"_1gdk_1pango_1context_1get",
 	"_1gdk_1pango_1layout_1get_1clip_1region",
 	"_1gdk_1pixbuf_1copy_1area",
@@ -507,10 +183,14 @@ char * OS_nativeFunctionNames[] = {
 	"_1gdk_1screen_1height",
 	"_1gdk_1screen_1width",
 	"_1gdk_1screen_1width_1mm",
+	"_1gdk_1seat_1get_1pointer",
+	"_1gdk_1seat_1grab",
+	"_1gdk_1seat_1ungrab",
 	"_1gdk_1selection_1owner_1get",
 	"_1gdk_1selection_1owner_1set",
 	"_1gdk_1set_1program_1class",
 	"_1gdk_1test_1simulate_1button",
+	"_1gdk_1test_1simulate_1key",
 	"_1gdk_1text_1property_1to_1utf8_1list_1for_1display",
 	"_1gdk_1unicode_1to_1keyval",
 	"_1gdk_1utf8_1to_1string_1target",
@@ -563,7 +243,8 @@ char * OS_nativeFunctionNames[] = {
 	"_1gdk_1window_1shape_1combine_1region",
 	"_1gdk_1window_1show",
 	"_1gdk_1window_1show_1unraised",
-	"_1gdk_1x11_1atom_1to_1xatom",
+	"_1gdk_1x11_1display_1error_1trap_1pop_1ignored",
+	"_1gdk_1x11_1display_1error_1trap_1push",
 	"_1gdk_1x11_1display_1get_1xdisplay",
 	"_1gdk_1x11_1display_1utf8_1to_1compound_1text",
 	"_1gdk_1x11_1drawable_1get_1xid",
@@ -573,9 +254,82 @@ char * OS_nativeFunctionNames[] = {
 	"_1gdk_1x11_1visual_1get_1xvisual",
 	"_1gdk_1x11_1window_1get_1xid",
 	"_1gdk_1x11_1window_1lookup_1for_1display",
-	"_1glib_1major_1version",
-	"_1glib_1micro_1version",
-	"_1glib_1minor_1version",
+	"gdk_1threads_1leave",
+};
+#define NATIVE_FUNCTION_COUNT sizeof(GDK_nativeFunctionNames) / sizeof(char*)
+int GDK_nativeFunctionCount = NATIVE_FUNCTION_COUNT;
+int GDK_nativeFunctionCallCount[NATIVE_FUNCTION_COUNT];
+
+#define STATS_NATIVE(func) Java_org_eclipse_swt_tools_internal_NativeStats_##func
+
+JNIEXPORT jint JNICALL STATS_NATIVE(GDK_1GetFunctionCount)
+	(JNIEnv *env, jclass that)
+{
+	return GDK_nativeFunctionCount;
+}
+
+JNIEXPORT jstring JNICALL STATS_NATIVE(GDK_1GetFunctionName)
+	(JNIEnv *env, jclass that, jint index)
+{
+	return (*env)->NewStringUTF(env, GDK_nativeFunctionNames[index]);
+}
+
+JNIEXPORT jint JNICALL STATS_NATIVE(GDK_1GetFunctionCallCount)
+	(JNIEnv *env, jclass that, jint index)
+{
+	return GDK_nativeFunctionCallCount[index];
+}
+
+#endif
+#ifdef NATIVE_STATS
+
+char * GTK_nativeFunctionNames[] = {
+	"GTK_1ACCEL_1LABEL_1GET_1ACCEL_1STRING",
+	"GTK_1ACCEL_1LABEL_1SET_1ACCEL_1STRING",
+	"GTK_1ENTRY_1IM_1CONTEXT",
+	"GTK_1TEXTVIEW_1IM_1CONTEXT",
+	"GTK_1TYPE_1ACCESSIBLE",
+	"GTK_1WIDGET_1GET_1CLASS",
+	"GTK_1WIDGET_1REQUISITION_1HEIGHT",
+	"GTK_1WIDGET_1REQUISITION_1WIDTH",
+	"GtkAllocation_1sizeof",
+	"GtkBorder_1sizeof",
+	"GtkCellRendererPixbufClass_1sizeof",
+	"GtkCellRendererPixbuf_1sizeof",
+	"GtkCellRendererTextClass_1sizeof",
+	"GtkCellRendererText_1sizeof",
+	"GtkCellRendererToggleClass_1sizeof",
+	"GtkCellRendererToggle_1sizeof",
+	"GtkRequisition_1sizeof",
+	"GtkTargetEntry_1sizeof",
+	"GtkTextIter_1sizeof",
+	"GtkTreeIter_1sizeof",
+	"_1GET_1FUNCTION_1POINTER_1gtk_1false",
+	"_1GTK_1ACCESSIBLE",
+	"_1GTK_1IS_1ACCEL_1LABEL",
+	"_1GTK_1IS_1BUTTON",
+	"_1GTK_1IS_1CELL_1RENDERER_1PIXBUF",
+	"_1GTK_1IS_1CELL_1RENDERER_1TEXT",
+	"_1GTK_1IS_1CELL_1RENDERER_1TOGGLE",
+	"_1GTK_1IS_1CONTAINER",
+	"_1GTK_1IS_1IMAGE_1MENU_1ITEM",
+	"_1GTK_1IS_1LABEL",
+	"_1GTK_1IS_1MENU_1ITEM",
+	"_1GTK_1IS_1PLUG",
+	"_1GTK_1IS_1SCROLLED_1WINDOW",
+	"_1GTK_1IS_1WINDOW",
+	"_1GTK_1STOCK_1CANCEL",
+	"_1GTK_1STOCK_1OK",
+	"_1GTK_1TYPE_1CELL_1RENDERER_1PIXBUF",
+	"_1GTK_1TYPE_1CELL_1RENDERER_1TEXT",
+	"_1GTK_1TYPE_1CELL_1RENDERER_1TOGGLE",
+	"_1GTK_1TYPE_1FIXED",
+	"_1GTK_1TYPE_1IM_1MULTICONTEXT",
+	"_1GTK_1TYPE_1MENU",
+	"_1GTK_1TYPE_1WIDGET",
+	"_1GTK_1TYPE_1WINDOW",
+	"_1GTK_1WIDGET_1SET_1FLAGS",
+	"_1GTK_1WIDGET_1UNSET_1FLAGS",
 	"_1gtk_1accel_1group_1new",
 	"_1gtk_1accel_1label_1new",
 	"_1gtk_1accel_1label_1set_1accel",
@@ -607,6 +361,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1box_1set_1spacing",
 	"_1gtk_1button_1clicked",
 	"_1gtk_1button_1new",
+	"_1gtk_1button_1set_1image",
 	"_1gtk_1calendar_1clear_1marks",
 	"_1gtk_1calendar_1get_1date",
 	"_1gtk_1calendar_1mark_1day",
@@ -619,6 +374,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1cell_1layout_1pack_1start",
 	"_1gtk_1cell_1layout_1set_1attributes",
 	"_1gtk_1cell_1renderer_1get_1fixed_1size",
+	"_1gtk_1cell_1renderer_1get_1padding",
 	"_1gtk_1cell_1renderer_1get_1preferred_1height_1for_1width",
 	"_1gtk_1cell_1renderer_1get_1preferred_1size",
 	"_1gtk_1cell_1renderer_1get_1size",
@@ -652,6 +408,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1color_1selection_1set_1has_1palette",
 	"_1gtk_1combo_1box_1get_1active",
 	"_1gtk_1combo_1box_1get_1model",
+	"_1gtk_1combo_1box_1get_1wrap_1width",
 	"_1gtk_1combo_1box_1popdown",
 	"_1gtk_1combo_1box_1popup",
 	"_1gtk_1combo_1box_1set_1active",
@@ -667,6 +424,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1container_1forall",
 	"_1gtk_1container_1get_1border_1width",
 	"_1gtk_1container_1get_1children",
+	"_1gtk_1container_1propagate_1draw",
 	"_1gtk_1container_1remove",
 	"_1gtk_1container_1set_1border_1width",
 	"_1gtk_1css_1provider_1get_1named",
@@ -790,7 +548,9 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1get_1current_1event_1state",
 	"_1gtk_1get_1default_1language",
 	"_1gtk_1get_1event_1widget",
+	"_1gtk_1grab_1add",
 	"_1gtk_1grab_1get_1current",
+	"_1gtk_1grab_1remove",
 	"_1gtk_1hbox_1new",
 	"_1gtk_1hscale_1new",
 	"_1gtk_1hscrollbar_1new",
@@ -889,6 +649,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1menu_1popdown",
 	"_1gtk_1menu_1popup",
 	"_1gtk_1menu_1popup_1at_1pointer",
+	"_1gtk_1menu_1popup_1at_1rect",
 	"_1gtk_1menu_1shell_1deactivate",
 	"_1gtk_1menu_1shell_1insert",
 	"_1gtk_1menu_1shell_1set_1take_1focus",
@@ -1011,6 +772,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1scrolled_1window_1add_1with_1viewport",
 	"_1gtk_1scrolled_1window_1get_1hadjustment",
 	"_1gtk_1scrolled_1window_1get_1hscrollbar",
+	"_1gtk_1scrolled_1window_1get_1overlay_1scrolling",
 	"_1gtk_1scrolled_1window_1get_1policy",
 	"_1gtk_1scrolled_1window_1get_1shadow_1type",
 	"_1gtk_1scrolled_1window_1get_1vadjustment",
@@ -1310,6 +1072,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1widget_1get_1allocation",
 	"_1gtk_1widget_1get_1can_1default",
 	"_1gtk_1widget_1get_1child_1visible",
+	"_1gtk_1widget_1get_1clip",
 	"_1gtk_1widget_1get_1default_1style",
 	"_1gtk_1widget_1get_1events",
 	"_1gtk_1widget_1get_1has_1window",
@@ -1320,6 +1083,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1widget_1get_1pango_1context",
 	"_1gtk_1widget_1get_1parent",
 	"_1gtk_1widget_1get_1parent_1window",
+	"_1gtk_1widget_1get_1preferred_1height",
 	"_1gtk_1widget_1get_1preferred_1height_1for_1width",
 	"_1gtk_1widget_1get_1preferred_1size",
 	"_1gtk_1widget_1get_1preferred_1width_1for_1height",
@@ -1359,6 +1123,7 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1widget_1set_1app_1paintable",
 	"_1gtk_1widget_1set_1can_1default",
 	"_1gtk_1widget_1set_1can_1focus",
+	"_1gtk_1widget_1set_1clip",
 	"_1gtk_1widget_1set_1default_1direction",
 	"_1gtk_1widget_1set_1direction",
 	"_1gtk_1widget_1set_1double_1buffered",
@@ -1429,6 +1194,344 @@ char * OS_nativeFunctionNames[] = {
 	"_1gtk_1window_1set_1type_1hint",
 	"_1gtk_1window_1unfullscreen",
 	"_1gtk_1window_1unmaximize",
+};
+#define NATIVE_FUNCTION_COUNT sizeof(GTK_nativeFunctionNames) / sizeof(char*)
+int GTK_nativeFunctionCount = NATIVE_FUNCTION_COUNT;
+int GTK_nativeFunctionCallCount[NATIVE_FUNCTION_COUNT];
+
+#define STATS_NATIVE(func) Java_org_eclipse_swt_tools_internal_NativeStats_##func
+
+JNIEXPORT jint JNICALL STATS_NATIVE(GTK_1GetFunctionCount)
+	(JNIEnv *env, jclass that)
+{
+	return GTK_nativeFunctionCount;
+}
+
+JNIEXPORT jstring JNICALL STATS_NATIVE(GTK_1GetFunctionName)
+	(JNIEnv *env, jclass that, jint index)
+{
+	return (*env)->NewStringUTF(env, GTK_nativeFunctionNames[index]);
+}
+
+JNIEXPORT jint JNICALL STATS_NATIVE(GTK_1GetFunctionCallCount)
+	(JNIEnv *env, jclass that, jint index)
+{
+	return GTK_nativeFunctionCallCount[index];
+}
+
+#endif
+#ifdef NATIVE_STATS
+
+char * OS_nativeFunctionNames[] = {
+#ifndef JNI64
+	"Call__IIII",
+#else
+	"Call__JJII",
+#endif
+#ifndef JNI64
+	"Call__IIIJ",
+#else
+	"Call__JJIJ",
+#endif
+	"GDK_1WINDOWING_1WAYLAND",
+	"GDK_1WINDOWING_1X11",
+	"GInterfaceInfo_1sizeof",
+	"GPollFD_1sizeof",
+	"GTypeInfo_1sizeof",
+	"GTypeQuery_1sizeof",
+	"G_1OBJECT_1CLASS_1CONSTRUCTOR",
+	"G_1OBJECT_1CLASS_1SET_1CONSTRUCTOR",
+	"G_1TYPE_1BOOLEAN",
+	"G_1TYPE_1DOUBLE",
+	"G_1TYPE_1FLOAT",
+	"G_1TYPE_1INT",
+	"G_1TYPE_1INT64",
+	"G_1VALUE_1TYPE",
+	"PangoAttrColor_1sizeof",
+	"PangoAttrInt_1sizeof",
+	"PangoAttribute_1sizeof",
+	"PangoItem_1sizeof",
+	"PangoLayoutLine_1sizeof",
+	"PangoLayoutRun_1sizeof",
+	"PangoLogAttr_1sizeof",
+	"PangoRectangle_1sizeof",
+	"RTLD_1GLOBAL",
+	"RTLD_1LAZY",
+	"RTLD_1NOW",
+	"XAnyEvent_1sizeof",
+	"XEvent_1sizeof",
+	"XExposeEvent_1sizeof",
+	"XFocusChangeEvent_1sizeof",
+	"X_1EVENT_1TYPE",
+	"X_1EVENT_1WINDOW",
+	"_1Call",
+	"_1FcConfigAppFontAddFile",
+	"_1GString_1len",
+	"_1GString_1str",
+	"_1G_1OBJECT_1CLASS",
+	"_1G_1OBJECT_1GET_1CLASS",
+	"_1G_1OBJECT_1TYPE",
+	"_1G_1OBJECT_1TYPE_1NAME",
+	"_1G_1TYPE_1CHECK_1INSTANCE_1TYPE",
+	"_1G_1TYPE_1STRING",
+	"_1PANGO_1PIXELS",
+	"_1PANGO_1TYPE_1FONT_1DESCRIPTION",
+	"_1PANGO_1TYPE_1FONT_1FACE",
+	"_1PANGO_1TYPE_1FONT_1FAMILY",
+	"_1PANGO_1TYPE_1LAYOUT",
+	"_1XCheckIfEvent",
+	"_1XDefaultRootWindow",
+	"_1XDefaultScreen",
+	"_1XFree",
+	"_1XQueryPointer",
+	"_1XSetErrorHandler",
+	"_1XSetIOErrorHandler",
+	"_1XSetInputFocus",
+	"_1XSetTransientForHint",
+	"_1XSynchronize",
+	"_1access",
+	"_1cachejvmptr",
+#ifndef JNI64
+	"_1call__IIIII",
+#else
+	"_1call__JJJJJ",
+#endif
+#ifndef JNI64
+	"_1call__IIIIIII",
+#else
+	"_1call__JJJJJJJ",
+#endif
+#ifndef JNI64
+	"_1call__IIIIIIII",
+#else
+	"_1call__JJJJJJJJ",
+#endif
+	"_1call_1get_1size",
+	"_1dlopen",
+	"_1g_1app_1info_1create_1from_1commandline",
+	"_1g_1app_1info_1get_1all",
+	"_1g_1app_1info_1get_1default_1for_1type",
+	"_1g_1app_1info_1get_1executable",
+	"_1g_1app_1info_1get_1icon",
+	"_1g_1app_1info_1get_1name",
+	"_1g_1app_1info_1launch",
+	"_1g_1app_1info_1launch_1default_1for_1uri",
+	"_1g_1app_1info_1should_1show",
+	"_1g_1app_1info_1supports_1uris",
+	"_1g_1bus_1own_1name",
+	"_1g_1bytes_1new",
+	"_1g_1bytes_1unref",
+	"_1g_1cclosure_1new",
+	"_1g_1closure_1ref",
+	"_1g_1closure_1sink",
+	"_1g_1closure_1unref",
+	"_1g_1content_1type_1equals",
+	"_1g_1content_1type_1is_1a",
+	"_1g_1dbus_1connection_1register_1object",
+	"_1g_1dbus_1method_1invocation_1return_1value",
+	"_1g_1dbus_1node_1info_1lookup_1interface",
+	"_1g_1dbus_1node_1info_1new_1for_1xml",
+	"_1g_1error_1free",
+	"_1g_1error_1get_1message",
+	"_1g_1file_1get_1uri",
+	"_1g_1file_1info_1get_1content_1type",
+	"_1g_1file_1new_1for_1commandline_1arg",
+	"_1g_1file_1new_1for_1path",
+	"_1g_1file_1new_1for_1uri",
+	"_1g_1file_1query_1info",
+	"_1g_1file_1test",
+	"_1g_1filename_1display_1name",
+	"_1g_1filename_1from_1uri",
+	"_1g_1filename_1from_1utf8",
+	"_1g_1filename_1to_1uri",
+	"_1g_1filename_1to_1utf8",
+	"_1g_1free",
+	"_1g_1hash_1table_1get_1values",
+	"_1g_1icon_1new_1for_1string",
+	"_1g_1icon_1to_1string",
+	"_1g_1idle_1add",
+	"_1g_1list_1append",
+	"_1g_1list_1data",
+	"_1g_1list_1free",
+	"_1g_1list_1free_11",
+	"_1g_1list_1last",
+	"_1g_1list_1length",
+	"_1g_1list_1next",
+	"_1g_1list_1nth",
+	"_1g_1list_1nth_1data",
+	"_1g_1list_1prepend",
+	"_1g_1list_1previous",
+	"_1g_1list_1remove_1link",
+	"_1g_1list_1set_1next",
+	"_1g_1list_1set_1previous",
+	"_1g_1log_1default_1handler",
+	"_1g_1log_1remove_1handler",
+	"_1g_1log_1set_1handler",
+	"_1g_1main_1context_1acquire",
+	"_1g_1main_1context_1check",
+	"_1g_1main_1context_1default",
+	"_1g_1main_1context_1get_1poll_1func",
+	"_1g_1main_1context_1iteration",
+	"_1g_1main_1context_1prepare",
+	"_1g_1main_1context_1query",
+	"_1g_1main_1context_1release",
+	"_1g_1malloc",
+	"_1g_1object_1class_1find_1property",
+#ifndef JNI64
+	"_1g_1object_1get__I_3B_3II",
+#else
+	"_1g_1object_1get__J_3B_3IJ",
+#endif
+#ifndef JNI64
+	"_1g_1object_1get__I_3B_3JI",
+#else
+	"_1g_1object_1get__J_3B_3JJ",
+#endif
+	"_1g_1object_1get_1qdata",
+	"_1g_1object_1new",
+	"_1g_1object_1notify",
+	"_1g_1object_1ref",
+	"_1g_1object_1ref_1sink",
+#ifndef JNI64
+	"_1g_1object_1set__I_3BFI",
+#else
+	"_1g_1object_1set__J_3BFJ",
+#endif
+#ifndef JNI64
+	"_1g_1object_1set__I_3BII",
+#else
+	"_1g_1object_1set__J_3BIJ",
+#endif
+#ifndef JNI64
+	"_1g_1object_1set__I_3BJI",
+#else
+	"_1g_1object_1set__J_3BJJ",
+#endif
+#ifndef JNI64
+	"_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkColor_2I",
+#else
+	"_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkColor_2J",
+#endif
+#ifndef JNI64
+	"_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2I",
+#else
+	"_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2J",
+#endif
+#ifndef JNI64
+	"_1g_1object_1set__I_3BZI",
+#else
+	"_1g_1object_1set__J_3BZJ",
+#endif
+#ifndef JNI64
+	"_1g_1object_1set__I_3B_3BI",
+#else
+	"_1g_1object_1set__J_3B_3BJ",
+#endif
+	"_1g_1object_1set_1qdata",
+	"_1g_1object_1unref",
+	"_1g_1quark_1from_1string",
+	"_1g_1set_1prgname",
+	"_1g_1signal_1add_1emission_1hook",
+	"_1g_1signal_1connect",
+	"_1g_1signal_1connect_1closure",
+	"_1g_1signal_1connect_1closure_1by_1id",
+#ifndef JNI64
+	"_1g_1signal_1emit_1by_1name__I_3B",
+#else
+	"_1g_1signal_1emit_1by_1name__J_3B",
+#endif
+#ifndef JNI64
+	"_1g_1signal_1emit_1by_1name__I_3BI",
+#else
+	"_1g_1signal_1emit_1by_1name__J_3BJ",
+#endif
+#ifndef JNI64
+	"_1g_1signal_1emit_1by_1name__I_3BII",
+#else
+	"_1g_1signal_1emit_1by_1name__J_3BJJ",
+#endif
+#ifndef JNI64
+	"_1g_1signal_1emit_1by_1name__I_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2",
+#else
+	"_1g_1signal_1emit_1by_1name__J_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2",
+#endif
+#ifndef JNI64
+	"_1g_1signal_1emit_1by_1name__I_3B_3B",
+#else
+	"_1g_1signal_1emit_1by_1name__J_3B_3B",
+#endif
+	"_1g_1signal_1handler_1disconnect",
+	"_1g_1signal_1handler_1find",
+	"_1g_1signal_1handlers_1block_1matched",
+	"_1g_1signal_1handlers_1unblock_1matched",
+	"_1g_1signal_1lookup",
+	"_1g_1signal_1remove_1emission_1hook",
+	"_1g_1signal_1stop_1emission_1by_1name",
+	"_1g_1slist_1append",
+	"_1g_1slist_1data",
+	"_1g_1slist_1free",
+	"_1g_1slist_1length",
+	"_1g_1slist_1next",
+	"_1g_1source_1remove",
+	"_1g_1strfreev",
+	"_1g_1string_1free",
+	"_1g_1string_1new_1len",
+	"_1g_1strtod",
+	"_1g_1thread_1init",
+	"_1g_1thread_1supported",
+	"_1g_1timeout_1add",
+	"_1g_1type_1add_1interface_1static",
+	"_1g_1type_1class_1peek",
+	"_1g_1type_1class_1peek_1parent",
+	"_1g_1type_1class_1ref",
+	"_1g_1type_1class_1unref",
+	"_1g_1type_1from_1name",
+	"_1g_1type_1interface_1peek_1parent",
+	"_1g_1type_1is_1a",
+	"_1g_1type_1name",
+	"_1g_1type_1parent",
+	"_1g_1type_1query",
+	"_1g_1type_1register_1static",
+	"_1g_1utf16_1offset_1to_1pointer",
+	"_1g_1utf16_1offset_1to_1utf8_1offset",
+	"_1g_1utf16_1pointer_1to_1offset",
+	"_1g_1utf16_1strlen",
+	"_1g_1utf16_1to_1utf8",
+	"_1g_1utf8_1offset_1to_1utf16_1offset",
+	"_1g_1utf8_1pointer_1to_1offset",
+	"_1g_1utf8_1strlen",
+#ifndef JNI64
+	"_1g_1utf8_1to_1utf16__II_3I_3I_3I",
+#else
+	"_1g_1utf8_1to_1utf16__JJ_3J_3J_3J",
+#endif
+#ifndef JNI64
+	"_1g_1utf8_1to_1utf16___3BI_3I_3I_3I",
+#else
+	"_1g_1utf8_1to_1utf16___3BJ_3J_3J_3J",
+#endif
+	"_1g_1value_1peek_1pointer",
+	"_1g_1variant_1get_1boolean",
+	"_1g_1variant_1get_1byte",
+	"_1g_1variant_1get_1child_1value",
+	"_1g_1variant_1get_1double",
+	"_1g_1variant_1get_1int32",
+	"_1g_1variant_1get_1string",
+	"_1g_1variant_1get_1type",
+	"_1g_1variant_1get_1type_1string",
+	"_1g_1variant_1is_1of_1type",
+	"_1g_1variant_1n_1children",
+	"_1g_1variant_1new_1boolean",
+	"_1g_1variant_1new_1byte",
+	"_1g_1variant_1new_1double",
+	"_1g_1variant_1new_1int32",
+	"_1g_1variant_1new_1string",
+	"_1g_1variant_1new_1tuple",
+	"_1gdk_1keymap_1translate_1keyboard_1state",
+	"_1getpid",
+	"_1glib_1major_1version",
+	"_1glib_1micro_1version",
+	"_1glib_1minor_1version",
 	"_1pango_1attr_1background_1new",
 	"_1pango_1attr_1font_1desc_1new",
 	"_1pango_1attr_1foreground_1new",
@@ -1524,6 +1627,8 @@ char * OS_nativeFunctionNames[] = {
 	"_1pango_1tab_1array_1new",
 	"_1pango_1tab_1array_1set_1tab",
 	"_1swt_1debug_1on_1fatal_1warnings",
+	"_1swt_1fixed_1accessible_1get_1type",
+	"_1swt_1fixed_1accessible_1register_1accessible",
 	"_1swt_1fixed_1get_1type",
 	"_1swt_1fixed_1move",
 	"_1swt_1fixed_1resize",
@@ -1541,7 +1646,6 @@ char * OS_nativeFunctionNames[] = {
 	"g_1value_1set_1int",
 	"g_1value_1set_1int64",
 	"g_1value_1unset",
-	"gdk_1threads_1leave",
 	"imContextLast",
 	"imContextNewProc_1CALLBACK",
 	"localeconv_1decimal_1point",
@@ -1574,6 +1678,11 @@ char * OS_nativeFunctionNames[] = {
 	"memmove__ILorg_eclipse_swt_internal_gtk_GdkEventExpose_2I",
 #else
 	"memmove__JLorg_eclipse_swt_internal_gtk_GdkEventExpose_2J",
+#endif
+#ifndef JNI64
+	"memmove__ILorg_eclipse_swt_internal_gtk_GdkEventKey_2I",
+#else
+	"memmove__JLorg_eclipse_swt_internal_gtk_GdkEventKey_2J",
 #endif
 #ifndef JNI64
 	"memmove__ILorg_eclipse_swt_internal_gtk_GdkEventMotion_2I",
@@ -1669,11 +1778,6 @@ char * OS_nativeFunctionNames[] = {
 	"memmove__Lorg_eclipse_swt_internal_gtk_GdkEventMotion_2II",
 #else
 	"memmove__Lorg_eclipse_swt_internal_gtk_GdkEventMotion_2JJ",
-#endif
-#ifndef JNI64
-	"memmove__Lorg_eclipse_swt_internal_gtk_GdkEventProperty_2I",
-#else
-	"memmove__Lorg_eclipse_swt_internal_gtk_GdkEventProperty_2J",
 #endif
 #ifndef JNI64
 	"memmove__Lorg_eclipse_swt_internal_gtk_GdkEventScroll_2II",

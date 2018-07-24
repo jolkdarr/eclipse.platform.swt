@@ -15,7 +15,7 @@
  *
  * IBM
  * -  Binding to permit interfacing between Cairo and SWT
- * -  Copyright (C) 2005, 2012 IBM Corp.  All Rights Reserved.
+ * -  Copyright (C) 2005, 2018 IBM Corp.  All Rights Reserved.
  *
  * ***** END LICENSE BLOCK ***** */
 package org.eclipse.swt.internal.cairo;
@@ -33,6 +33,7 @@ public class Cairo extends Platform {
 	public static final int CAIRO_ANTIALIAS_NONE = 1;
 	public static final int CAIRO_ANTIALIAS_GRAY = 2;
 	public static final int CAIRO_ANTIALIAS_SUBPIXEL = 3;
+	public static final int CAIRO_ANTIALIAS_BEST = 6;
 	public static final int CAIRO_CONTENT_COLOR = 0x1000;
 	public static final int CAIRO_CONTENT_ALPHA = 0x2000;
 	public static final int CAIRO_CONTENT_COLOR_ALPHA = 0x3000;
@@ -849,6 +850,34 @@ public static final void cairo_scale(long /*int*/ cr, double sx, double sy) {
 	}
 }
 /**
+ * @method flags=dynamic
+ * @param cr cast=(cairo_surface_t *)
+ */
+public static final native void _cairo_surface_set_device_scale(long /*int*/ cr, double sx, double sy);
+public static final void cairo_surface_set_device_scale(long /*int*/ cr, double sx, double sy) {
+	lock.lock();
+	try {
+		_cairo_surface_set_device_scale(cr, sx, sy);
+	} finally {
+		lock.unlock();
+	}
+}
+/**
+ * @method flags=dynamic
+ * @param cr cast=(cairo_surface_t *)
+ * @param sx cast=(double *)
+ * @param sy cast=(double *)
+ */
+public static final native void _cairo_surface_get_device_scale(long /*int*/ cr, double [] sx, double [] sy);
+public static final void cairo_surface_get_device_scale(long /*int*/ cr, double [] sx, double [] sy) {
+	lock.lock();
+	try {
+		_cairo_surface_get_device_scale(cr, sx, sy);
+	} finally {
+		lock.unlock();
+	}
+}
+/**
  * @param cr cast=(cairo_t *)
  * @param family cast=(const char *)
  */
@@ -1195,6 +1224,7 @@ public static final void cairo_user_to_device_distance(long /*int*/ cr, double[]
 	}
 }
 public static final native int cairo_version();
+public static final native long /*int*/ cairo_version_string();
 /**
  * @param dpy cast=(Display *)
  * @param drawable cast=(Drawable)
@@ -1241,6 +1271,26 @@ public static final int cairo_region_num_rectangles(long /*int*/ region) {
 	lock.lock();
 	try {
 		return _cairo_region_num_rectangles(region);
+	} finally {
+		lock.unlock();
+	}
+}
+/** @method flags=dynamic */
+public static final native long /*int*/ _cairo_region_copy(long /*int*/ region);
+public static final long /*int*/ cairo_region_copy(long /*int*/ region) {
+	lock.lock();
+	try {
+		 return _cairo_region_copy(region);
+	} finally {
+		lock.unlock();
+	}
+}
+/** @method flags=dynamic */
+public static final native boolean _cairo_region_contains_point(long /*int*/ region, int x, int y);
+public static final boolean cairo_region_contains_point(long /*int*/ region, int x, int y) {
+	lock.lock();
+	try {
+		return _cairo_region_contains_point(region, x, y);
 	} finally {
 		lock.unlock();
 	}

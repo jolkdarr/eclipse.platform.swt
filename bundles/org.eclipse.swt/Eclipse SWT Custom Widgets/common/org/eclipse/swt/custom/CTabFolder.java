@@ -370,13 +370,7 @@ void onDeactivate(Event event) {
 	if (!highlightEnabled) {
 		return;
 	}
-	Composite current = this;
-	while (current != null) {
-		if (current instanceof CTabFolder) {
-			((CTabFolder) current).highlight = false;
-		}
-		current = current.getParent();
-	}
+	this.highlight = false;
 	redraw();
 }
 
@@ -384,13 +378,7 @@ void onActivate(Event event) {
 	if (!highlightEnabled) {
 		return;
 	}
-	Composite current = this;
-	while (current != null) {
-		if (current instanceof CTabFolder) {
-			((CTabFolder) current).highlight = true;
-		}
-		current = current.getParent();
-	}
+	this.highlight = true;
 	redraw();
 }
 
@@ -1431,7 +1419,7 @@ void initAccessible() {
 				if (text != null) {
 					char mnemonic = _findMnemonic(text);
 					if (mnemonic != '\0') {
-						shortcut = SWT.getMessage ("SWT_Page_Mnemonic", new Object[] {new Character(mnemonic)}); //$NON-NLS-1$
+						shortcut = SWT.getMessage ("SWT_Page_Mnemonic", new Object[] {Character.valueOf(mnemonic)}); //$NON-NLS-1$
 					}
 				}
 			}
@@ -3686,7 +3674,8 @@ void showList (Rectangle rect) {
 		CTabItem tab = items[i];
 		if (tab.showing) continue;
 		MenuItem item = new MenuItem(showMenu, SWT.NONE);
-		item.setText(tab.getText());
+		// Bug 533124 In the case where you have multi line tab text, we force the drop-down menu to have single line entries to ensure consistent behavior across platforms.
+		item.setText(tab.getText().replace("\n", " "));
 		item.setImage(tab.getImage());
 		item.setData(id, tab);
 		item.addSelectionListener(new SelectionAdapter() {

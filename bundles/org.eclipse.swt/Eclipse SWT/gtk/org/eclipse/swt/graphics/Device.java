@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,7 @@ package org.eclipse.swt.graphics;
 
 
 import java.io.*;
+import java.util.function.*;
 import java.util.stream.*;
 
 import org.eclipse.swt.*;
@@ -386,9 +387,9 @@ public int getDepth () {
 }
 
 /**
- * Returns a point whose x coordinate is the horizontal
+ * Returns a point whose x coordinate is the logical horizontal
  * dots per inch of the display, and whose y coordinate
- * is the vertical dots per inch of the display.
+ * is the logical vertical dots per inch of the display.
  *
  * @return the horizontal and vertical DPI
  *
@@ -423,25 +424,25 @@ public FontData[] getFontList (String faceName, boolean scalable) {
 	int[] n_families = new int[1];
 	long /*int*/[] faces = new long /*int*/[1];
 	int[] n_faces = new int[1];
-	long /*int*/ context = OS.gdk_pango_context_get();
+	long /*int*/ context = GDK.gdk_pango_context_get();
 	OS.pango_context_list_families(context, families, n_families);
 	int nFds = 0;
 	FontData[] fds = new FontData[faceName != null ? 4 : n_families[0]];
 	for (int i=0; i<n_families[0]; i++) {
-		OS.memmove(family, families[0] + i * OS.PTR_SIZEOF, OS.PTR_SIZEOF);
+		C.memmove(family, families[0] + i * C.PTR_SIZEOF, C.PTR_SIZEOF);
 		boolean match = true;
 		if (faceName != null) {
 			long /*int*/ familyName = OS.pango_font_family_get_name(family[0]);
-			int length = OS.strlen(familyName);
+			int length = C.strlen(familyName);
 			byte[] buffer = new byte[length];
-			OS.memmove(buffer, familyName, length);
+			C.memmove(buffer, familyName, length);
 			String name = new String(Converter.mbcsToWcs(buffer));
 			match = faceName.equalsIgnoreCase(name);
 		}
 		if (match) {
 		    OS.pango_font_family_list_faces(family[0], faces, n_faces);
 		    for (int j=0; j<n_faces[0]; j++) {
-		        OS.memmove(face, faces[0] + j * OS.PTR_SIZEOF, OS.PTR_SIZEOF);
+		        C.memmove(face, faces[0] + j * C.PTR_SIZEOF, C.PTR_SIZEOF);
 		        long /*int*/ fontDesc = OS.pango_font_face_describe(face[0]);
 		        Font font = Font.gtk_new(this, fontDesc);
 		        FontData data = font.getFontData()[0];
@@ -466,9 +467,25 @@ public FontData[] getFontList (String faceName, boolean scalable) {
 }
 
 Point getScreenDPI () {
-	int widthMM = OS.gdk_screen_width_mm ();
-	int width = OS.gdk_screen_width ();
-	int dpi = Compatibility.round (254 * width, widthMM * 10);
+	int dpi = 96; //default value
+	if (GTK.GTK3) {
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 22, 0)) {
+			long /*int*/ display = GDK.gdk_display_get_default();
+			long /*int*/ pMonitor = GDK.gdk_display_get_primary_monitor(display);
+			if (pMonitor == 0) {
+				pMonitor = GDK.gdk_display_get_monitor(display, 0);
+			}
+			int widthMM = GDK.gdk_monitor_get_width_mm(pMonitor);
+			int scaleFactor = GDK.gdk_monitor_get_scale_factor(pMonitor);
+			GdkRectangle monitorGeometry = new GdkRectangle ();
+			GDK.gdk_monitor_get_geometry(pMonitor, monitorGeometry);
+			dpi = Compatibility.round (254 * monitorGeometry.width * scaleFactor, widthMM * 10);
+		}
+	} else {
+		int widthMM = GDK.gdk_screen_width_mm ();
+		int width = GDK.gdk_screen_width ();
+		dpi = Compatibility.round (254 * width, widthMM * 10);
+	}
 	return new Point (dpi, dpi);
 }
 
@@ -571,9 +588,10 @@ protected void init () {
 	this.dpi = getDPI();
 	this.scaleFactor = getDeviceZoom ();
 	DPIUtil.setDeviceZoom (scaleFactor);
+	DPIUtil.setIsGtk3(GTK.GTK3);
 
 	//TODO: Remove; temporary code only
-	boolean fixAIX = OS.IsAIX && OS.PTR_SIZEOF == 8;
+	boolean fixAIX = OS.IsAIX && C.PTR_SIZEOF == 8;
 
 	if (debug || fixAIX) {
 		if (xDisplay != 0) {
@@ -639,30 +657,30 @@ protected void init () {
 	if (emptyTab == 0) SWT.error(SWT.ERROR_NO_HANDLES);
 	OS.pango_tab_array_set_tab(emptyTab, 0, OS.PANGO_TAB_LEFT, 1);
 
-	shellHandle = OS.gtk_window_new(OS.GTK_WINDOW_TOPLEVEL);
+	shellHandle = GTK.gtk_window_new(GTK.GTK_WINDOW_TOPLEVEL);
 	if (shellHandle == 0) SWT.error(SWT.ERROR_NO_HANDLES);
-	OS.gtk_widget_realize(shellHandle);
+	GTK.gtk_widget_realize(shellHandle);
 
 	/* Initialize the system font slot */
 	long /*int*/ [] defaultFontArray = new long /*int*/ [1];
 	long /*int*/ defaultFont;
-	if (OS.GTK3) {
-		long /*int*/ context = OS.gtk_widget_get_style_context (shellHandle);
-		if (OS.GTK_VERSION < OS.VERSION(3, 8, 0)) {
-			defaultFont = OS.gtk_style_context_get_font (context, OS.GTK_STATE_FLAG_NORMAL);
-		} else if (OS.GTK_VERSION >= OS.VERSION(3, 18, 0)) {
-			OS.gtk_style_context_save(context);
-			OS.gtk_style_context_set_state(context, OS.GTK_STATE_FLAG_NORMAL);
-			OS.gtk_style_context_get(context, OS.GTK_STATE_FLAG_NORMAL, OS.gtk_style_property_font, defaultFontArray, 0);
-			OS.gtk_style_context_restore(context);
+	if (GTK.GTK3) {
+		long /*int*/ context = GTK.gtk_widget_get_style_context (shellHandle);
+		if ((GTK.GTK_VERSION < OS.VERSION(3, 8, 0))|| ("ppc64le".equals(System.getProperty("os.arch")))) {
+			defaultFont = GTK.gtk_style_context_get_font (context, GTK.GTK_STATE_FLAG_NORMAL);
+		} else if (GTK.GTK_VERSION >= OS.VERSION(3, 18, 0)) {
+			GTK.gtk_style_context_save(context);
+			GTK.gtk_style_context_set_state(context, GTK.GTK_STATE_FLAG_NORMAL);
+			GTK.gtk_style_context_get(context, GTK.GTK_STATE_FLAG_NORMAL, GTK.gtk_style_property_font, defaultFontArray, 0);
+			GTK.gtk_style_context_restore(context);
 			defaultFont = defaultFontArray [0];
 		} else {
-			OS.gtk_style_context_get(context, OS.GTK_STATE_FLAG_NORMAL, OS.gtk_style_property_font, defaultFontArray, 0);
+			GTK.gtk_style_context_get(context, GTK.GTK_STATE_FLAG_NORMAL, GTK.gtk_style_property_font, defaultFontArray, 0);
 			defaultFont = defaultFontArray [0];
 		}
 	} else {
-		long /*int*/ style = OS.gtk_widget_get_style (shellHandle);
-		defaultFont = OS.gtk_style_get_font_desc (style);
+		long /*int*/ style = GTK.gtk_widget_get_style (shellHandle);
+		defaultFont = GTK.gtk_style_get_font_desc (style);
 	}
 	defaultFont = OS.pango_font_description_copy (defaultFont);
 	Point dpi = getDPI(), screenDPI = getScreenDPI();
@@ -672,41 +690,87 @@ protected void init () {
 	}
 	systemFont = Font.gtk_new (this, defaultFont);
 
-	/* Load certain CSS globally to save native GTK calls */
-	if (OS.GTK3) {
-		long /*int*/ screen = OS.gdk_screen_get_default();
-		long /*int*/ provider = OS.gtk_css_provider_new();
-		String resourcePath = "";
-		if (screen != 0 && provider != 0) {
-			String userCSS = "";
-			String additionalCSSPath = System.getProperty("org.eclipse.swt.internal.gtk.cssFile");
-			if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0) && additionalCSSPath != null){
-				try (BufferedReader buffer = new BufferedReader(new FileReader(
-						new File(additionalCSSPath)))) {
-					userCSS = buffer.lines().collect(Collectors.joining("\n"));
-				} catch (IOException e) {
-					//Resource was not loaded thus no modifications to the gtk theme will be applied
-				}
-
-			}
-
-			if (OS.GTK_VERSION < OS.VERSION(3, 20, 0)) {
-				resourcePath = "/org/eclipse/swt/internal/gtk/swtgtk_pre320.css";
-			} else {
-				resourcePath = "/org/eclipse/swt/internal/gtk/swtgtk_320.css";
-			}
-			try (BufferedReader buffer = new BufferedReader(new InputStreamReader(
-					Device.class.getResourceAsStream(resourcePath)))) {
-				String css = buffer.lines().collect(Collectors.joining("\n"));
-				String fullCSS = css + userCSS;
-				OS.gtk_style_context_add_provider_for_screen (screen, provider, OS.GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-				OS.gtk_css_provider_load_from_data (provider, Converter.wcsToMbcs (fullCSS, true), -1, null);
-			} catch (IOException e) {
-				//Resource was not loaded thus no modifications to the gtk theme will be applied
-			}
-
-		}
+	if (GTK.GTK3) {
+		overrideThemeValues();
 	}
+}
+
+/**
+ * For functionality & improved looks, we override some CSS theme values with custom values.
+ *
+ * Note about theme load mechanism:
+ * - This method is reached early at start of SWT initialization.
+ *   Later, platform.ui will call OS.setDarkThemePreferred(true), which tells Gtk to use dark theme.
+ *   This has the implication that the system theme can be 'Adwaita' (light), but later be 'darkened'
+ *   by platform.ui. This means that there should not be any color-specific overrides in Adwaita theming
+ *   because 'Adwaita' is used for both light and dark theme.
+ *
+ * Note about light/dark system theme:
+ * - If the System theme is Adwaita (light), eclipse can be forced to be dark with setDarkThemePreferred(true).
+ *   But if the System theme is Adwaita-dark, eclipse cannot be made 'light'.
+ *
+ * Note that much of eclipse 'dark theme' is done by platform.ui's CSS engine, not by SWT.
+ */
+private void overrideThemeValues () {
+	assert GTK.GTK3;
+	long /*int*/ screen = GDK.gdk_screen_get_default();
+	long /*int*/ provider = GTK.gtk_css_provider_new();
+	if (screen == 0 || provider == 0) {
+		System.err.println("SWT Warning: Override of theme values failed. Reason: could not acquire screen or provider.");
+		return;
+	}
+
+	BiFunction <String, Boolean, String> load = (path, isResource) -> {
+		try  {
+			BufferedReader buffer;
+			if (isResource) {
+				buffer = new BufferedReader(new InputStreamReader(Device.class.getResourceAsStream(path)));
+			} else {
+				buffer = new BufferedReader(new FileReader(new File(path)));
+			}
+			return buffer.lines().collect(Collectors.joining("\n"));
+		} catch (IOException e) {
+			System.err.println("SWT Warning: Failed to load " + (isResource ? "resource: " : "file: ") + path);
+			return "";
+		}
+	};
+
+	StringBuilder combinedCSS = new StringBuilder();
+
+	// Load functional CSS fixes. Such as keyboard functionality for some widgets.
+	combinedCSS.append(load.apply(
+		GTK.GTK_VERSION < OS.VERSION(3, 20, 0) ?
+				"/org/eclipse/swt/internal/gtk/swt_functional_gtk_pre320.css" :
+				"/org/eclipse/swt/internal/gtk/swt_functional_gtk_320.css"
+			, true));
+
+	// By default, load CSS theme fixes to overcome things such as excessive padding that breaks SWT otherwise.
+	// Initially designed for Adwaita light/dark theme, but after investigation other themes (like Ubuntu's Ambiance + dark) seem to benefit from this also.
+	// However, a few themes break with these fixes, so we allow them to be turned off by user and allow them to load their own fixes manually instead.
+	// To turn on this flag, add the following vm argument:  -Dorg.eclipse.swt.internal.gtk.noThemingFixes
+	// Note:
+	// - Display.create() may override the theme name. See Display.create() ... OS.getThemeName(..).
+	// - These fixes should not contain any color information, otherwise it might break a light/dark variant of the theme.
+	//   Color fixes should be put either into the theme itself or via swt user api.
+	if (System.getProperty("org.eclipse.swt.internal.gtk.noThemingFixes") == null) {
+		combinedCSS.append(load.apply(
+				GTK.GTK_VERSION < OS.VERSION(3, 20, 0) ?
+						"/org/eclipse/swt/internal/gtk/swt_theming_fixes_gtk_pre320.css" :
+						"/org/eclipse/swt/internal/gtk/swt_theming_fixes_gtk_320.css"
+					, true));
+	}
+
+	// Load CSS from user-defined CSS file.
+	String additionalCSSPath = System.getProperty("org.eclipse.swt.internal.gtk.cssFile");
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0) && additionalCSSPath != null){
+		// Warning:
+		// - gtk css syntax changed in 3.20. If you load custom css, it could break things depending on gtk version on system.
+		// - Also, a lot of custom css/themes are buggy and may result in additional console warnings.
+		combinedCSS.append(load.apply(additionalCSSPath, false));
+	}
+
+	GTK.gtk_style_context_add_provider_for_screen (screen, provider, GTK.GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+	GTK.gtk_css_provider_load_from_data (provider, Converter.wcsToMbcs (combinedCSS.toString(), true), -1, null);
 }
 
 /**
@@ -854,7 +918,7 @@ static synchronized void register (Device device) {
  * @see #destroy
  */
 protected void release () {
-	if (shellHandle != 0) OS.gtk_widget_destroy(shellHandle);
+	if (shellHandle != 0) GTK.gtk_widget_destroy(shellHandle);
 	shellHandle = 0;
 
 	/* Dispose the default font */
@@ -862,13 +926,13 @@ protected void release () {
 	systemFont = null;
 
 	if (gdkColors != null) {
-		if (!OS.GTK3) {
-			long /*int*/ colormap = OS.gdk_colormap_get_system();
+		if (!GTK.GTK3) {
+			long /*int*/ colormap = GDK.gdk_colormap_get_system();
 			for (int i = 0; i < gdkColors.length; i++) {
 				GdkColor color = gdkColors [i];
 				if (color != null) {
 					while (colorRefCount [i] > 0) {
-						OS.gdk_colormap_free_colors(colormap, color, 1);
+						GDK.gdk_colormap_free_colors(colormap, color, 1);
 						--colorRefCount [i];
 					}
 				}
@@ -973,7 +1037,7 @@ static long /*int*/ XErrorProc (long /*int*/ xDisplay, long /*int*/ xErrorEvent)
 				new SWTError ().printStackTrace ();
 			}
 			//TODO: Remove; temporary code only
-			boolean fixAIX = OS.IsAIX && OS.PTR_SIZEOF == 8;
+			boolean fixAIX = OS.IsAIX && C.PTR_SIZEOF == 8;
 			if (!fixAIX) OS.Call (XErrorProc, xDisplay, xErrorEvent);
 		}
 	} else {
@@ -1014,12 +1078,12 @@ int _getDPIx () {
  * @since 3.105
  */
 protected int getDeviceZoom() {
-	long /*int*/ screen = OS.gdk_screen_get_default();
-	int dpi = (int) OS.gdk_screen_get_resolution (screen);
+	long /*int*/ screen = GDK.gdk_screen_get_default();
+	int dpi = (int) GDK.gdk_screen_get_resolution (screen);
 	if (dpi <= 0) dpi = 96; // gdk_screen_get_resolution returns -1 in case of error
-	if (OS.GTK_VERSION > OS.VERSION(3, 9, 0)) {
-		int monitor_num = OS.gdk_screen_get_monitor_at_point (screen, 0, 0);
-		int scale = OS.gdk_screen_get_monitor_scale_factor (screen, monitor_num);
+	if (GTK.GTK_VERSION > OS.VERSION(3, 9, 0)) {
+		int monitor_num = GDK.gdk_screen_get_monitor_at_point (screen, 0, 0);
+		int scale = GDK.gdk_screen_get_monitor_scale_factor (screen, monitor_num);
 		dpi = dpi * scale;
 	}
 	return DPIUtil.mapDPIToZoom (dpi);

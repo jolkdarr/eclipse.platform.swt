@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (c) 2000, 2017 IBM Corporation and others.
+# Copyright (c) 2000, 2018 IBM Corporation and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
 # which accompanies this distribution, and is available at
@@ -12,11 +12,10 @@
 # Makefile for SWT libraries on Windows
 
 # assumes these variables are set in the environment from which nmake is run
-#	JAVA_HOME
+#	SWT_JAVA_HOME
 #	OUTPUT_DIR
 
 !include <make_common.mak>
-!include <win32.mak>
 
 SWT_PREFIX  = swt
 WS_PREFIX   = win32
@@ -34,11 +33,9 @@ GDIP_OBJS    = gdip.obj gdip_structs.obj gdip_stats.obj gdip_custom.obj
 
 AWT_PREFIX = swt-awt
 AWT_LIB    = $(AWT_PREFIX)-$(WS_PREFIX)-$(SWT_VERSION).dll
-AWT_LIBS   = "$(JAVA_HOME)\lib\jawt.lib"
+AWT_LIBS   = "$(SWT_JAVA_HOME)\lib\jawt.lib"
 AWT_OBJS   = swt_awt.obj
 
-WEBKIT_DIR 	  = $(WEBKIT_HOME)\WebKit-r72896
-WEBKIT_SUPPORT_DIR = $(WEBKIT_HOME)\WebKitSupportLibrary
 WEBKIT_PREFIX = swt-webkit
 WEBKIT_LIB    = $(WEBKIT_PREFIX)-$(WS_PREFIX)-$(SWT_VERSION).dll
 WEBKIT_LIBS   = $(WEBKIT_DIR)\lib\webkit.lib $(WEBKIT_SUPPORT_DIR)\win\lib\CFNetwork.lib $(WEBKIT_SUPPORT_DIR)\win\lib\CoreFoundation.lib
@@ -55,17 +52,21 @@ WGL_OBJS   = wgl.obj wgl_structs.obj wgl_stats.obj
 WEBKITCFLAGS = -c -O1\
 	-DSWT_VERSION=$(SWT_VERSION) \
 	$(NATIVE_STATS) \
-	-I"$(JAVA_HOME)\include" -I"$(JAVA_HOME)\include\win32" \
+	-I"$(SWT_JAVA_HOME)\include" -I"$(SWT_JAVA_HOME)\include\win32" \
 	-I"$(WEBKIT_DIR)" \
 	-I"$(WEBKIT_DIR)\WebKit\win" \
 	-I"$(WEBKIT_DIR)\JavaScriptCore\ForwardingHeaders" \
 	-I"$(WEBKIT_SUPPORT_DIR)\win\include"
 
 #CFLAGS = $(cdebug) $(cflags) $(cvarsmt) $(CFLAGS) \
-CFLAGS = -O1 -DNDEBUG $(cflags) $(cvarsmt) $(CFLAGS) \
+CFLAGS = -O1 -DNDEBUG /c $(cflags) $(cvarsmt) $(CFLAGS) \
 	-DSWT_VERSION=$(SWT_VERSION) $(NATIVE_STATS) -DUSE_ASSEMBLER \
-	/I"$(JAVA_HOME)\include" /I"$(JAVA_HOME)\include\win32" /I.
+	/I"$(SWT_JAVA_HOME)\include" /I"$(SWT_JAVA_HOME)\include\win32" /I.
 RCFLAGS = $(rcflags) $(rcvars) $(RCFLAGS) -DSWT_FILE_VERSION=\"$(maj_ver).$(min_ver)\" -DSWT_COMMA_VERSION=$(comma_ver)
+ldebug = /RELEASE  /INCREMENTAL:NO /NOLOGO
+dlllflags = -dll
+guilibsmt = kernel32.lib  ws2_32.lib mswsock.lib advapi32.lib bufferoverflowu.lib user32.lib gdi32.lib comdlg32.lib winspool.lib
+olelibsmt = ole32.lib uuid.lib oleaut32.lib $(guilibsmt)
 
 all: make_swt make_awt make_gdip make_wgl
 

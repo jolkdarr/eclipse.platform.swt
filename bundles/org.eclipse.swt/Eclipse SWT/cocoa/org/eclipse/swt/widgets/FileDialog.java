@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2015 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -350,14 +350,18 @@ public String open () {
 }
 
 long /*int*/ panel_shouldShowFilename (long /*int*/ id, long /*int*/ sel, long /*int*/ arg0, long /*int*/ arg1) {
+	if ((style & SWT.SAVE) != 0) {
+		/* All filenames are always disabled in the NSSavePanel, so return from here. */
+		return 1;
+	}
 	NSString path = new NSString(arg1);
 	if (filterExtensions != null && filterExtensions.length != 0) {
 		NSFileManager manager = NSFileManager.defaultManager();
-		long /*int*/ ptr = OS.malloc(1);
+		long /*int*/ ptr = C.malloc(1);
 		boolean found = manager.fileExistsAtPath(path, ptr);
 		byte[] isDirectory = new byte[1];
-		OS.memmove(isDirectory, ptr, 1);
-		OS.free(ptr);
+		C.memmove(isDirectory, ptr, 1);
+		C.free(ptr);
 		if (found) {
 			if (isDirectory[0] != 0) {
 				return 1;
@@ -372,7 +376,11 @@ long /*int*/ panel_shouldShowFilename (long /*int*/ id, long /*int*/ sel, long /
 					String filter = extensions.substring (start, index).trim ();
 					if (filter.equalsIgnoreCase (fileName)) return 1;
 					if (filter.equals ("*") || filter.equals ("*.*")) return 1;
-					if (filter.startsWith ("*.")) filter = filter.substring (2);
+					if (filter.startsWith ("*.")) {
+						filter = filter.substring (2);
+					} else if (filter.startsWith (".")) {
+						filter = filter.substring (1);
+					}
 					if ((fileName.toLowerCase ()).endsWith("." + filter.toLowerCase ())) return 1;
 					start = index + 1;
 				}
@@ -434,6 +442,22 @@ void setAllowedFileType (String fileTypes) {
 			fileType = fileType.substring(2);
 		} else if (fileType.startsWith(".")) {
 			fileType = fileType.substring(1);
+		}
+		/*
+		 * In Cocoa, only the part of the file name after the last extension divider (.)
+		 * is considered as extension. But, SWT FileDialog supports extensions with more than one (.).
+		 * When files with extensions which have more than 1 separator are filtered, they are not
+		 * shown as enabled in the File Open Dialog. For example, using tar.gz in the filter
+		 * extension doesn't show the tar.gz files enabled in the FileDialog.
+		 *
+		 * The workaround is for Open FileDialog, add only the extension after the last (.) as the allowed
+		 * file type. For example, for tar.gz, only gz is added as the allowed file type.
+		 */
+		if ((style & SWT.SAVE) == 0) {
+			int index = fileType.lastIndexOf(".");
+			if (index != -1 && ((index + 1) < fileType.length())) {
+				fileType = fileType.substring(index + 1);
+			}
 		}
 		allowedFileTypes.addObject(NSString.stringWith(fileType));
 	}

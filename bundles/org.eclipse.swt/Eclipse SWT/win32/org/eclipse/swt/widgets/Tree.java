@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -89,7 +89,7 @@ public class Tree extends Composite {
 	boolean dragStarted, gestureCompleted, insertAfter, shrink, ignoreShrink;
 	boolean ignoreSelect, ignoreExpand, ignoreDeselect, ignoreResize;
 	boolean lockSelection, oldSelected, newSelected, ignoreColumnMove;
-	boolean linesVisible, customDraw, printClient, painted, ignoreItemHeight;
+	boolean linesVisible, customDraw, painted, ignoreItemHeight;
 	boolean ignoreCustomDraw, ignoreDrawForeground, ignoreDrawBackground, ignoreDrawFocus;
 	boolean ignoreDrawSelection, ignoreDrawHot, ignoreFullSelection, explorerTheme;
 	boolean createdAsRTL;
@@ -110,7 +110,6 @@ public class Tree extends Composite {
 	static final int INCREMENT = 5;
 	static final int EXPLORER_EXTRA = 2;
 	static final int DRAG_IMAGE_SIZE = 301;
-	static final boolean EXPLORER_THEME = true;
 	static final long /*int*/ TreeProc;
 	static final TCHAR TreeClass = new TCHAR (0, OS.WC_TREEVIEW, true);
 	static final long /*int*/ HeaderProc;
@@ -236,7 +235,7 @@ void _addListener (int eventType, Listener listener) {
 				*/
 				int count = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETCOUNT, 0, 0);
 				if (count != 0 && (bits & OS.TVS_NOHSCROLL) != 0) {
-					if (!OS.IsWinCE) OS.ShowScrollBar (handle, OS.SB_HORZ, false);
+					OS.ShowScrollBar (handle, OS.SB_HORZ, false);
 				}
 			}
 			break;
@@ -444,7 +443,7 @@ LRESULT CDDS_ITEMPOSTPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int
 		}
 	}
 	int sortIndex = -1, clrSortBk = -1;
-	if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+	if (OS.IsAppThemed ()) {
 		if (sortColumn != null && sortDirection != SWT.NONE) {
 			if (findImageControl () == null) {
 				sortIndex = indexOf (sortColumn);
@@ -818,6 +817,9 @@ LRESULT CDDS_ITEMPOSTPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int
 								if ((column.style & SWT.CENTER) != 0) flags |= OS.DT_CENTER;
 								if ((column.style & SWT.RIGHT) != 0) flags |= OS.DT_RIGHT;
 							}
+							if ((string != null) && (string.length() > Item.TEXT_LIMIT)) {
+								string = string.substring(0, Item.TEXT_LIMIT - Item.ELLIPSIS.length()) + Item.ELLIPSIS;
+							}
 							TCHAR buffer = new TCHAR (getCodePage (), string, false);
 							if (!ignoreDrawForeground) OS.DrawText (hDC, buffer, buffer.length (), rect, flags);
 							OS.DrawText (hDC, buffer, buffer.length (), rect, flags | OS.DT_CALCRECT);
@@ -956,17 +958,11 @@ LRESULT CDDS_ITEMPREPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*
 	}
 	RECT clipRect = null;
 	if (columnCount != 0) {
-		boolean clip = !printClient;
-		if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-			clip = true;
-		}
-		if (clip) {
-			clipRect = new RECT ();
-			HDITEM hdItem = new HDITEM ();
-			hdItem.mask = OS.HDI_WIDTH;
-			OS.SendMessage (hwndHeader, OS.HDM_GETITEM, index, hdItem);
-			OS.SetRect (clipRect, nmcd.left, nmcd.top, nmcd.left + hdItem.cxy, nmcd.bottom);
-		}
+		clipRect = new RECT ();
+		HDITEM hdItem = new HDITEM ();
+		hdItem.mask = OS.HDI_WIDTH;
+		OS.SendMessage (hwndHeader, OS.HDM_GETITEM, index, hdItem);
+		OS.SetRect (clipRect, nmcd.left, nmcd.top, nmcd.left + hdItem.cxy, nmcd.bottom);
 	}
 	int clrText = -1, clrTextBk = -1;
 	if (OS.IsWindowEnabled (handle)) {
@@ -976,7 +972,7 @@ LRESULT CDDS_ITEMPREPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*
 		if (clrTextBk == -1) clrTextBk = item.background;
 	}
 	int clrSortBk = -1;
-	if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+	if (OS.IsAppThemed ()) {
 		if (sortColumn != null && sortDirection != SWT.NONE) {
 			if (findImageControl () == null) {
 				if (indexOf (sortColumn) == index) {
@@ -1233,7 +1229,7 @@ LRESULT CDDS_ITEMPREPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*
 						hdItem.mask = OS.HDI_WIDTH;
 						OS.SendMessage (hwndHeader, OS.HDM_GETITEM, index, hdItem);
 						OS.SetRect (rect, nmcd.left, nmcd.top, nmcd.left + hdItem.cxy, nmcd.bottom);
-						if (OS.COMCTL32_MAJOR < 6 || !OS.IsAppThemed ()) {
+						if (!OS.IsAppThemed ()) {
 							RECT itemRect = new RECT ();
 							if (OS.TreeView_GetItemRect (handle, item.handle, itemRect, true)) {
 								rect.left = Math.min (itemRect.left, rect.right);
@@ -1338,7 +1334,7 @@ LRESULT CDDS_ITEMPREPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*
 LRESULT CDDS_POSTPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*/ lParam) {
 	if (ignoreCustomDraw) return null;
 	if (OS.IsWindowVisible (handle)) {
-		if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+		if (OS.IsAppThemed ()) {
 			if (sortColumn != null && sortDirection != SWT.NONE) {
 				if (findImageControl () == null) {
 					int index = indexOf (sortColumn);
@@ -1361,7 +1357,7 @@ LRESULT CDDS_POSTPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*/ l
 						* WM_NOTIFY with NM_CUSTOMDRAW and CDDS_POSTPAINT.
 						*/
 						long /*int*/ hItem = 0;
-						if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
+						if (OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
 							hItem = getBottomItem ();
 						} else {
 							hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_LASTVISIBLE, 0);
@@ -1417,7 +1413,7 @@ LRESULT CDDS_POSTPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*/ l
 			* WM_NOTIFY with NM_CUSTOMDRAW and CDDS_POSTPAINT.
 			*/
 			long /*int*/ hItem = 0;
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
+			if (OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
 				hItem = getBottomItem ();
 			} else {
 				hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_LASTVISIBLE, 0);
@@ -1447,7 +1443,7 @@ LRESULT CDDS_POSTPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*/ l
 
 LRESULT CDDS_PREPAINT (NMTVCUSTOMDRAW nmcd, long /*int*/ wParam, long /*int*/ lParam) {
 	if (explorerTheme) {
-		if ((OS.IsWindowEnabled (handle) && hooks (SWT.EraseItem)) || findImageControl () != null) {
+		if ((OS.IsWindowEnabled (handle) && hooks (SWT.EraseItem)) || hasCustomBackground() || findImageControl () != null) {
 			RECT rect = new RECT ();
 			OS.SetRect (rect, nmcd.left, nmcd.top, nmcd.right, nmcd.bottom);
 			drawBackground (nmcd.hdc, rect);
@@ -1625,11 +1621,9 @@ void checkBuffered () {
 		style |= SWT.DOUBLE_BUFFERED;
 		OS.SendMessage (handle, OS.TVM_SETSCROLLTIME, 0, 0);
 	}
-	if (EXPLORER_THEME) {
-		if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0) && OS.IsAppThemed ()) {
-			int exStyle = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETEXTENDEDSTYLE, 0, 0);
-			if ((exStyle & OS.TVS_EX_DOUBLEBUFFER) != 0) style |= SWT.DOUBLE_BUFFERED;
-		}
+	if (OS.IsAppThemed ()) {
+		int exStyle = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETEXTENDEDSTYLE, 0, 0);
+		if ((exStyle & OS.TVS_EX_DOUBLEBUFFER) != 0) style |= SWT.DOUBLE_BUFFERED;
 	}
 }
 
@@ -1862,41 +1856,23 @@ void createHandle () {
 	state &= ~(CANVAS | THEME_BACKGROUND);
 
 	/* Use the Explorer theme */
-	if (EXPLORER_THEME) {
-		if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0) && OS.IsAppThemed ()) {
-			explorerTheme = true;
-			OS.SetWindowTheme (handle, Display.EXPLORER, null);
-			int bits = OS.TVS_EX_DOUBLEBUFFER | OS.TVS_EX_RICHTOOLTIP;
-			if (ENABLE_TVS_EX_FADEINOUTEXPANDOS) bits |= OS.TVS_EX_FADEINOUTEXPANDOS;
-			/*
-			* This code is intentionally commented.
-			*/
-//			if ((style & SWT.FULL_SELECTION) == 0) bits |= OS.TVS_EX_AUTOHSCROLL;
-			OS.SendMessage (handle, OS.TVM_SETEXTENDEDSTYLE, 0, bits);
-			/*
-			* Bug in Windows.  When the tree is using the explorer
-			* theme, it does not use COLOR_WINDOW_TEXT for the
-			* default foreground color.  The fix is to explicitly
-			* set the foreground.
-			*/
-			setForegroundPixel (-1);
-		}
-	}
-
-	/*
-	* Feature in Windows.  In version 5.8 of COMCTL32.DLL,
-	* if the font is changed for an item, the bounds for the
-	* item are not updated, causing the text to be clipped.
-	* The fix is to detect the version of COMCTL32.DLL, and
-	* if it is one of the versions with the problem, then
-	* use version 5.00 of the control (a version that does
-	* not have the problem).  This is the recommended work
-	* around from the MSDN.
-	*/
-	if (!OS.IsWinCE) {
-		if (OS.COMCTL32_MAJOR < 6) {
-			OS.SendMessage (handle, OS.CCM_SETVERSION, 5, 0);
-		}
+	if (OS.IsAppThemed ()) {
+		explorerTheme = true;
+		OS.SetWindowTheme (handle, Display.EXPLORER, null);
+		int bits = OS.TVS_EX_DOUBLEBUFFER | OS.TVS_EX_RICHTOOLTIP;
+		if (ENABLE_TVS_EX_FADEINOUTEXPANDOS) bits |= OS.TVS_EX_FADEINOUTEXPANDOS;
+		/*
+		* This code is intentionally commented.
+		*/
+//		if ((style & SWT.FULL_SELECTION) == 0) bits |= OS.TVS_EX_AUTOHSCROLL;
+		OS.SendMessage (handle, OS.TVM_SETEXTENDEDSTYLE, 0, bits);
+		/*
+		* Bug in Windows.  When the tree is using the explorer
+		* theme, it does not use COLOR_WINDOW_TEXT for the
+		* default foreground color.  The fix is to explicitly
+		* set the foreground.
+		*/
+		setForegroundPixel (-1);
 	}
 
 	/* Set the checkbox image list */
@@ -1917,16 +1893,22 @@ void createHandle () {
 	long /*int*/ hFont = OS.GetStockObject (OS.SYSTEM_FONT);
 	OS.SendMessage (handle, OS.WM_SETFONT, hFont, 0);
 
+	/*
+	 * Bug in Windows. When image list is not set, tree glyph
+	 * size is tied to tree indent. Indent doesn't automatically
+	 * scale with DPI resulting in distorted glyph image
+	 * at higher DPI settings.
+	 */
+	int indent = DPIUtil.autoScaleUpUsingNativeDPI(16);
+	OS.SendMessage(handle, OS.TVM_SETINDENT, indent, 0);
+
 	createdAsRTL = (style & SWT.RIGHT_TO_LEFT) != 0;
 }
 
 void createHeaderToolTips () {
-	if (OS.IsWinCE) return;
 	if (headerToolTipHandle != 0) return;
 	int bits = 0;
-	if (OS.WIN32_VERSION >= OS.VERSION (4, 10)) {
-		if ((style & SWT.RIGHT_TO_LEFT) != 0) bits |= OS.WS_EX_LAYOUTRTL;
-	}
+	if ((style & SWT.RIGHT_TO_LEFT) != 0) bits |= OS.WS_EX_LAYOUTRTL;
 	headerToolTipHandle = OS.CreateWindowEx (
 		bits,
 		new TCHAR (0, OS.TOOLTIPS_CLASS, true),
@@ -2048,7 +2030,7 @@ void createItem (TreeColumn column, int index) {
 		*/
 		int count = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETCOUNT, 0, 0);
 		if (count != 0) {
-			if (!OS.IsWinCE) OS.ShowScrollBar (handle, OS.SB_HORZ, false);
+			OS.ShowScrollBar (handle, OS.SB_HORZ, false);
 		}
 		createItemToolTips ();
 		if (itemToolTipHandle != 0) {
@@ -2184,18 +2166,13 @@ void createItem (TreeItem item, long /*int*/ hParent, long /*int*/ hInsertAfter,
 					RECT damageRect = new RECT ();
 					boolean damaged = OS.GetUpdateRect (handle, damageRect, true);
 					if (damaged && damageRect.top < rect.bottom) {
-						if (OS.IsWinCE) {
-							OS.OffsetRect (damageRect, 0, rect.bottom - rect.top);
-							OS.InvalidateRect (handle, damageRect, true);
-						} else {
-							long /*int*/ rgn = OS.CreateRectRgn (0, 0, 0, 0);
-							int result = OS.GetUpdateRgn (handle, rgn, true);
-							if (result != OS.NULLREGION) {
-								OS.OffsetRgn (rgn, 0, rect.bottom - rect.top);
-								OS.InvalidateRgn (handle, rgn, true);
-							}
-							OS.DeleteObject (rgn);
+						long /*int*/ rgn = OS.CreateRectRgn (0, 0, 0, 0);
+						int result = OS.GetUpdateRgn (handle, rgn, true);
+						if (result != OS.NULLREGION) {
+							OS.OffsetRgn (rgn, 0, rect.bottom - rect.top);
+							OS.InvalidateRgn (handle, rgn, true);
 						}
+						OS.DeleteObject (rgn);
 					}
 				}
 			}
@@ -2205,26 +2182,20 @@ void createItem (TreeItem item, long /*int*/ hParent, long /*int*/ hInsertAfter,
 }
 
 void createItemToolTips () {
-	if (OS.IsWinCE) return;
 	if (itemToolTipHandle != 0) return;
 	int bits1 = OS.GetWindowLong (handle, OS.GWL_STYLE);
 	bits1 |= OS.TVS_NOTOOLTIPS;
 	OS.SetWindowLong (handle, OS.GWL_STYLE, bits1);
 	int bits2 = 0;
-	if (OS.WIN32_VERSION >= OS.VERSION (4, 10)) {
-		if ((style & SWT.RIGHT_TO_LEFT) != 0) bits2 |= OS.WS_EX_LAYOUTRTL;
-	}
+	if ((style & SWT.RIGHT_TO_LEFT) != 0) bits2 |= OS.WS_EX_LAYOUTRTL;
 	/*
 	* Feature in Windows.  For some reason, when the user
 	* clicks on a tool tip, it temporarily takes focus, even
 	* when WS_EX_NOACTIVATE is specified.  The fix is to
 	* use WS_EX_TRANSPARENT, even though WS_EX_TRANSPARENT
 	* is documented to affect painting, not hit testing.
-	*
-	* NOTE: Windows 2000 doesn't have the problem and
-	* setting WS_EX_TRANSPARENT causes pixel corruption.
 	*/
-	if (OS.COMCTL32_MAJOR >= 6) bits2 |= OS.WS_EX_TRANSPARENT;
+	bits2 |= OS.WS_EX_TRANSPARENT;
 	itemToolTipHandle = OS.CreateWindowEx (
 		bits2,
 		new TCHAR (0, OS.TOOLTIPS_CLASS, true),
@@ -2278,11 +2249,8 @@ void createParent () {
 		null);
 	if (hwndParent == 0) error (SWT.ERROR_NO_HANDLES);
 	OS.SetWindowLongPtr (hwndParent, OS.GWLP_ID, hwndParent);
-	int bits = 0;
-	if (OS.WIN32_VERSION >= OS.VERSION (4, 10)) {
-		bits |= OS.WS_EX_NOINHERITLAYOUT;
-		if ((style & SWT.RIGHT_TO_LEFT) != 0) bits |= OS.WS_EX_LAYOUTRTL;
-	}
+	int bits = OS.WS_EX_NOINHERITLAYOUT;
+	if ((style & SWT.RIGHT_TO_LEFT) != 0) bits |= OS.WS_EX_LAYOUTRTL;
 	hwndHeader = OS.CreateWindowEx (
 		bits,
 		HeaderClass,
@@ -2313,7 +2281,7 @@ void createParent () {
 	if (hFont != 0) OS.SendMessage (hwndHeader, OS.WM_SETFONT, hFont, 0);
 	long /*int*/ hwndInsertAfter = OS.GetWindow (handle, OS.GW_HWNDPREV);
 	int flags = OS.SWP_NOSIZE | OS.SWP_NOMOVE | OS.SWP_NOACTIVATE;
-	SetWindowPos (hwndParent, hwndInsertAfter, 0, 0, 0, 0, flags);
+	OS.SetWindowPos (hwndParent, hwndInsertAfter, 0, 0, 0, 0, flags);
 	SCROLLINFO info = new SCROLLINFO ();
 	info.cbSize = SCROLLINFO.sizeof;
 	info.fMask = OS.SIF_RANGE | OS.SIF_PAGE;
@@ -2625,10 +2593,8 @@ void destroyItem (TreeItem item, long /*int*/ hItem) {
 	*
 	* NOTE:  This only happens on Vista.
 	*/
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		long /*int*/ hwndToolTip = OS.SendMessage (handle, OS.TVM_GETTOOLTIPS, 0, 0);
-		if (hwndToolTip != 0) OS.SendMessage (hwndToolTip, OS.TTM_POP, 0 ,0);
-	}
+	long /*int*/ hwndToolTip = OS.SendMessage (handle, OS.TVM_GETTOOLTIPS, 0, 0);
+	if (hwndToolTip != 0) OS.SendMessage (hwndToolTip, OS.TTM_POP, 0 ,0);
 
 	shrink = ignoreShrink = true;
 	OS.SendMessage (handle, OS.TVM_DELETEITEM, 0, hItem);
@@ -2700,27 +2666,15 @@ void enableDrag (boolean enabled) {
 void enableWidget (boolean enabled) {
 	super.enableWidget (enabled);
 	/*
-	* Feature in Windows.  When a tree is given a background color
-	* using TVM_SETBKCOLOR and the tree is disabled, Windows draws
-	* the tree using the background color rather than the disabled
-	* colors.  This is different from the table which draws grayed.
-	* The fix is to set the default background color while the tree
-	* is disabled and restore it when enabled.
-	*/
-	Control control = findBackgroundControl ();
-	/*
 	* Bug in Windows.  On Vista only, Windows does not draw using
 	* the background color when the tree is disabled.  The fix is
 	* to set the default color, even when the color has not been
 	* changed, causing Windows to draw correctly.
 	*/
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		if (control == null) control = this;
-	}
-	if (control != null) {
-		if (control.backgroundImage == null) {
-			_setBackgroundPixel (enabled ? control.getBackgroundPixel () : -1);
-		}
+	Control control = findBackgroundControl ();
+	if (control == null) control = this;
+	if (control.backgroundImage == null) {
+		_setBackgroundPixel (hasCustomBackground() ? control.getBackgroundPixel () : -1);
 	}
 	if (hwndParent != 0) OS.EnableWindow (hwndParent, enabled);
 
@@ -2729,7 +2683,7 @@ void enableWidget (boolean enabled) {
 	* TVS_FULLROWSELECT, the background color for the
 	* entire row is filled when an item is painted,
 	* drawing on top of the sort column color.  The fix
-	* is to clear TVS_FULLROWSELECT when a their is
+	* is to clear TVS_FULLROWSELECT when there is
 	* as sort column.
 	*/
 	updateFullSelection ();
@@ -3412,19 +3366,12 @@ public boolean getLinesVisible () {
 	return linesVisible;
 }
 
-long /*int*/ getNextSelection (long /*int*/ hItem, TVITEM tvItem) {
+long /*int*/ getNextSelection (long /*int*/ hItem) {
 	while (hItem != 0) {
-		int state = 0;
-		if (OS.IsWinCE) {
-			tvItem.hItem = hItem;
-			OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-			state = tvItem.state;
-		} else {
-			state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-		}
+		int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 		if ((state & OS.TVIS_SELECTED) != 0) return hItem;
 		long /*int*/ hFirstItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_CHILD, hItem);
-		long /*int*/ hSelected = getNextSelection (hFirstItem, tvItem);
+		long /*int*/ hSelected = getNextSelection (hFirstItem);
 		if (hSelected != 0) return hSelected;
 		hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_NEXT, hItem);
 	}
@@ -3451,7 +3398,7 @@ public TreeItem getParentItem () {
 int getSelection (long /*int*/ hItem, TVITEM tvItem, TreeItem [] selection, int index, int count, boolean bigSelection, boolean all) {
 	while (hItem != 0) {
 		boolean expanded = true;
-		if (OS.IsWinCE || bigSelection) {
+		if (bigSelection) {
 			tvItem.hItem = hItem;
 			OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
 			if ((tvItem.state & OS.TVIS_SELECTED) != 0) {
@@ -3539,23 +3486,11 @@ public TreeItem [] getSelection () {
 		long /*int*/ hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_ROOT, 0);
 		count = getSelection (hItem, tvItem, guess, 0, -1, false, true);
 	} else {
-		TVITEM tvItem = null;
-		if (OS.IsWinCE) {
-			tvItem = new TVITEM ();
-			tvItem.mask = OS.TVIF_STATE;
-		}
 		for (int i=0; i<items.length; i++) {
 			TreeItem item = items [i];
 			if (item != null) {
 				long /*int*/ hItem = item.handle;
-				int state = 0;
-				if (OS.IsWinCE) {
-					tvItem.hItem = hItem;
-					OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-					state = tvItem.state;
-				} else {
-					state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-				}
+				int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 				if ((state & OS.TVIS_SELECTED) != 0) {
 					if (count < guess.length) guess [count] = item;
 					count++;
@@ -3604,42 +3539,21 @@ public int getSelectionCount () {
 	if ((style & SWT.SINGLE) != 0) {
 		long /*int*/ hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_CARET, 0);
 		if (hItem == 0) return 0;
-		int state = 0;
-		if (OS.IsWinCE) {
-			TVITEM tvItem = new TVITEM ();
-			tvItem.hItem = hItem;
-			tvItem.mask = OS.TVIF_STATE;
-			OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-			state = tvItem.state;
-		} else {
-			state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-		}
+		int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 		return (state & OS.TVIS_SELECTED) == 0 ? 0 : 1;
 	}
 	int count = 0;
 	long /*int*/ oldProc = OS.GetWindowLongPtr (handle, OS.GWLP_WNDPROC);
-	TVITEM tvItem = null;
-	if (OS.IsWinCE) {
-		tvItem = new TVITEM ();
-		tvItem.mask = OS.TVIF_STATE;
-	}
 	OS.SetWindowLongPtr (handle, OS.GWLP_WNDPROC, TreeProc);
 	if ((style & SWT.VIRTUAL) != 0) {
 		long /*int*/ hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_ROOT, 0);
-		count = getSelection (hItem, tvItem, null, 0, -1, false, true);
+		count = getSelection (hItem, null, null, 0, -1, false, true);
 	} else {
 		for (int i=0; i<items.length; i++) {
 			TreeItem item = items [i];
 			if (item != null) {
 				long /*int*/ hItem = item.handle;
-				int state = 0;
-				if (OS.IsWinCE) {
-					tvItem.hItem = hItem;
-					OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-					state = tvItem.state;
-				} else {
-					state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-				}
+				int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 				if ((state & OS.TVIS_SELECTED) != 0) count++;
 			}
 		}
@@ -3670,20 +3584,8 @@ public TreeColumn getSortColumn () {
 }
 
 int getSortColumnPixel () {
-	int pixel = OS.IsWindowEnabled (handle) ? getBackgroundPixel () : OS.GetSysColor (OS.COLOR_3DFACE);
-	int red = pixel & 0xFF;
-	int green = (pixel & 0xFF00) >> 8;
-	int blue = (pixel & 0xFF0000) >> 16;
-	if (red > 240 && green > 240 && blue > 240) {
-		red -= 8;
-		green -= 8;
-		blue -= 8;
-	} else {
-		red = Math.min (0xFF, (red / 10) + red);
-		green = Math.min (0xFF, (green / 10) + green);
-		blue = Math.min (0xFF, (blue / 10) + blue);
-	}
-	return (red & 0xFF) | ((green & 0xFF) << 8) | ((blue & 0xFF) << 16);
+	int pixel = OS.IsWindowEnabled (handle) || hasCustomBackground() ? getBackgroundPixel () : OS.GetSysColor (OS.COLOR_3DFACE);
+	return getSlightlyDifferentBackgroundColor(pixel);
 }
 
 /**
@@ -3933,22 +3835,10 @@ void redrawSelection () {
 	} else {
 		long /*int*/ hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_FIRSTVISIBLE, 0);
 		if (hItem != 0) {
-			TVITEM tvItem = null;
-			if (OS.IsWinCE) {
-				tvItem = new TVITEM ();
-				tvItem.mask = OS.TVIF_STATE;
-			}
 			RECT rect = new RECT ();
 			int index = 0, count = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETVISIBLECOUNT, 0, 0);
 			while (index <= count && hItem != 0) {
-				int state = 0;
-				if (OS.IsWinCE) {
-					tvItem.hItem = hItem;
-					OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-					state = tvItem.state;
-				} else {
-					state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-				}
+				int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 				if ((state & OS.TVIS_SELECTED) != 0) {
 					if (OS.TreeView_GetItemRect (handle, hItem, rect, false)) {
 						OS.InvalidateRect (handle, rect, true);
@@ -4232,21 +4122,14 @@ void setItemCount (int count, long /*int*/ hParent, long /*int*/ hItem) {
 	TVITEM tvItem = new TVITEM ();
 	tvItem.mask = OS.TVIF_HANDLE | OS.TVIF_PARAM;
 	if (!redraw && (style & SWT.VIRTUAL) != 0) {
-		if (OS.IsWinCE) {
-			tvItem.hItem = hParent;
-			tvItem.mask = OS.TVIF_STATE;
-			OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-			expanded = (tvItem.state & OS.TVIS_EXPANDED) != 0;
-		} else {
-			/*
-			* Bug in Windows.  Despite the fact that TVM_GETITEMSTATE claims
-			* to return only the bits specified by the stateMask, when called
-			* with TVIS_EXPANDED, the entire state is returned.  The fix is
-			* to explicitly check for the TVIS_EXPANDED bit.
-			*/
-			int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hParent, OS.TVIS_EXPANDED);
-			expanded = (state & OS.TVIS_EXPANDED) != 0;
-		}
+		/*
+		* Bug in Windows.  Despite the fact that TVM_GETITEMSTATE claims
+		* to return only the bits specified by the stateMask, when called
+		* with TVIS_EXPANDED, the entire state is returned.  The fix is
+		* to explicitly check for the TVIS_EXPANDED bit.
+		*/
+		int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hParent, OS.TVIS_EXPANDED);
+		expanded = (state & OS.TVIS_EXPANDED) != 0;
 	}
 	while (hItem != 0) {
 		tvItem.hItem = hItem;
@@ -4326,7 +4209,7 @@ public void setLinesVisible (boolean show) {
 	linesVisible = show;
 	if (hwndParent == 0 && linesVisible) customDraw = true;
 	OS.InvalidateRect (handle, null, true);
-	OS.InvalidateRect (hwndHeader, null, true);
+	if (hwndHeader != 0) OS.InvalidateRect (hwndHeader, null, true);
 }
 
 @Override
@@ -4372,16 +4255,7 @@ public void select (TreeItem item) {
 	if (item.isDisposed ()) error (SWT.ERROR_INVALID_ARGUMENT);
 	if ((style & SWT.SINGLE) != 0) {
 		long /*int*/ hItem = item.handle;
-		int state = 0;
-		if (OS.IsWinCE) {
-			TVITEM tvItem = new TVITEM ();
-			tvItem.hItem = hItem;
-			tvItem.mask = OS.TVIF_STATE;
-			OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-			state = tvItem.state;
-		} else {
-			state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-		}
+		int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 		if ((state & OS.TVIS_SELECTED) != 0) return;
 		/*
 		* Feature in Windows.  When an item is selected with
@@ -4424,9 +4298,7 @@ public void select (TreeItem item) {
 		*
 		* NOTE: This code is only necessary on Windows Vista.
 		*/
-		if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-			OS.SetScrollInfo (handle, OS.SB_VERT, vInfo, true);
-		}
+		OS.SetScrollInfo (handle, OS.SB_VERT, vInfo, true);
 		long /*int*/ vThumb = OS.MAKELPARAM (OS.SB_THUMBPOSITION, vInfo.nPos);
 		OS.SendMessage (handle, OS.WM_VSCROLL, vThumb, 0);
 		if (redraw) {
@@ -4599,15 +4471,7 @@ void setBackgroundPixel (int pixel) {
 		setBackgroundImage (control.backgroundImage);
 		return;
 	}
-	/*
-	* Feature in Windows.  When a tree is given a background color
-	* using TVM_SETBKCOLOR and the tree is disabled, Windows draws
-	* the tree using the background color rather than the disabled
-	* colors.  This is different from the table which draws grayed.
-	* The fix is to set the default background color while the tree
-	* is disabled and restore it when enabled.
-	*/
-	if (OS.IsWindowEnabled (handle)) _setBackgroundPixel (pixel);
+	_setBackgroundPixel (pixel);
 
 	/*
 	* Feature in Windows.  When the tree has the style
@@ -4706,30 +4570,9 @@ public void setColumnOrder (int [] order) {
 
 void setCheckboxImageList () {
 	if ((style & SWT.CHECK) == 0) return;
-	int count = 5, flags = 0;
-	if (OS.IsWinCE) {
-		flags |= OS.ILC_COLOR;
-	} else {
-		if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
-			flags |= OS.ILC_COLOR32;
-		} else {
-			long /*int*/ hDC = OS.GetDC (handle);
-			int bits = OS.GetDeviceCaps (hDC, OS.BITSPIXEL);
-			int planes = OS.GetDeviceCaps (hDC, OS.PLANES);
-			OS.ReleaseDC (handle, hDC);
-			int depth = bits * planes;
-			switch (depth) {
-				case 4: flags |= OS.ILC_COLOR4; break;
-				case 8: flags |= OS.ILC_COLOR8; break;
-				case 16: flags |= OS.ILC_COLOR16; break;
-				case 24: flags |= OS.ILC_COLOR24; break;
-				case 32: flags |= OS.ILC_COLOR32; break;
-				default: flags |= OS.ILC_COLOR; break;
-			}
-			flags |= OS.ILC_MASK;
-		}
-	}
+	int count = 5, flags = OS.ILC_COLOR32;
 	if ((style & SWT.RIGHT_TO_LEFT) != 0) flags |= OS.ILC_MIRROR;
+	if (!OS.IsAppThemed ()) flags |= OS.ILC_MASK;
 	int height = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMHEIGHT, 0, 0), width = height;
 	long /*int*/ hStateList = OS.ImageList_Create (width, height, flags, count, count);
 	long /*int*/ hDC = OS.GetDC (handle);
@@ -4745,7 +4588,7 @@ void setCheckboxImageList () {
 	* fill it with a color that is neither black or white.
 	*/
 	int clrBackground = 0;
-	if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+	if (OS.IsAppThemed ()) {
 		Control control = findBackgroundControl ();
 		if (control == null) control = this;
 		clrBackground = control.getBackgroundPixel ();
@@ -4764,19 +4607,20 @@ void setCheckboxImageList () {
 	OS.SelectObject (hDC, oldFont);
 	int itemWidth = Math.min (tm.tmHeight, width);
 	int itemHeight = Math.min (tm.tmHeight, height);
-	/*
-	 * On Windows when OS level custom zoom is more than 150% then OS
-	 * doesn't support auto-scaling of the native check-box images and hence
-	 * the size of native check-box never goes more than 20px wide. So, to
-	 * handle this special case in Table/Tree, need to apply the same upper
-	 * cap to the size of custom drawn check-box images, so check-box images
-	 * look in proper ratio. For more details refer bug 489828.
-	 */
-	itemWidth = Math.min (20, itemWidth);
-	itemHeight = Math.min (20, itemHeight);
+	if (OS.IsAppThemed()) {
+		/*
+		 * Feature in Windows. DrawThemeBackground stretches the checkbox
+		 * bitmap to fill the provided rectangle. To avoid stretching
+		 * artifacts, limit the rectangle to actual checkbox bitmap size.
+		 */
+		SIZE size = new SIZE();
+		OS.GetThemePartSize(display.hButtonTheme(), memDC, OS.BP_CHECKBOX, 0, null, OS.TS_TRUE, size);
+		itemWidth = Math.min (size.cx, itemWidth);
+		itemHeight = Math.min (size.cy, itemHeight);
+	}
 	int left = (width - itemWidth) / 2, top = (height - itemHeight) / 2 + 1;
 	OS.SetRect (rect, left + width, top, left + width + itemWidth, top + itemHeight);
-	if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+	if (OS.IsAppThemed ()) {
 		long /*int*/ hTheme = display.hButtonTheme ();
 		OS.DrawThemeBackground (hTheme, memDC, OS.BP_CHECKBOX, OS.CBS_UNCHECKEDNORMAL, rect, null);
 		rect.left += width;  rect.right += width;
@@ -4797,7 +4641,7 @@ void setCheckboxImageList () {
 	OS.SelectObject (memDC, hOldBitmap);
 	OS.DeleteDC (memDC);
 	OS.ReleaseDC (handle, hDC);
-	if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+	if (OS.IsAppThemed ()) {
 		OS.ImageList_Add (hStateList, hBitmap, 0);
 	} else {
 		OS.ImageList_AddMasked (hStateList, hBitmap, clrBackground);
@@ -5036,14 +4880,14 @@ void setScrollWidth (int width) {
 	OS.MoveMemory (pos, playout.pwpos, WINDOWPOS.sizeof);
 	if (playout.prc != 0) OS.HeapFree (hHeap, 0, playout.prc);
 	if (playout.pwpos != 0) OS.HeapFree (hHeap, 0, playout.pwpos);
-	SetWindowPos (hwndHeader, OS.HWND_TOP, pos.x - left, pos.y, pos.cx + left, pos.cy, OS.SWP_NOACTIVATE);
+	OS.SetWindowPos (hwndHeader, OS.HWND_TOP, pos.x - left, pos.y, pos.cx + left, pos.cy, OS.SWP_NOACTIVATE);
 	int bits = OS.GetWindowLong (handle, OS.GWL_EXSTYLE);
 	int b = (bits & OS.WS_EX_CLIENTEDGE) != 0 ? OS.GetSystemMetrics (OS.SM_CXEDGE) : 0;
 	int w = pos.cx + (columnCount == 0 && width == 0 ? 0 : OS.GetSystemMetrics (OS.SM_CXVSCROLL));
 	int h = rect.bottom - rect.top - pos.cy;
 	boolean oldIgnore = ignoreResize;
 	ignoreResize = true;
-	SetWindowPos (handle, 0, pos.x - left - b, pos.y + pos.cy - b, w + left + b * 2, h + b * 2, OS.SWP_NOACTIVATE | OS.SWP_NOZORDER);
+	OS.SetWindowPos (handle, 0, pos.x - left - b, pos.y + pos.cy - b, w + left + b * 2, h + b * 2, OS.SWP_NOACTIVATE | OS.SWP_NOZORDER);
 	ignoreResize = oldIgnore;
 }
 
@@ -5525,42 +5369,21 @@ public void showSelection () {
 	if ((style & SWT.SINGLE) != 0) {
 		hItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_CARET, 0);
 		if (hItem == 0) return;
-		int state = 0;
-		if (OS.IsWinCE) {
-			TVITEM tvItem = new TVITEM ();
-			tvItem.hItem = hItem;
-			tvItem.mask = OS.TVIF_STATE;
-			OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-			state = tvItem.state;
-		} else {
-			state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
-		}
+		int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, hItem, OS.TVIS_SELECTED);
 		if ((state & OS.TVIS_SELECTED) == 0) return;
 	} else {
 		long /*int*/ oldProc = OS.GetWindowLongPtr (handle, OS.GWLP_WNDPROC);
 		OS.SetWindowLongPtr (handle, OS.GWLP_WNDPROC, TreeProc);
-		TVITEM tvItem = null;
-		if (OS.IsWinCE) {
-			tvItem = new TVITEM ();
-			tvItem.mask = OS.TVIF_STATE;
-		}
 		if ((style & SWT.VIRTUAL) != 0) {
 			long /*int*/ hRoot = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_ROOT, 0);
-			hItem = getNextSelection (hRoot, tvItem);
+			hItem = getNextSelection (hRoot);
 		} else {
 			//FIXME - this code expands first selected item it finds
 			int index = 0;
 			while (index <items.length) {
 				TreeItem item = items [index];
 				if (item != null) {
-					int state = 0;
-					if (OS.IsWinCE) {
-						tvItem.hItem = item.handle;
-						OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
-						state = tvItem.state;
-					} else {
-						state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, item.handle, OS.TVIS_SELECTED);
-					}
+					int state = (int)/*64*/OS.SendMessage (handle, OS.TVM_GETITEMSTATE, item.handle, OS.TVIS_SELECTED);
 					if ((state & OS.TVIS_SELECTED) != 0) {
 						hItem = item.handle;
 						break;
@@ -5608,24 +5431,14 @@ void subclass () {
 }
 
 RECT toolTipInset (RECT rect) {
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		RECT insetRect = new RECT ();
-		OS.SetRect (insetRect, rect.left - 1, rect.top - 1, rect.right + 1, rect.bottom + 1);
-		return insetRect;
-	}
-	return rect;
+	RECT insetRect = new RECT ();
+	OS.SetRect (insetRect, rect.left - 1, rect.top - 1, rect.right + 1, rect.bottom + 1);
+	return insetRect;
 }
 
 RECT toolTipRect (RECT rect) {
 	RECT toolRect = new RECT ();
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		OS.SetRect (toolRect, rect.left - 1, rect.top - 1, rect.right + 1, rect.bottom + 1);
-	} else {
-		OS.SetRect (toolRect, rect.left, rect.top, rect.right, rect.bottom);
-		int dwStyle = OS.GetWindowLong (itemToolTipHandle, OS.GWL_STYLE);
-		int dwExStyle = OS.GetWindowLong (itemToolTipHandle, OS.GWL_EXSTYLE);
-		OS.AdjustWindowRectEx (toolRect, dwStyle, false, dwExStyle);
-	}
+	OS.SetRect (toolRect, rect.left - 1, rect.top - 1, rect.right + 1, rect.bottom + 1);
 	return toolRect;
 }
 
@@ -5658,9 +5471,7 @@ String toolTipText (NMTTDISPINFO hdr) {
 				if (strings != null) text = strings [index [0]];
 			}
 			//TEMPORARY CODE
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-				if (isCustomToolTip ()) text = " ";
-			}
+			if (isCustomToolTip ()) text = " ";
 			if (text != null) return text;
 		}
 	}
@@ -5741,20 +5552,6 @@ void updateImageList () {
 	long /*int*/ hOldImageList = OS.SendMessage (handle, OS.TVM_GETIMAGELIST, OS.TVSIL_NORMAL, 0);
 	if (hImageList != hOldImageList) {
 		OS.SendMessage (handle, OS.TVM_SETIMAGELIST, OS.TVSIL_NORMAL, hImageList);
-	}
-}
-
-@Override
-void updateImages () {
-	if (sortColumn != null && !sortColumn.isDisposed ()) {
-		if (OS.COMCTL32_MAJOR < 6) {
-			switch (sortDirection) {
-				case SWT.UP:
-				case SWT.DOWN:
-					sortColumn.setImage (display.getSortImage (sortDirection), true, true);
-					break;
-			}
-		}
 	}
 }
 
@@ -5872,14 +5669,12 @@ void updateScrollBar () {
 				OS.SetScrollInfo (hwndParent, OS.SB_VERT, info, true);
 			} else {
 				OS.GetScrollInfo (handle, OS.SB_VERT, info);
-				if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION(4, 10)) {
-					if (info.nPage == 0) {
-						SCROLLBARINFO psbi = new SCROLLBARINFO ();
-						psbi.cbSize = SCROLLBARINFO.sizeof;
-						OS.GetScrollBarInfo (handle, OS.OBJID_VSCROLL, psbi);
-						if ((psbi.rgstate [0] & OS.STATE_SYSTEM_INVISIBLE) != 0) {
-							info.nPage = info.nMax + 1;
-						}
+				if (info.nPage == 0) {
+					SCROLLBARINFO psbi = new SCROLLBARINFO ();
+					psbi.cbSize = SCROLLBARINFO.sizeof;
+					OS.GetScrollBarInfo (handle, OS.OBJID_VSCROLL, psbi);
+					if ((psbi.rgstate [0] & OS.STATE_SYSTEM_INVISIBLE) != 0) {
+						info.nPage = info.nMax + 1;
 					}
 				}
 				OS.SetScrollInfo (hwndParent, OS.SB_VERT, info, true);
@@ -5899,7 +5694,7 @@ void unsubclass () {
 @Override
 int widgetStyle () {
 	int bits = super.widgetStyle () | OS.TVS_SHOWSELALWAYS | OS.TVS_LINESATROOT | OS.TVS_HASBUTTONS | OS.TVS_NONEVENHEIGHT;
-	if (EXPLORER_THEME && !OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0) && OS.IsAppThemed ()) {
+	if (OS.IsAppThemed ()) {
 		bits |= OS.TVS_TRACKSELECT;
 		if ((style & SWT.FULL_SELECTION) != 0) bits |= OS.TVS_FULLROWSELECT;
 	} else {
@@ -5941,27 +5736,6 @@ long /*int*/ windowProc (long /*int*/ hwnd, int msg, long /*int*/ wParam, long /
 				if (result != null) return result.value;
 				break;
 			}
-			case OS.WM_CAPTURECHANGED: {
-				/*
-				* Bug in Windows.  When the capture changes during a
-				* header drag, Windows does not redraw the header item
-				* such that the header remains pressed.  For example,
-				* when focus is assigned to a push button, the mouse is
-				* pressed (but not released), then the SPACE key is
-				* pressed to activate the button, the capture changes,
-				* the header not notified and NM_RELEASEDCAPTURE is not
-				* sent.  The fix is to redraw the header when the capture
-				* changes to another control.
-				*
-				* This does not happen on XP.
-				*/
-				if (OS.COMCTL32_MAJOR < 6) {
-					if (lParam != 0 && lParam != hwndHeader) {
-						OS.InvalidateRect (hwndHeader, null, true);
-					}
-				}
-				break;
-			}
 			case OS.WM_MOUSELEAVE: {
 				/*
 				* Bug in Windows.  On XP, when a tooltip is hidden
@@ -5970,7 +5744,7 @@ long /*int*/ windowProc (long /*int*/ hwnd, int msg, long /*int*/ wParam, long /
 				* won't show again until another tooltip becomes
 				* active.  The fix is to reset the tooltip bounds.
 				*/
-				if (OS.COMCTL32_MAJOR >= 6) updateHeaderToolTips ();
+				updateHeaderToolTips ();
 				updateHeaderToolTips ();
 				break;
 			}
@@ -6074,10 +5848,8 @@ long /*int*/ windowProc (long /*int*/ hwnd, int msg, long /*int*/ wParam, long /
 				* NOTE: For some reason, this code is only necessary
 				* on Windows Vista.
 				*/
-				if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-					if (OS.LOWORD (wParam) == OS.SB_THUMBTRACK) {
-						info.nPos = info.nTrackPos;
-					}
+				if (OS.LOWORD (wParam) == OS.SB_THUMBTRACK) {
+					info.nPos = info.nTrackPos;
 				}
 				OS.SetScrollInfo (handle, OS.SB_VERT, info, true);
 				long /*int*/ code = OS.SendMessage (handle, OS.WM_VSCROLL, wParam, lParam);
@@ -6221,13 +5993,8 @@ LRESULT WM_CHAR (long /*int*/ wParam, long /*int*/ lParam) {
 					}
 					tvItem.state = state << 12;
 					OS.SendMessage (handle, OS.TVM_SETITEM, 0, tvItem);
-					if (!OS.IsWinCE) {
-						long /*int*/ id = hItem;
-						if (OS.COMCTL32_MAJOR >= 6) {
-							id = OS.SendMessage (handle, OS.TVM_MAPHTREEITEMTOACCID, hItem, 0);
-						}
-						OS.NotifyWinEvent (OS.EVENT_OBJECT_FOCUS, handle, OS.OBJID_CLIENT, (int)/*64*/id);
-					}
+					long /*int*/ id = OS.SendMessage (handle, OS.TVM_MAPHTREEITEMTOACCID, hItem, 0);
+					OS.NotifyWinEvent (OS.EVENT_OBJECT_FOCUS, handle, OS.OBJID_CLIENT, (int)/*64*/id);
 				}
 				tvItem.stateMask = OS.TVIS_SELECTED;
 				OS.SendMessage (handle, OS.TVM_GETITEM, 0, tvItem);
@@ -6489,11 +6256,8 @@ LRESULT WM_KEYDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 						}
 						if (redraw) {
 							RECT rect1 = new RECT (), rect2 = new RECT ();
-							boolean fItemRect = (style & SWT.FULL_SELECTION) == 0;
-							if (hooks (SWT.EraseItem) || hooks (SWT.PaintItem)) fItemRect = false;
-							if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) fItemRect = false;
-							OS.TreeView_GetItemRect (handle, hItem, rect1, fItemRect);
-							OS.TreeView_GetItemRect (handle, hNewItem, rect2, fItemRect);
+							OS.TreeView_GetItemRect (handle, hItem, rect1, false);
+							OS.TreeView_GetItemRect (handle, hNewItem, rect2, false);
 							OS.DefWindowProc (handle, OS.WM_SETREDRAW, 1, 0);
 							OS.InvalidateRect (handle, rect1, true);
 							OS.InvalidateRect (handle, rect2, true);
@@ -6528,14 +6292,10 @@ LRESULT WM_KILLFOCUS (long /*int*/ wParam, long /*int*/ lParam) {
 	* selection when focus is gained or lost.
 	*/
 	boolean redraw = (style & SWT.MULTI) != 0;
-	if (!redraw) {
-		if (!OS.IsWinCE && OS.COMCTL32_MAJOR >= 6) {
-			if (imageList != null) {
-				int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
-				if ((bits & OS.TVS_FULLROWSELECT) == 0) {
-					redraw = true;
-				}
-			}
+	if (!redraw && imageList != null) {
+		int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
+		if ((bits & OS.TVS_FULLROWSELECT) == 0) {
+			redraw = true;
 		}
 	}
 	if (redraw) redrawSelection ();
@@ -6577,13 +6337,8 @@ LRESULT WM_LBUTTONDBLCLK (long /*int*/ wParam, long /*int*/ lParam) {
 				}
 				tvItem.state = state << 12;
 				OS.SendMessage (handle, OS.TVM_SETITEM, 0, tvItem);
-				if (!OS.IsWinCE) {
-					long /*int*/ id = tvItem.hItem;
-					if (OS.COMCTL32_MAJOR >= 6) {
-						id = OS.SendMessage (handle, OS.TVM_MAPHTREEITEMTOACCID, tvItem.hItem, 0);
-					}
-					OS.NotifyWinEvent (OS.EVENT_OBJECT_FOCUS, handle, OS.OBJID_CLIENT, (int)/*64*/id);
-				}
+				long /*int*/ id = OS.SendMessage (handle, OS.TVM_MAPHTREEITEMTOACCID, tvItem.hItem, 0);
+				OS.NotifyWinEvent (OS.EVENT_OBJECT_FOCUS, handle, OS.OBJID_CLIENT, (int)/*64*/id);
 				Event event = new Event ();
 				event.item = _getItem (tvItem.hItem, (int)/*64*/tvItem.lParam);
 				event.detail = SWT.CHECK;
@@ -6671,9 +6426,8 @@ LRESULT WM_LBUTTONDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 			ignoreDeselect = ignoreSelect = lockSelection = true;
 		}
 		long /*int*/ code = callWindowProc (handle, OS.WM_LBUTTONDOWN, wParam, lParam);
-		if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-			if (OS.GetFocus () != handle) OS.SetFocus (handle);
-		}
+		/* Bug 225404 */
+		if (OS.GetFocus () != handle) OS.SetFocus (handle);
 		if (fixSelection) {
 			hSelect = 0;
 			ignoreDeselect = ignoreSelect = lockSelection = false;
@@ -6745,13 +6499,8 @@ LRESULT WM_LBUTTONDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 			}
 			tvItem.state = state << 12;
 			OS.SendMessage (handle, OS.TVM_SETITEM, 0, tvItem);
-			if (!OS.IsWinCE) {
-				long /*int*/ id = tvItem.hItem;
-				if (OS.COMCTL32_MAJOR >= 6) {
-					id = OS.SendMessage (handle, OS.TVM_MAPHTREEITEMTOACCID, tvItem.hItem, 0);
-				}
-				OS.NotifyWinEvent (OS.EVENT_OBJECT_FOCUS, handle, OS.OBJID_CLIENT, (int)/*64*/id);
-			}
+			long /*int*/ id = OS.SendMessage (handle, OS.TVM_MAPHTREEITEMTOACCID, tvItem.hItem, 0);
+			OS.NotifyWinEvent (OS.EVENT_OBJECT_FOCUS, handle, OS.OBJID_CLIENT, (int)/*64*/id);
 			Event event = new Event ();
 			event.item = _getItem (tvItem.hItem, (int)/*64*/tvItem.lParam);
 			event.detail = SWT.CHECK;
@@ -6795,9 +6544,8 @@ LRESULT WM_LBUTTONDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 				return LRESULT.ZERO;
 			}
 			long /*int*/ code = callWindowProc (handle, OS.WM_LBUTTONDOWN, wParam, lParam);
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-				if (OS.GetFocus () != handle) OS.SetFocus (handle);
-			}
+			/* Bug 225404 */
+			if (OS.GetFocus () != handle) OS.SetFocus (handle);
 			if (!display.captureChanged && !isDisposed ()) {
 				if (OS.GetCapture () != handle) OS.SetCapture (handle);
 			}
@@ -6871,9 +6619,8 @@ LRESULT WM_LBUTTONDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 	dragStarted = gestureCompleted = false;
 	ignoreDeselect = ignoreSelect = true;
 	long /*int*/ code = callWindowProc (handle, OS.WM_LBUTTONDOWN, wParam, lParam);
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		if (OS.GetFocus () != handle) OS.SetFocus (handle);
-	}
+	/* Bug 225404 */
+	if (OS.GetFocus () != handle) OS.SetFocus (handle);
 	long /*int*/ hNewItem = OS.SendMessage (handle, OS.TVM_GETNEXTITEM, OS.TVGN_CARET, 0);
 	if (fakeSelection) {
 		if (hOldItem == 0 || (hNewItem == hOldItem && lpht.hItem != hOldItem)) {
@@ -6935,11 +6682,8 @@ LRESULT WM_LBUTTONDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 				}
 			}
 			RECT rect1 = new RECT (), rect2 = new RECT ();
-			boolean fItemRect = (style & SWT.FULL_SELECTION) == 0;
-			if (hooks (SWT.EraseItem) || hooks (SWT.PaintItem)) fItemRect = false;
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) fItemRect = false;
-			OS.TreeView_GetItemRect (handle, hOldItem, rect1, fItemRect);
-			OS.TreeView_GetItemRect (handle, hNewItem, rect2, fItemRect);
+			OS.TreeView_GetItemRect (handle, hOldItem, rect1, false);
+			OS.TreeView_GetItemRect (handle, hNewItem, rect2, false);
 			OS.DefWindowProc (handle, OS.WM_SETREDRAW, 1, 0);
 			OS.InvalidateRect (handle, rect1, true);
 			OS.InvalidateRect (handle, rect2, true);
@@ -7108,6 +6852,7 @@ LRESULT WM_RBUTTONDOWN (long /*int*/ wParam, long /*int*/ lParam) {
 	* This code is intentionally commented.
 	*/
 //	if (OS.GetCapture () != handle) OS.SetCapture (handle);
+	/* Bug 225404 */
 	if (OS.GetFocus () != handle) OS.SetFocus (handle);
 
 	/*
@@ -7236,26 +6981,6 @@ LRESULT WM_PAINT (long /*int*/ wParam, long /*int*/ lParam) {
 }
 
 @Override
-LRESULT WM_PRINTCLIENT (long /*int*/ wParam, long /*int*/ lParam) {
-	LRESULT result = super.WM_PRINTCLIENT (wParam, lParam);
-	if (result != null) return result;
-	/*
-	* Feature in Windows.  For some reason, when WM_PRINT is used
-	* to capture an image of a hierarchy that contains a tree with
-	* columns, the clipping that is used to stop the first column
-	* from drawing on top of subsequent columns stops the first
-	* column and the tree lines from drawing.  This does not happen
-	* during WM_PAINT.  The fix is to draw without clipping and
-	* then draw the rest of the columns on top.  Since the drawing
-	* is happening in WM_PRINTCLIENT, the redrawing is not visible.
-	*/
-	printClient = true;
-	long /*int*/ code = callWindowProc (handle, OS.WM_PRINTCLIENT, wParam, lParam);
-	printClient = false;
-	return new LRESULT (code);
-}
-
-@Override
 LRESULT WM_SETCURSOR (long /*int*/ wParam, long /*int*/ lParam) {
 	LRESULT result = super.WM_SETCURSOR (wParam, lParam);
 	if (result != null) return result;
@@ -7266,7 +6991,7 @@ LRESULT WM_SETCURSOR (long /*int*/ wParam, long /*int*/ lParam) {
 	* correct Windows 7 behavior but not correct for SWT. The fix
 	* is to always ensure a cursor is set.
 	*/
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 1)) {
+	if (OS.WIN32_VERSION >= OS.VERSION (6, 1)) {
 		if (wParam == handle) {
 			int hitTest = (short) OS.LOWORD (lParam);
 			if (hitTest == OS.HTCLIENT) {
@@ -7295,14 +7020,10 @@ LRESULT WM_SETFOCUS (long /*int*/ wParam, long /*int*/ lParam) {
 	* selection when focus is gained or lost.
 	*/
 	boolean redraw = (style & SWT.MULTI) != 0;
-	if (!redraw) {
-		if (!OS.IsWinCE && OS.COMCTL32_MAJOR >= 6) {
-			if (imageList != null) {
-				int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
-				if ((bits & OS.TVS_FULLROWSELECT) == 0) {
-					redraw = true;
-				}
-			}
+	if (!redraw && imageList != null) {
+		int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
+		if ((bits & OS.TVS_FULLROWSELECT) == 0) {
+			redraw = true;
 		}
 	}
 	if (redraw) redrawSelection ();
@@ -7351,11 +7072,8 @@ LRESULT WM_SETREDRAW (long /*int*/ wParam, long /*int*/ lParam) {
 	* NOTE:  This problem is intermittent and happens on
 	* Windows Vista running under the theme manager.
 	*/
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		long /*int*/ code = OS.DefWindowProc (handle, OS.WM_SETREDRAW, wParam, lParam);
-		return code == 0 ? LRESULT.ZERO : new LRESULT (code);
-	}
-	return result;
+	long /*int*/ code = OS.DefWindowProc (handle, OS.WM_SETREDRAW, wParam, lParam);
+	return code == 0 ? LRESULT.ZERO : new LRESULT (code);
 }
 
 @Override
@@ -7369,7 +7087,7 @@ LRESULT WM_SIZE (long /*int*/ wParam, long /*int*/ lParam) {
 	*/
 	int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
 	if ((bits & OS.TVS_NOHSCROLL) != 0) {
-		if (!OS.IsWinCE) OS.ShowScrollBar (handle, OS.SB_HORZ, false);
+		OS.ShowScrollBar (handle, OS.SB_HORZ, false);
 	}
 	/*
 	* Bug in Windows.  On Vista, when the Explorer theme
@@ -7475,9 +7193,6 @@ LRESULT WM_TIMER (long /*int*/ wParam, long /*int*/ lParam) {
 @Override
 LRESULT wmColorChild (long /*int*/ wParam, long /*int*/ lParam) {
 	if (findImageControl () != null) {
-		if (OS.COMCTL32_MAJOR < 6) {
-			return super.wmColorChild (wParam, lParam);
-		}
 		return new LRESULT (OS.GetStockObject (OS.NULL_BRUSH));
 	}
 	/*
@@ -7642,7 +7357,7 @@ LRESULT wmNotifyChild (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 				if (hwndHeader == 0) createParent ();
 			}
 			if (!customDraw && findImageControl () == null) {
-				if (OS.COMCTL32_MAJOR >= 6 && OS.IsAppThemed ()) {
+				if (OS.IsAppThemed ()) {
 					if (sortColumn == null || sortDirection == SWT.NONE) {
 						break;
 					}
@@ -7695,14 +7410,12 @@ LRESULT wmNotifyChild (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 		*/
 		case OS.TVN_ITEMCHANGINGA:
 		case OS.TVN_ITEMCHANGINGW: {
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-				if ((style & SWT.MULTI) != 0) {
-					if (hSelect != 0) {
-						NMTVITEMCHANGE pnm = new NMTVITEMCHANGE ();
-						OS.MoveMemory (pnm, lParam, NMTVITEMCHANGE.sizeof);
-						if (hSelect == pnm.hItem) break;
-						return LRESULT.ONE;
-					}
+			if ((style & SWT.MULTI) != 0) {
+				if (hSelect != 0) {
+					NMTVITEMCHANGE pnm = new NMTVITEMCHANGE ();
+					OS.MoveMemory (pnm, lParam, NMTVITEMCHANGE.sizeof);
+					if (hSelect == pnm.hItem) break;
+					return LRESULT.ONE;
 				}
 			}
 			break;
@@ -7862,18 +7575,16 @@ LRESULT wmNotifyChild (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 			* This means that the image gets darker each time.
 			* The fix is to redraw the item.
 			*/
-			if (!OS.IsWinCE && OS.COMCTL32_MAJOR >= 6) {
-				if (imageList != null) {
-					NMTREEVIEW treeView = new NMTREEVIEW ();
-					OS.MoveMemory (treeView, lParam, NMTREEVIEW.sizeof);
-					TVITEM tvItem = treeView.itemNew;
-					if (tvItem.hItem != 0) {
-						int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
-						if ((bits & OS.TVS_FULLROWSELECT) == 0) {
-							RECT rect = new RECT ();
-							if (OS.TreeView_GetItemRect (handle, tvItem.hItem, rect, false)) {
-								OS.InvalidateRect (handle, rect, true);
-							}
+			if (imageList != null) {
+				NMTREEVIEW treeView = new NMTREEVIEW ();
+				OS.MoveMemory (treeView, lParam, NMTREEVIEW.sizeof);
+				TVITEM tvItem = treeView.itemNew;
+				if (tvItem.hItem != 0) {
+					int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
+					if ((bits & OS.TVS_FULLROWSELECT) == 0) {
+						RECT rect = new RECT ();
+						if (OS.TreeView_GetItemRect (handle, tvItem.hItem, rect, false)) {
+							OS.InvalidateRect (handle, rect, true);
 						}
 					}
 				}
@@ -7897,35 +7608,6 @@ LRESULT wmNotifyChild (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 				OS.SendMessage (handle, OS.TVM_SELECTITEM, OS.TVGN_CARET, tvItem.hItem);
 				ignoreSelect = ignoreDeselect = false;
 				hSelect = 0;
-			}
-			break;
-		}
-		case OS.NM_RECOGNIZEGESTURE: {
-			/*
-			* Feature in Pocket PC.  The tree and table controls detect the tap
-			* and hold gesture by default. They send a GN_CONTEXTMENU message to show
-			* the popup menu.  This default behaviour is unwanted on Pocket PC 2002
-			* when no menu has been set, as it still draws a red circle.  The fix
-			* is to disable this default behaviour when no menu is set by returning
-			* TRUE when receiving the Pocket PC 2002 specific NM_RECOGNIZEGESTURE
-			* message.
-			*/
-			if (OS.IsPPC) {
-				boolean hasMenu = menu != null && !menu.isDisposed ();
-				if (!hasMenu && !hooks (SWT.MenuDetect)) return LRESULT.ONE;
-			}
-			break;
-		}
-		case OS.GN_CONTEXTMENU: {
-			if (OS.IsPPC) {
-				boolean hasMenu = menu != null && !menu.isDisposed ();
-				if (hasMenu || hooks (SWT.MenuDetect)) {
-					NMRGINFO nmrg = new NMRGINFO ();
-					OS.MoveMemory (nmrg, lParam, NMRGINFO.sizeof);
-					showMenu (nmrg.x, nmrg.y);
-					gestureCompleted = true;
-					return LRESULT.ONE;
-				}
 			}
 			break;
 		}
@@ -8014,7 +7696,11 @@ LRESULT wmNotifyHeader (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 							long /*int*/ pen = OS.CreatePen (OS.PS_SOLID, 1, OS.GetSysColor(OS.COLOR_3DDKSHADOW));
 							long /*int*/ oldPen = OS.SelectObject (nmcd.hdc, pen);
 							int center = rects[i].left + (rects[i].right - rects[i].left) / 2;
-							int leg = 3;
+							/*
+							 * Sort indicator size needs to scale as per the Native Windows OS DPI level
+							 * when header is custom drawn. For more details refer bug 537097.
+							 */
+							int leg = DPIUtil.autoScaleUpUsingNativeDPI(3);
 							if (sortDirection == SWT.UP) {
 								OS.Polyline(nmcd.hdc, new int[] {center-leg, 1+leg, center+1, 0}, 2);
 								OS.Polyline(nmcd.hdc, new int[] {center+leg, 1+leg, center-1, 0}, 2);
@@ -8212,17 +7898,8 @@ LRESULT wmNotifyHeader (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 				OS.MoveMemory (pitem, phdn.pitem, HDITEM.sizeof);
 				if ((pitem.mask & OS.HDI_WIDTH) != 0) {
 					if (ignoreColumnMove) {
-						if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-							int flags = OS.RDW_UPDATENOW | OS.RDW_ALLCHILDREN;
-							OS.RedrawWindow (handle, null, 0, flags);
-						} else {
-							if ((style & SWT.DOUBLE_BUFFERED) == 0) {
-								int oldStyle = style;
-								style |= SWT.DOUBLE_BUFFERED;
-								OS.UpdateWindow (handle);
-								style = oldStyle;
-							}
-						}
+						int flags = OS.RDW_UPDATENOW | OS.RDW_ALLCHILDREN;
+						OS.RedrawWindow (handle, null, 0, flags);
 					}
 					TreeColumn column = columns [phdn.iItem];
 					if (column != null) {
@@ -8273,7 +7950,6 @@ LRESULT wmNotifyHeader (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 }
 
 LRESULT wmNotifyToolTip (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
-	if (OS.IsWinCE) return null;
 	switch (hdr.code) {
 		case OS.NM_CUSTOMDRAW: {
 			NMTTCUSTOMDRAW nmcd = new NMTTCUSTOMDRAW ();
@@ -8297,7 +7973,7 @@ LRESULT wmNotifyToolTip (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 				int height = toolRect.bottom - toolRect.top;
 				int flags = OS.SWP_NOACTIVATE | OS.SWP_NOZORDER | OS.SWP_NOSIZE;
 				if (isCustomToolTip ()) flags &= ~OS.SWP_NOSIZE;
-				SetWindowPos (itemToolTipHandle, 0, toolRect.left, toolRect.top, width, height, flags);
+				OS.SetWindowPos (itemToolTipHandle, 0, toolRect.left, toolRect.top, width, height, flags);
 				return LRESULT.ONE;
 			}
 			return result;
@@ -8307,24 +7983,17 @@ LRESULT wmNotifyToolTip (NMHDR hdr, long /*int*/ wParam, long /*int*/ lParam) {
 }
 
 LRESULT wmNotifyToolTip (NMTTCUSTOMDRAW nmcd, long /*int*/ lParam) {
-	if (OS.IsWinCE) return null;
 	switch (nmcd.dwDrawStage) {
 		case OS.CDDS_PREPAINT: {
 			if (isCustomToolTip ()) {
 				//TEMPORARY CODE
 				//nmcd.uDrawFlags |= OS.DT_CALCRECT;
 				//OS.MoveMemory (lParam, nmcd, NMTTCUSTOMDRAW.sizeof);
-				if (!OS.IsWinCE && OS.WIN32_VERSION < OS.VERSION (6, 0)) {
-					OS.SetTextColor (nmcd.hdc, OS.GetSysColor (OS.COLOR_INFOBK));
-				}
 				return new LRESULT (OS.CDRF_NOTIFYPOSTPAINT | OS.CDRF_NEWFONT);
 			}
 			break;
 		}
 		case OS.CDDS_POSTPAINT: {
-			if (!OS.IsWinCE && OS.WIN32_VERSION < OS.VERSION (6, 0)) {
-				OS.SetTextColor (nmcd.hdc, OS.GetSysColor (OS.COLOR_INFOTEXT));
-			}
 			if (OS.SendMessage (itemToolTipHandle, OS.TTM_GETCURRENTTOOL, 0, 0) != 0) {
 				TOOLINFO lpti = new TOOLINFO ();
 				lpti.cbSize = TOOLINFO.sizeof;

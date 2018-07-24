@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -132,6 +132,13 @@ public final class Image extends Resource implements Drawable {
 	private ImageDataProvider imageDataProvider;
 
 	/**
+	 * Style flag used to differentiate normal, gray-scale and disabled images based
+	 * on image data providers. Without this, a normal and a disabled image of the
+	 * same image data provider would be considered equal.
+	 */
+	private int styleFlag = SWT.IMAGE_COPY;
+
+	/**
 	 * Alpha information objects for 100%, 200%
 	 */
 	private AlphaInfo alphaInfo_100, alphaInfo_200;
@@ -179,20 +186,20 @@ public final class Image extends Resource implements Drawable {
 				/* Compute the alpha values */
 				long /*int*/ bitmapBytesPerRow = width;
 				long /*int*/ bitmapByteCount = bitmapBytesPerRow * height;
-				long /*int*/ alphaBitmapData = OS.malloc(bitmapByteCount);
+				long /*int*/ alphaBitmapData = C.malloc(bitmapByteCount);
 				long /*int*/ alphaBitmapCtx = OS.CGBitmapContextCreate(alphaBitmapData, width, height, 8, bitmapBytesPerRow, 0, OS.kCGImageAlphaOnly);
 				NSGraphicsContext.static_saveGraphicsState();
 				NSGraphicsContext.setCurrentContext(NSGraphicsContext.graphicsContextWithGraphicsPort(alphaBitmapCtx, false));
 				nativeRep.drawInRect(rect);
 				NSGraphicsContext.static_restoreGraphicsState();
 				byte[] alphaData = new byte[(int)/*64*/bitmapByteCount];
-				OS.memmove(alphaData, alphaBitmapData, bitmapByteCount);
-				OS.free(alphaBitmapData);
+				C.memmove(alphaData, alphaBitmapData, bitmapByteCount);
+				C.free(alphaBitmapData);
 				OS.CGContextRelease(alphaBitmapCtx);
 
 				/* Merge the alpha values with the pixels */
 				byte[] srcData = new byte[height * bpr];
-				OS.memmove(srcData, rep.bitmapData(), srcData.length);
+				C.memmove(srcData, rep.bitmapData(), srcData.length);
 				for (int a = 0, p = 0; a < alphaData.length; a++, p += 4) {
 					srcData[p] = alphaData[a];
 					float alpha = alphaData[a] & 0xFF;
@@ -202,7 +209,7 @@ public final class Image extends Resource implements Drawable {
 						srcData[p+3] = (byte)(((srcData[p+3] & 0xFF) / alpha) * 0xFF);
 					}
 				}
-				OS.memmove(rep.bitmapData(), srcData, srcData.length);
+				C.memmove(rep.bitmapData(), srcData, srcData.length);
 
 				// If the alpha has only 0 or 255 (-1) for alpha values, compute the transparent pixel color instead
 				// of a continuous alpha range.
@@ -366,6 +373,7 @@ public Image(Device device, Image srcImage, int flag) {
 
 		imageFileNameProvider = srcImage.imageFileNameProvider;
 		imageDataProvider = srcImage.imageDataProvider;
+		this.styleFlag = srcImage.styleFlag | flag;
 		if (imageFileNameProvider != null || imageDataProvider != null) {
 			/* If source image has 200% representation then create the 200% representation for the new image & apply flag */
 			NSBitmapImageRep rep200 = srcImage.getRepresentation_200();
@@ -405,7 +413,7 @@ private void createRepFromSourceAndApplyFlag(NSBitmapImageRep srcRep, int srcWid
 	rep.release();
 
 	long /*int*/ data = rep.bitmapData();
-	OS.memmove(data, srcData, srcWidth * srcHeight * 4);
+	C.memmove(data, srcData, srcWidth * srcHeight * 4);
 	if (flag != SWT.IMAGE_COPY) {
 		final int redOffset, greenOffset, blueOffset;
 		if (srcBpp == 32 && (srcBitmapFormat & OS.NSAlphaFirstBitmapFormat) == 0) {
@@ -432,7 +440,7 @@ private void createRepFromSourceAndApplyFlag(NSBitmapImageRep srcRep, int srcWid
 			byte oneBlue = (byte)oneRGB.blue;
 			byte[] line = new byte[(int)/*64*/srcBpr];
 			for (int y=0; y<srcHeight; y++) {
-				OS.memmove(line, data + (y * srcBpr), srcBpr);
+				C.memmove(line, data + (y * srcBpr), srcBpr);
 				int offset = 0;
 				for (int x=0; x<srcWidth; x++) {
 					int red = line[offset+redOffset] & 0xFF;
@@ -450,14 +458,14 @@ private void createRepFromSourceAndApplyFlag(NSBitmapImageRep srcRep, int srcWid
 					}
 					offset += 4;
 				}
-				OS.memmove(data + (y * srcBpr), line, srcBpr);
+				C.memmove(data + (y * srcBpr), line, srcBpr);
 			}
 			break;
 		}
 		case SWT.IMAGE_GRAY: {
 			byte[] line = new byte[(int)/*64*/srcBpr];
 			for (int y=0; y<srcHeight; y++) {
-				OS.memmove(line, data + (y * srcBpr), srcBpr);
+				C.memmove(line, data + (y * srcBpr), srcBpr);
 				int offset = 0;
 				for (int x=0; x<srcWidth; x++) {
 					int red = line[offset+redOffset] & 0xFF;
@@ -467,7 +475,7 @@ private void createRepFromSourceAndApplyFlag(NSBitmapImageRep srcRep, int srcWid
 					line[offset+redOffset] = line[offset+greenOffset] = line[offset+blueOffset] = intensity;
 					offset += 4;
 				}
-				OS.memmove(data + (y * srcBpr), line, srcBpr);
+				C.memmove(data + (y * srcBpr), line, srcBpr);
 			}
 			break;
 		}
@@ -844,7 +852,7 @@ ImageData _getImageData (NSBitmapImageRep imageRep, AlphaInfo info) {
 	long /*int*/ bitmapFormat = imageRep.bitmapFormat();
 	long /*int*/ dataSize = height * bpr;
 	byte[] srcData = new byte[(int)/*64*/dataSize];
-	OS.memmove(srcData, bitmapData, dataSize);
+	C.memmove(srcData, bitmapData, dataSize);
 
 	PaletteData palette;
 	if (bpp == 32 && (bitmapFormat & OS.NSAlphaFirstBitmapFormat) == 0) {
@@ -855,10 +863,10 @@ ImageData _getImageData (NSBitmapImageRep imageRep, AlphaInfo info) {
 	ImageData data = new ImageData((int)/*64*/width, (int)/*64*/height, (int)/*64*/bpp, palette, 1, srcData);
 	data.bytesPerLine = (int)/*64*/bpr;
 	if (imageRep.hasAlpha() && info.transparentPixel == -1 && info.alpha == -1 && info.alphaData == null) {
-		byte[] alphaD = new byte[(int)/*64*/(width * height)];
+		byte[] alphaD = new byte[(int) (dataSize/4)];
 		int offset = (bitmapFormat & OS.NSAlphaFirstBitmapFormat) != 0 ? 0 : 3, a = 0;
-		for (int i = offset; i < srcData.length; i+= 4) {
-			alphaD[a++] = srcData[i];
+		for (int i = offset; i < srcData.length && a < alphaD.length; i+= 4, a++) {
+			alphaD[a] = srcData[i];
 		}
 		data.alphaData = alphaD;
 	} else {
@@ -935,7 +943,7 @@ void createAlpha () {
 		long /*int*/ format = imageRep.bitmapFormat();
 		long /*int*/ dataSize = height * bpr;
 		byte[] srcData = new byte[(int)/*64*/dataSize];
-		OS.memmove(srcData, bitmapData, dataSize);
+		C.memmove(srcData, bitmapData, dataSize);
 		if (info.transparentPixel != -1) {
 			if ((format & OS.NSAlphaFirstBitmapFormat) != 0) {
 				for (int i=0; i<dataSize; i+=4) {
@@ -968,7 +976,7 @@ void createAlpha () {
 		// Since we just calculated alpha for the image rep, tell it that it now has an alpha component.
 		imageRep.setAlpha(true);
 
-		OS.memmove(bitmapData, srcData, dataSize);
+		C.memmove(bitmapData, srcData, dataSize);
 	} finally {
 		if (pool != null) pool.release();
 	}
@@ -1073,7 +1081,7 @@ private NSBitmapImageRep createRepresentation(ImageData imageData, AlphaInfo alp
 	}
 
 	rep = rep.initWithBitmapDataPlanes(0, imageData.width, imageData.height, 8, hasAlpha ? 4 : 3, hasAlpha, false, OS.NSDeviceRGBColorSpace, OS.NSAlphaFirstBitmapFormat | OS.NSAlphaNonpremultipliedBitmapFormat, bpr, 32);
-	OS.memmove(rep.bitmapData(), buffer, dataSize);
+	C.memmove(rep.bitmapData(), buffer, dataSize);
 	return rep;
 }
 
@@ -1102,9 +1110,9 @@ public boolean equals (Object object) {
 	Image image = (Image)object;
 	if (device != image.device || alphaInfo_100.transparentPixel != image.alphaInfo_100.transparentPixel) return false;
 	if (imageDataProvider != null && image.imageDataProvider != null) {
-		return imageDataProvider.equals (image.imageDataProvider);
+		return styleFlag == image.styleFlag && imageDataProvider.equals (image.imageDataProvider);
 	} else if (imageFileNameProvider != null && image.imageFileNameProvider != null) {
-		return imageFileNameProvider.equals (image.imageFileNameProvider);
+		return styleFlag == image.styleFlag && imageFileNameProvider.equals (image.imageFileNameProvider);
 	} else {
 		return handle == image.handle;
 	}
@@ -1400,7 +1408,7 @@ void init(int width, int height) {
 	handle = handle.initWithSize(size);
 	NSBitmapImageRep rep = (NSBitmapImageRep)new NSBitmapImageRep().alloc();
 	rep = rep.initWithBitmapDataPlanes(0, width, height, 8, 3, false, false, OS.NSDeviceRGBColorSpace, OS.NSAlphaFirstBitmapFormat | OS.NSAlphaNonpremultipliedBitmapFormat, width * 4, 32);
-	OS.memset(rep.bitmapData(), 0xFF, width * height * 4);
+	C.memset(rep.bitmapData(), 0xFF, width * height * 4);
 	handle.addRepresentation(rep);
 	rep.release();
 	handle.setCacheMode(OS.NSImageCacheNever);
@@ -1681,7 +1689,7 @@ public void setBackground(Color color) {
 		}
 		byte[] line = new byte[(int)bpr];
 		for (int i = 0, offset = 0; i < height; i++, offset += bpr) {
-			OS.memmove(line, data + offset, bpr);
+			C.memmove(line, data + offset, bpr);
 			for (int j = 0; j  < line.length; j += 4) {
 				if (line[j + redOffset] == red && line[j + greenOffset] == green && line[j + blueOffset] == blue) {
 					line[j + redOffset] = newRed;
@@ -1689,7 +1697,7 @@ public void setBackground(Color color) {
 					line[j + blueOffset] = newBlue;
 				}
 			}
-			OS.memmove(data + offset, line, bpr);
+			C.memmove(data + offset, line, bpr);
 		}
 		alphaInfo.transparentPixel = (newRed & 0xFF) << 16 | (newGreen & 0xFF) << 8 | (newBlue & 0xFF);
 	} finally {

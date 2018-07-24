@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -212,7 +212,8 @@ public abstract class Widget {
 	static final int DIRECTION_CHANGED = 82;
 	static final int CREATE_MENU_PROXY = 83;
 	static final int ROW_HAS_CHILD_TOGGLED = 84;
-	static final int LAST_SIGNAL = 85;
+	static final int POPPED_UP = 85;
+	static final int LAST_SIGNAL = 86;
 
 	static final String IS_ACTIVE = "org.eclipse.swt.internal.control.isactive"; //$NON-NLS-1$
 	static final String KEY_CHECK_SUBWINDOW = "org.eclipse.swt.internal.control.checksubwindow"; //$NON-NLS-1$
@@ -460,7 +461,7 @@ void destroyWidget () {
 	long /*int*/ topHandle = topHandle ();
 	releaseHandle ();
 	if (topHandle != 0 && (state & HANDLE) != 0) {
-		OS.gtk_widget_destroy (topHandle);
+		GTK.gtk_widget_destroy (topHandle);
 	}
 }
 
@@ -661,12 +662,12 @@ long /*int*/ gtk_activate (long /*int*/ widget) {
 }
 
 void gtk_adjustment_get (long /*int*/ hAdjustment, GtkAdjustment adjustment) {
-	adjustment.lower = OS.gtk_adjustment_get_lower (hAdjustment);
-	adjustment.upper = OS.gtk_adjustment_get_upper (hAdjustment);
-	adjustment.page_increment = OS.gtk_adjustment_get_page_increment (hAdjustment);
-	adjustment.step_increment = OS.gtk_adjustment_get_step_increment (hAdjustment);
-	adjustment.page_size = OS.gtk_adjustment_get_page_size (hAdjustment);
-	adjustment.value = OS.gtk_adjustment_get_value (hAdjustment);
+	adjustment.lower = GTK.gtk_adjustment_get_lower (hAdjustment);
+	adjustment.upper = GTK.gtk_adjustment_get_upper (hAdjustment);
+	adjustment.page_increment = GTK.gtk_adjustment_get_page_increment (hAdjustment);
+	adjustment.step_increment = GTK.gtk_adjustment_get_step_increment (hAdjustment);
+	adjustment.page_size = GTK.gtk_adjustment_get_page_size (hAdjustment);
+	adjustment.value = GTK.gtk_adjustment_get_value (hAdjustment);
 }
 
 long /*int*/ gtk_button_press_event (long /*int*/ widget, long /*int*/ event) {
@@ -801,6 +802,27 @@ long /*int*/ gtk_map_event (long /*int*/ widget, long /*int*/ event) {
 	return 0;
 }
 
+/**
+ * <p>GTK3.22+ has API which allows clients of GTK to connect a menu to the "popped-up" signal.
+ * This callback is triggered after the menu is popped up/shown to the user, and provides
+ * information about the actual position and size of the menu, as shown to the user.</p>
+ *
+ * <p>SWT clients can enable this functionality by launching their application with the
+ * SWT_MENU_LOCATION_DEBUGGING environment variable set to 1. If enabled, the previously mentioned
+ * positioning and size information will be printed to the console. The information comes from GTK
+ * internals and is stored in the method parameters.</p>
+ *
+ * @param widget the memory address of the menu which was popped up
+ * @param flipped_rect a pointer to the GdkRectangle containing the flipped location and size of the menu
+ * @param final_rect a pointer to the GdkRectangle containing the final (after all internal adjustments)
+ * location and size of the menu
+ * @param flipped_x a boolean flag indicating whether the menu has been inverted along the X-axis
+ * @param flipped_y a boolean flag indicating whether the menu has been inverted along the Y-axis
+ */
+long /*int*/ gtk_menu_popped_up (long /*int*/ widget, long /*int*/ flipped_rect, long /*int*/ final_rect, long /*int*/ flipped_x, long /*int*/ flipped_y) {
+	return 0;
+}
+
 long /*int*/ gtk_mnemonic_activate (long /*int*/ widget, long /*int*/ arg1) {
 	return 0;
 }
@@ -925,13 +947,13 @@ long /*int*/ gtk_toggled (long /*int*/ renderer, long /*int*/ pathStr) {
  * prevents a stack overflow from occurring.
  */
 boolean gtk_tree_view_column_cell_get_position (long /*int*/ column, long /*int*/ cell_renderer, int[] start_pos, int[] width) {
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		Callback.setEnabled(false);
-		boolean result = OS.gtk_tree_view_column_cell_get_position (column, cell_renderer, start_pos, width);
+		boolean result = GTK.gtk_tree_view_column_cell_get_position (column, cell_renderer, start_pos, width);
 		Callback.setEnabled(true);
 		return result;
 	} else {
-		return OS.gtk_tree_view_column_cell_get_position (column, cell_renderer, start_pos, width);
+		return GTK.gtk_tree_view_column_cell_get_position (column, cell_renderer, start_pos, width);
 	}
 }
 
@@ -951,27 +973,12 @@ long /*int*/ gtk_value_changed (long /*int*/ adjustment) {
 	return 0;
 }
 
-/**
- * Reparent on gtk side.
- * Note: Composites with a setControl() function should probably use this function
- * to correct hierarchy on gtk side.
- * @param widget  the handle to the widget. (usually topHandle())
- * @param newParent  handle to the new widget.
- */
-void gtk_widget_reparent (long /*int*/ widget, long /*int*/ newParent) {
-	//Note, we do not actually call  * 'gtk_widget_reparent(...) as it's deprecated as of gtk 3.14
-	OS.g_object_ref (widget); //so that it won't get destroyed due to lack of references.
-	OS.gtk_container_remove (OS.gtk_widget_get_parent (widget), widget);
-	OS.gtk_container_add (newParent, widget);
-	OS.g_object_unref (widget);
-}
-
 long /*int*/ gtk_window_state_event (long /*int*/ widget, long /*int*/ event) {
 	return 0;
 }
 
 int fontHeight (long /*int*/ font, long /*int*/ widgetHandle) {
-	long /*int*/ context = OS.gtk_widget_get_pango_context (widgetHandle);
+	long /*int*/ context = GTK.gtk_widget_get_pango_context (widgetHandle);
 	long /*int*/ lang = OS.pango_context_get_language (context);
 	long /*int*/ metrics = OS.pango_context_get_metrics (context, font, lang);
 	int ascent = OS.pango_font_metrics_get_ascent (metrics);
@@ -1116,19 +1123,19 @@ long /*int*/ hoverProc (long /*int*/ widget) {
 boolean mnemonicHit (long /*int*/ mnemonicHandle, char key) {
 	if (!mnemonicMatch (mnemonicHandle, key)) return false;
 	OS.g_signal_handlers_block_matched (mnemonicHandle, OS.G_SIGNAL_MATCH_DATA, 0, 0, 0, 0, MNEMONIC_ACTIVATE);
-	boolean result = OS.gtk_widget_mnemonic_activate (mnemonicHandle, false);
+	boolean result = GTK.gtk_widget_mnemonic_activate (mnemonicHandle, false);
 	OS.g_signal_handlers_unblock_matched (mnemonicHandle, OS.G_SIGNAL_MATCH_DATA, 0, 0, 0, 0, MNEMONIC_ACTIVATE);
 	return result;
 }
 
 boolean mnemonicMatch (long /*int*/ mnemonicHandle, char key) {
-	long keyval1 = OS.gdk_keyval_to_lower (OS.gdk_unicode_to_keyval (key));
-	long keyval2 = OS.gdk_keyval_to_lower (OS.gtk_label_get_mnemonic_keyval (mnemonicHandle));
+	long keyval1 = GDK.gdk_keyval_to_lower (GDK.gdk_unicode_to_keyval (key));
+	long keyval2 = GDK.gdk_keyval_to_lower (GTK.gtk_label_get_mnemonic_keyval (mnemonicHandle));
 	return keyval1 == keyval2;
 }
 
 void modifyStyle (long /*int*/ handle, long /*int*/ style) {
-	OS.gtk_widget_modify_style (handle, style);
+	GTK.gtk_widget_modify_style (handle, style);
 }
 
 /**
@@ -1411,7 +1418,7 @@ boolean sendKeyEvent (int type, GdkEventKey keyEvent) {
 		return event.doit;
 	}
 	byte [] buffer = new byte [length];
-	OS.memmove (buffer, keyEvent.string, length);
+	C.memmove (buffer, keyEvent.string, length);
 	char [] chars = Converter.mbcsToWcs (buffer);
 	return sendIMKeyEvent (type, keyEvent, chars) != null;
 }
@@ -1420,13 +1427,13 @@ char [] sendIMKeyEvent (int type, GdkEventKey keyEvent, char [] chars) {
 	int index = 0, count = 0, state = 0;
 	long /*int*/ ptr = 0;
 	if (keyEvent == null) {
-		ptr = OS.gtk_get_current_event ();
+		ptr = GTK.gtk_get_current_event ();
 		if (ptr != 0) {
 			keyEvent = new GdkEventKey ();
 			OS.memmove (keyEvent, ptr, GdkEventKey.sizeof);
 			switch (keyEvent.type) {
-				case OS.GDK_KEY_PRESS:
-				case OS.GDK_KEY_RELEASE:
+				case GDK.GDK_KEY_PRESS:
+				case GDK.GDK_KEY_RELEASE:
 					state = keyEvent.state;
 					break;
 				default:
@@ -1437,7 +1444,7 @@ char [] sendIMKeyEvent (int type, GdkEventKey keyEvent, char [] chars) {
 	}
 	if (keyEvent == null) {
 		int [] buffer = new int [1];
-		OS.gtk_get_current_event_state (buffer);
+		GTK.gtk_get_current_event_state (buffer);
 		state = buffer [0];
 	}
 	while (index < chars.length) {
@@ -1457,13 +1464,13 @@ char [] sendIMKeyEvent (int type, GdkEventKey keyEvent, char [] chars) {
 		* the key by returning null.
 		*/
 		if (isDisposed ()) {
-			if (ptr != 0) OS.gdk_event_free (ptr);
+			if (ptr != 0) GDK.gdk_event_free (ptr);
 			return null;
 		}
 		if (event.doit) chars [count++] = chars [index];
 		index++;
 	}
-	if (ptr != 0) OS.gdk_event_free (ptr);
+	if (ptr != 0) GDK.gdk_event_free (ptr);
 	if (count == 0) return null;
 	if (index != count) {
 		char [] result = new char [count];
@@ -1482,23 +1489,23 @@ void sendSelectionEvent (int eventType, Event event, boolean send) {
 		return;
 	}
 	if (event == null) event = new Event ();
-	long /*int*/ ptr = OS.gtk_get_current_event ();
+	long /*int*/ ptr = GTK.gtk_get_current_event ();
 	if (ptr != 0) {
 		GdkEvent gdkEvent = new GdkEvent ();
 		OS.memmove (gdkEvent, ptr, GdkEvent.sizeof);
 		switch (gdkEvent.type) {
-			case OS.GDK_KEY_PRESS:
-			case OS.GDK_KEY_RELEASE:
-			case OS.GDK_BUTTON_PRESS:
-			case OS.GDK_2BUTTON_PRESS:
-			case OS.GDK_BUTTON_RELEASE: {
+			case GDK.GDK_KEY_PRESS:
+			case GDK.GDK_KEY_RELEASE:
+			case GDK.GDK_BUTTON_PRESS:
+			case GDK.GDK_2BUTTON_PRESS:
+			case GDK.GDK_BUTTON_RELEASE: {
 				int [] state = new int [1];
-				OS.gdk_event_get_state (ptr, state);
+				GDK.gdk_event_get_state (ptr, state);
 				setInputState (event, state [0]);
 				break;
 			}
 		}
-		OS.gdk_event_free (ptr);
+		GDK.gdk_event_free (ptr);
 	}
 	sendEvent (eventType, event, send);
 }
@@ -1614,34 +1621,34 @@ public void setData (String key, Object value) {
 		}
 	}
 	if (key.equals(SWT.SKIN_CLASS) || key.equals(SWT.SKIN_ID)) this.reskin(SWT.ALL);
-	if (OS.GTK_VERSION >= OS.VERSION(3, 20, 0) && key.equals(KEY_GTK_CSS) && value instanceof String) {
-		long /*int*/ context = OS.gtk_widget_get_style_context (cssHandle());
-		long /*int*/ provider = OS.gtk_css_provider_new();
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 20, 0) && key.equals(KEY_GTK_CSS) && value instanceof String) {
+		long /*int*/ context = GTK.gtk_widget_get_style_context (cssHandle());
+		long /*int*/ provider = GTK.gtk_css_provider_new();
 		if (context != 0 && provider != 0) {
-			OS.gtk_style_context_add_provider (context, provider, OS.GTK_STYLE_PROVIDER_PRIORITY_USER);
-			OS.gtk_css_provider_load_from_data (provider, Converter.wcsToMbcs ((String) value, true), -1, null);
+			GTK.gtk_style_context_add_provider (context, provider, GTK.GTK_STYLE_PROVIDER_PRIORITY_USER);
+			GTK.gtk_css_provider_load_from_data (provider, Converter.wcsToMbcs ((String) value, true), -1, null);
 			OS.g_object_unref (provider);
 		}
 	}
 }
 
 void setFontDescription (long /*int*/ widget, long /*int*/ font) {
-	if (OS.GTK3) {
-		OS.gtk_widget_override_font (widget, font);
-		long /*int*/ context = OS.gtk_widget_get_style_context (widget);
-		OS.gtk_style_context_invalidate (context);
+	if (GTK.GTK3) {
+		GTK.gtk_widget_override_font (widget, font);
+		long /*int*/ context = GTK.gtk_widget_get_style_context (widget);
+		GTK.gtk_style_context_invalidate (context);
 	} else {
-		OS.gtk_widget_modify_font (widget, font);
+		GTK.gtk_widget_modify_font (widget, font);
 	}
 }
 
 void setForegroundColor (long /*int*/ handle, GdkColor color) {
-	assert !OS.GTK3 : "GTK2 code was run by GTK3";
+	assert !GTK.GTK3 : "GTK2 code was run by GTK3";
 	setForegroundColor (handle, color, true);
 }
 
 void setForegroundColor (long /*int*/ handle, GdkColor color, boolean setStateActive) {
-	assert !OS.GTK3 : "GTK2 code was run by GTK3";
+	assert !GTK.GTK3 : "GTK2 code was run by GTK3";
 	/*
 	 * Feature in GTK. When the widget doesn't have focus, then
 	 * gtk_default_draw_flat_box () changes the background color state_type
@@ -1649,46 +1656,46 @@ void setForegroundColor (long /*int*/ handle, GdkColor color, boolean setStateAc
 	 * gtk_paint_flat_box or gtk_default_draw_flat_box have to pass false for
 	 * setStateActive.
 	 */
-	long /*int*/ style = OS.gtk_widget_get_modifier_style (handle);
-	OS.gtk_rc_style_set_fg (style, OS.GTK_STATE_NORMAL, color);
-	if (setStateActive) OS.gtk_rc_style_set_fg (style, OS.GTK_STATE_ACTIVE, color);
-	OS.gtk_rc_style_set_fg (style, OS.GTK_STATE_PRELIGHT, color);
-	int flags = OS.gtk_rc_style_get_color_flags (style, OS.GTK_STATE_NORMAL);
-	flags = (color == null) ? flags & ~OS.GTK_RC_FG: flags | OS.GTK_RC_FG;
-	OS.gtk_rc_style_set_color_flags (style, OS.GTK_STATE_NORMAL, flags);
+	long /*int*/ style = GTK.gtk_widget_get_modifier_style (handle);
+	GTK.gtk_rc_style_set_fg (style, GTK.GTK_STATE_NORMAL, color);
+	if (setStateActive) GTK.gtk_rc_style_set_fg (style, GTK.GTK_STATE_ACTIVE, color);
+	GTK.gtk_rc_style_set_fg (style, GTK.GTK_STATE_PRELIGHT, color);
+	int flags = GTK.gtk_rc_style_get_color_flags (style, GTK.GTK_STATE_NORMAL);
+	flags = (color == null) ? flags & ~GTK.GTK_RC_FG: flags | GTK.GTK_RC_FG;
+	GTK.gtk_rc_style_set_color_flags (style, GTK.GTK_STATE_NORMAL, flags);
 	if (setStateActive) {
-		flags = OS.gtk_rc_style_get_color_flags (style, OS.GTK_STATE_ACTIVE);
-		flags = (color == null) ? flags & ~OS.GTK_RC_FG: flags | OS.GTK_RC_FG;
-		OS.gtk_rc_style_set_color_flags (style, OS.GTK_STATE_ACTIVE, flags);
+		flags = GTK.gtk_rc_style_get_color_flags (style, GTK.GTK_STATE_ACTIVE);
+		flags = (color == null) ? flags & ~GTK.GTK_RC_FG: flags | GTK.GTK_RC_FG;
+		GTK.gtk_rc_style_set_color_flags (style, GTK.GTK_STATE_ACTIVE, flags);
 	}
-	flags = OS.gtk_rc_style_get_color_flags (style, OS.GTK_STATE_PRELIGHT);
-	flags = (color == null) ? flags & ~OS.GTK_RC_FG: flags | OS.GTK_RC_FG;
-	OS.gtk_rc_style_set_color_flags (style, OS.GTK_STATE_PRELIGHT, flags);
+	flags = GTK.gtk_rc_style_get_color_flags (style, GTK.GTK_STATE_PRELIGHT);
+	flags = (color == null) ? flags & ~GTK.GTK_RC_FG: flags | GTK.GTK_RC_FG;
+	GTK.gtk_rc_style_set_color_flags (style, GTK.GTK_STATE_PRELIGHT, flags);
 
-	OS.gtk_rc_style_set_text (style, OS.GTK_STATE_NORMAL, color);
-	if (setStateActive) OS.gtk_rc_style_set_text (style, OS.GTK_STATE_ACTIVE, color);
-	OS.gtk_rc_style_set_text (style, OS.GTK_STATE_PRELIGHT, color);
-	flags = OS.gtk_rc_style_get_color_flags (style, OS.GTK_STATE_NORMAL);
-	flags = (color == null) ? flags & ~OS.GTK_RC_TEXT: flags | OS.GTK_RC_TEXT;
-	OS.gtk_rc_style_set_color_flags (style, OS.GTK_STATE_NORMAL, flags);
-	flags = OS.gtk_rc_style_get_color_flags (style, OS.GTK_STATE_PRELIGHT);
-	flags = (color == null) ? flags & ~OS.GTK_RC_TEXT: flags | OS.GTK_RC_TEXT;
-	OS.gtk_rc_style_set_color_flags (style, OS.GTK_STATE_PRELIGHT, flags);
+	GTK.gtk_rc_style_set_text (style, GTK.GTK_STATE_NORMAL, color);
+	if (setStateActive) GTK.gtk_rc_style_set_text (style, GTK.GTK_STATE_ACTIVE, color);
+	GTK.gtk_rc_style_set_text (style, GTK.GTK_STATE_PRELIGHT, color);
+	flags = GTK.gtk_rc_style_get_color_flags (style, GTK.GTK_STATE_NORMAL);
+	flags = (color == null) ? flags & ~GTK.GTK_RC_TEXT: flags | GTK.GTK_RC_TEXT;
+	GTK.gtk_rc_style_set_color_flags (style, GTK.GTK_STATE_NORMAL, flags);
+	flags = GTK.gtk_rc_style_get_color_flags (style, GTK.GTK_STATE_PRELIGHT);
+	flags = (color == null) ? flags & ~GTK.GTK_RC_TEXT: flags | GTK.GTK_RC_TEXT;
+	GTK.gtk_rc_style_set_color_flags (style, GTK.GTK_STATE_PRELIGHT, flags);
 	if (setStateActive) {
-		flags = OS.gtk_rc_style_get_color_flags (style, OS.GTK_STATE_ACTIVE);
-		flags = (color == null) ? flags & ~OS.GTK_RC_TEXT: flags | OS.GTK_RC_TEXT;
-		OS.gtk_rc_style_set_color_flags (style, OS.GTK_STATE_ACTIVE, flags);
+		flags = GTK.gtk_rc_style_get_color_flags (style, GTK.GTK_STATE_ACTIVE);
+		flags = (color == null) ? flags & ~GTK.GTK_RC_TEXT: flags | GTK.GTK_RC_TEXT;
+		GTK.gtk_rc_style_set_color_flags (style, GTK.GTK_STATE_ACTIVE, flags);
 	}
 	modifyStyle (handle, style);
 }
 
 boolean setInputState (Event event, int state) {
-	if ((state & OS.GDK_MOD1_MASK) != 0) event.stateMask |= SWT.ALT;
-	if ((state & OS.GDK_SHIFT_MASK) != 0) event.stateMask |= SWT.SHIFT;
-	if ((state & OS.GDK_CONTROL_MASK) != 0) event.stateMask |= SWT.CONTROL;
-	if ((state & OS.GDK_BUTTON1_MASK) != 0) event.stateMask |= SWT.BUTTON1;
-	if ((state & OS.GDK_BUTTON2_MASK) != 0) event.stateMask |= SWT.BUTTON2;
-	if ((state & OS.GDK_BUTTON3_MASK) != 0) event.stateMask |= SWT.BUTTON3;
+	if ((state & GDK.GDK_MOD1_MASK) != 0) event.stateMask |= SWT.ALT;
+	if ((state & GDK.GDK_SHIFT_MASK) != 0) event.stateMask |= SWT.SHIFT;
+	if ((state & GDK.GDK_CONTROL_MASK) != 0) event.stateMask |= SWT.CONTROL;
+	if ((state & GDK.GDK_BUTTON1_MASK) != 0) event.stateMask |= SWT.BUTTON1;
+	if ((state & GDK.GDK_BUTTON2_MASK) != 0) event.stateMask |= SWT.BUTTON2;
+	if ((state & GDK.GDK_BUTTON3_MASK) != 0) event.stateMask |= SWT.BUTTON3;
 	return true;
 }
 
@@ -1697,31 +1704,31 @@ boolean setKeyState (Event event, GdkEventKey keyEvent) {
 	boolean isNull = false;
 	event.keyCode = Display.translateKey (keyEvent.keyval);
 	switch (keyEvent.keyval) {
-		case OS.GDK_BackSpace:		event.character = SWT.BS; break;
-		case OS.GDK_Linefeed:		event.character = SWT.LF; break;
-		case OS.GDK_KP_Enter:
-		case OS.GDK_Return: 		event.character = SWT.CR; break;
-		case OS.GDK_KP_Delete:
-		case OS.GDK_Delete:			event.character = SWT.DEL; break;
-		case OS.GDK_Escape:			event.character = SWT.ESC; break;
-		case OS.GDK_Tab:
-		case OS.GDK_ISO_Left_Tab: 	event.character = SWT.TAB; break;
+		case GDK.GDK_BackSpace:		event.character = SWT.BS; break;
+		case GDK.GDK_Linefeed:		event.character = SWT.LF; break;
+		case GDK.GDK_KP_Enter:
+		case GDK.GDK_Return: 		event.character = SWT.CR; break;
+		case GDK.GDK_KP_Delete:
+		case GDK.GDK_Delete:			event.character = SWT.DEL; break;
+		case GDK.GDK_Escape:			event.character = SWT.ESC; break;
+		case GDK.GDK_Tab:
+		case GDK.GDK_ISO_Left_Tab: 	event.character = SWT.TAB; break;
 		default: {
 			if (event.keyCode == 0) {
 				long [] keyval = new long [1];
 				int [] effective_group = new int [1], level = new int [1], consumed_modifiers = new int [1];
-				if (OS.gdk_keymap_translate_keyboard_state (OS.gdk_keymap_get_default (), keyEvent.hardware_keycode, 0, display.getLatinKeyGroup(), keyval, effective_group, level, consumed_modifiers)) {
-					event.keyCode = (int) OS.gdk_keyval_to_unicode (keyval [0]);
+				if (OS.gdk_keymap_translate_keyboard_state (GDK.gdk_keymap_get_default (), keyEvent.hardware_keycode, 0, display.getLatinKeyGroup(), keyval, effective_group, level, consumed_modifiers)) {
+					event.keyCode = (int) GDK.gdk_keyval_to_unicode (keyval [0]);
 				}
 			}
 			int key = keyEvent.keyval;
-			if ((keyEvent.state & OS.GDK_CONTROL_MASK) != 0 && (0 <= key && key <= 0x7F)) {
+			if ((keyEvent.state & GDK.GDK_CONTROL_MASK) != 0 && (0 <= key && key <= 0x7F)) {
 				if ('a'  <= key && key <= 'z') key -= 'a' - 'A';
 				if (64 <= key && key <= 95) key -= 64;
 				event.character = (char) key;
 				isNull = keyEvent.keyval == '@' && key == 0;
 			} else {
-				event.character = (char) OS.gdk_keyval_to_unicode (key);
+				event.character = (char) GDK.gdk_keyval_to_unicode (key);
 			}
 		}
 	}
@@ -1734,44 +1741,44 @@ boolean setKeyState (Event event, GdkEventKey keyEvent) {
 
 void setLocationState (Event event, GdkEventKey keyEvent) {
 	switch (keyEvent.keyval) {
-		case OS.GDK_Alt_L:
-		case OS.GDK_Shift_L:
-		case OS.GDK_Control_L:
+		case GDK.GDK_Alt_L:
+		case GDK.GDK_Shift_L:
+		case GDK.GDK_Control_L:
 			event.keyLocation = SWT.LEFT;
 			break;
-		case OS.GDK_Alt_R:
-		case OS.GDK_Shift_R:
-		case OS.GDK_Control_R:
+		case GDK.GDK_Alt_R:
+		case GDK.GDK_Shift_R:
+		case GDK.GDK_Control_R:
 				event.keyLocation = SWT.RIGHT;
 			break;
-		case OS.GDK_KP_0:
-		case OS.GDK_KP_1:
-		case OS.GDK_KP_2:
-		case OS.GDK_KP_3:
-		case OS.GDK_KP_4:
-		case OS.GDK_KP_5:
-		case OS.GDK_KP_6:
-		case OS.GDK_KP_7:
-		case OS.GDK_KP_8:
-		case OS.GDK_KP_9:
-		case OS.GDK_KP_Add:
-		case OS.GDK_KP_Decimal:
-		case OS.GDK_KP_Delete:
-		case OS.GDK_KP_Divide:
-		case OS.GDK_KP_Down:
-		case OS.GDK_KP_End:
-		case OS.GDK_KP_Enter:
-		case OS.GDK_KP_Equal:
-		case OS.GDK_KP_Home:
-		case OS.GDK_KP_Insert:
-		case OS.GDK_KP_Left:
-		case OS.GDK_KP_Multiply:
-		case OS.GDK_KP_Page_Down:
-		case OS.GDK_KP_Page_Up:
-		case OS.GDK_KP_Right:
-		case OS.GDK_KP_Subtract:
-		case OS.GDK_KP_Up:
-		case OS.GDK_Num_Lock:
+		case GDK.GDK_KP_0:
+		case GDK.GDK_KP_1:
+		case GDK.GDK_KP_2:
+		case GDK.GDK_KP_3:
+		case GDK.GDK_KP_4:
+		case GDK.GDK_KP_5:
+		case GDK.GDK_KP_6:
+		case GDK.GDK_KP_7:
+		case GDK.GDK_KP_8:
+		case GDK.GDK_KP_9:
+		case GDK.GDK_KP_Add:
+		case GDK.GDK_KP_Decimal:
+		case GDK.GDK_KP_Delete:
+		case GDK.GDK_KP_Divide:
+		case GDK.GDK_KP_Down:
+		case GDK.GDK_KP_End:
+		case GDK.GDK_KP_Enter:
+		case GDK.GDK_KP_Equal:
+		case GDK.GDK_KP_Home:
+		case GDK.GDK_KP_Insert:
+		case GDK.GDK_KP_Left:
+		case GDK.GDK_KP_Multiply:
+		case GDK.GDK_KP_Page_Down:
+		case GDK.GDK_KP_Page_Up:
+		case GDK.GDK_KP_Right:
+		case GDK.GDK_KP_Subtract:
+		case GDK.GDK_KP_Up:
+		case GDK.GDK_Num_Lock:
 			event.keyLocation = SWT.KEYPAD;
 			break;
 	}
@@ -1801,27 +1808,27 @@ long /*int*/ sizeRequestProc (long /*int*/ handle, long /*int*/ arg0, long /*int
 }
 
 long /*int*/ gtk_widget_get_window (long /*int*/ widget){
-	if (OS.GTK3) {
-		OS.gtk_widget_realize(widget);
+	if (GTK.GTK3) {
+		GTK.gtk_widget_realize(widget);
 	}
-	return OS.gtk_widget_get_window (widget);
+	return GTK.gtk_widget_get_window (widget);
 }
 
 void gtk_widget_set_visible (long /*int*/ widget, boolean visible) {
-	if (OS.GTK3) {
-		OS.gtk_widget_set_visible (widget,visible);
+	if (GTK.GTK3) {
+		GTK.gtk_widget_set_visible (widget,visible);
 	} else {
 		if (visible) {
-			OS.GTK_WIDGET_SET_FLAGS (widget, OS.GTK_VISIBLE);
+			GTK.GTK_WIDGET_SET_FLAGS (widget, GTK.GTK_VISIBLE);
 		} else {
-			OS.GTK_WIDGET_UNSET_FLAGS (widget, OS.GTK_VISIBLE);
+			GTK.GTK_WIDGET_UNSET_FLAGS (widget, GTK.GTK_VISIBLE);
 		}
 	}
 }
 
 void gdk_window_get_size (long /*int*/ drawable, int[] width, int[] height) {
-		width[0] = OS.gdk_window_get_width (drawable);
-		height[0] = OS.gdk_window_get_height (drawable);
+		width[0] = GDK.gdk_window_get_width (drawable);
+		height[0] = GDK.gdk_window_get_height (drawable);
 }
 
 /**
@@ -1832,51 +1839,49 @@ void gdk_window_get_size (long /*int*/ drawable, int[] width, int[] height) {
  */
 int gdk_event_get_state (long /*int*/ event) {
 	int [] state = new int [1];
-	OS.gdk_event_get_state (event, state);
+	GDK.gdk_event_get_state (event, state);
 	return state[0];
 }
 
 
 long /*int*/ gtk_box_new (int orientation, boolean homogeneous, int spacing) {
 	long /*int*/ box = 0;
-	if (OS.GTK3) {
-		box = OS.gtk_box_new (orientation, spacing);
-		OS.gtk_box_set_homogeneous (box, homogeneous);
+	if (GTK.GTK3) {
+		box = GTK.gtk_box_new (orientation, spacing);
+		GTK.gtk_box_set_homogeneous (box, homogeneous);
 	} else {
-		if (orientation == OS.GTK_ORIENTATION_HORIZONTAL) {
-			box = OS.gtk_hbox_new (homogeneous, spacing);
+		if (orientation == GTK.GTK_ORIENTATION_HORIZONTAL) {
+			box = GTK.gtk_hbox_new (homogeneous, spacing);
 		} else {
-			box = OS.gtk_vbox_new (homogeneous, spacing);
+			box = GTK.gtk_vbox_new (homogeneous, spacing);
 		}
 	}
 	return box;
 }
 
 int gdk_pointer_grab (long /*int*/ window, int grab_ownership, boolean owner_events, int event_mask, long /*int*/ confine_to, long /*int*/ cursor, int time_) {
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		long /*int*/ display = 0;
 		if( window != 0) {
-			display = OS.gdk_window_get_display (window);
+			display = GDK.gdk_window_get_display (window);
 		} else {
-			window = OS.gdk_get_default_root_window ();
-			display = OS.gdk_window_get_display (window);
+			window = GDK.gdk_get_default_root_window ();
+			display = GDK.gdk_window_get_display (window);
 		}
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager (display);
-		long /*int*/ pointer = OS.gdk_device_manager_get_client_pointer (device_manager);
-		return OS.gdk_device_grab (pointer, window, grab_ownership, owner_events, event_mask, cursor, time_);
+		long /*int*/ pointer = GDK.gdk_get_pointer(display);
+		return GDK.gdk_device_grab (pointer, window, grab_ownership, owner_events, event_mask, cursor, time_);
 	} else {
-		return OS.gdk_pointer_grab (window, owner_events, event_mask, confine_to, cursor, time_);
+		return GDK.gdk_pointer_grab (window, owner_events, event_mask, confine_to, cursor, time_);
 	}
 }
 
 void gdk_pointer_ungrab (long /*int*/ window, int time_) {
-	if (OS.GTK3) {
-		long /*int*/ display = OS.gdk_window_get_display (window);
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager (display);
-		long /*int*/ pointer = OS.gdk_device_manager_get_client_pointer (device_manager);
-		OS.gdk_device_ungrab (pointer, time_);
+	if (GTK.GTK3) {
+		long /*int*/ display = GDK.gdk_window_get_display (window);
+		long /*int*/ pointer = GDK.gdk_get_pointer(display);
+		GDK.gdk_device_ungrab (pointer, time_);
 	} else {
-		OS.gdk_pointer_ungrab (time_);
+		GDK.gdk_pointer_ungrab (time_);
 	}
 }
 
@@ -1938,8 +1943,8 @@ long /*int*/ windowProc (long /*int*/ handle, long /*int*/ user_data) {
 long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ user_data) {
 	switch ((int)/*64*/user_data) {
 		case EXPOSE_EVENT_INVERSE: {
-			if (OS.GTK3) {
-				if (OS.GTK_VERSION >= OS.VERSION (3, 9, 0) && OS.GTK_IS_CONTAINER (handle)) {
+			if (GTK.GTK3) {
+				if (GTK.GTK_VERSION >= OS.VERSION (3, 9, 0) && GTK.GTK_IS_CONTAINER (handle)) {
 					return gtk_draw (handle, arg0);
 				}
 			} else {
@@ -1966,8 +1971,8 @@ long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ us
 		case EVENT: return gtk_event (handle, arg0);
 		case EVENT_AFTER: return gtk_event_after (handle, arg0);
 		case EXPOSE_EVENT: {
-			if (OS.GTK3) {
-				if (OS.GTK_VERSION < OS.VERSION (3, 9, 0) || !OS.GTK_IS_CONTAINER (handle)) {
+			if (GTK.GTK3) {
+				if (GTK.GTK_VERSION < OS.VERSION (3, 9, 0) || !GTK.GTK_IS_CONTAINER (handle)) {
 					return gtk_draw (handle, arg0);
 				}
 			} else {
@@ -2026,55 +2031,61 @@ long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ ar
 	}
 }
 
+long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ arg1, long /*int*/ arg2, long /*int*/ arg3, long /*int*/ user_data) {
+	switch ((int)/*64*/user_data) {
+		case POPPED_UP: return gtk_menu_popped_up (handle, arg0, arg1, arg2, arg3);
+		default: return 0;
+	}
+}
+
 void gdk_cursor_unref (long /*int*/ cursor) {
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		OS.g_object_unref (cursor);
 	} else {
-		OS.gdk_cursor_unref(cursor);
+		GDK.gdk_cursor_unref(cursor);
 	}
 }
 
 long /*int*/ gdk_window_get_device_position (long /*int*/ window, int[] x, int[] y, int[] mask) {
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		long /*int*/ display = 0;
 		if( window != 0) {
-			display = OS.gdk_window_get_display (window);
+			display = GDK.gdk_window_get_display (window);
 		} else {
-			window = OS.gdk_get_default_root_window ();
-			display = OS.gdk_window_get_display (window);
+			window = GDK.gdk_get_default_root_window ();
+			display = GDK.gdk_window_get_display (window);
 		}
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager (display);
-		long /*int*/ pointer = OS.gdk_device_manager_get_client_pointer (device_manager);
-		return OS.gdk_window_get_device_position(window, pointer, x, y, mask);
+		long /*int*/ pointer = GDK.gdk_get_pointer(display);
+		return GDK.gdk_window_get_device_position(window, pointer, x, y, mask);
 	} else {
-		return OS.gdk_window_get_pointer (window, x, y, mask);
+		return GDK.gdk_window_get_pointer (window, x, y, mask);
 	}
 }
 
 void gtk_cell_renderer_get_preferred_size (long /*int*/ cell, long /*int*/ widget,  int[] width, int[] height) {
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		GtkRequisition minimum_size = new GtkRequisition ();
-		OS.gtk_cell_renderer_get_preferred_size (cell, widget, minimum_size, null);
+		GTK.gtk_cell_renderer_get_preferred_size (cell, widget, minimum_size, null);
 		if (width != null) width [0] = minimum_size.width;
 		if (height != null) height[0] = minimum_size.height;
 	} else {
-		OS.gtk_cell_renderer_get_size (cell, widget, null, null, null, width, height);
+		GTK.gtk_cell_renderer_get_size (cell, widget, null, null, null, width, height);
 	}
 }
 
 void gtk_widget_get_preferred_size (long /*int*/ widget, GtkRequisition requisition){
-	if (OS.GTK3) {
-		OS.gtk_widget_get_preferred_size (widget, requisition, null);
+	if (GTK.GTK3) {
+		GTK.gtk_widget_get_preferred_size (widget, requisition, null);
 	} else {
-		OS.gtk_widget_size_request (widget, requisition);
+		GTK.gtk_widget_size_request (widget, requisition);
 	}
 }
 
 void gtk_image_set_from_pixbuf (long /*int*/ imageHandle, long /*int*/ pixbuf){
-	if (OS.GTK3) {
-		OS.gtk_image_set_from_gicon(imageHandle, pixbuf, OS.GTK_ICON_SIZE_SMALL_TOOLBAR);
+	if (GTK.GTK3) {
+		GTK.gtk_image_set_from_gicon(imageHandle, pixbuf, GTK.GTK_ICON_SIZE_SMALL_TOOLBAR);
 	} else {
-		OS.gtk_image_set_from_pixbuf(imageHandle, pixbuf);
+		GTK.gtk_image_set_from_pixbuf(imageHandle, pixbuf);
 	}
 }
 

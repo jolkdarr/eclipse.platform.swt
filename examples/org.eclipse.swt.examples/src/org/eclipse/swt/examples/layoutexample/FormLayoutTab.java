@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -325,8 +325,8 @@ class FormLayoutTab extends Tab {
 	 * Generates code for the example layout.
 	 */
 	@Override
-	StringBuffer generateLayoutCode () {
-		StringBuffer code = new StringBuffer ();
+	StringBuilder generateLayoutCode () {
+		StringBuilder code = new StringBuilder ();
 		code.append ("\t\tFormLayout formLayout = new FormLayout ();\n");
 		if (formLayout.marginWidth != 0) {
 			code.append ("\t\tformLayout.marginWidth = " + formLayout.marginWidth + ";\n");
@@ -373,7 +373,7 @@ class FormLayoutTab extends Tab {
 					if (data.left.control != null) {
 						TableItem item = table.getItem (i);
 						String controlString = item.getText (LEFT_COL);
-						int index = new Integer (controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (','))).intValue ();
+						int index = Integer.valueOf(controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (','))).intValue ();
 						code.append ("\t\tdata.left = new FormAttachment (" + names [index] + ", " + data.left.offset + ", SWT." + alignmentString (data.left.alignment) + ");\n");
 					} else {
 						if (data.right != null || (data.left.numerator != 0 ||data.left.offset != 0)) {
@@ -385,7 +385,7 @@ class FormLayoutTab extends Tab {
 					if (data.right.control != null) {
 						TableItem item = table.getItem (i);
 						String controlString = item.getText (RIGHT_COL);
-						int index = new Integer (controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (','))).intValue ();
+						int index = Integer.valueOf (controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (',')));
 						code.append ("\t\tdata.right = new FormAttachment (" + names [index] + ", " + data.right.offset + ", SWT." + alignmentString (data.right.alignment) + ");\n");
 					} else {
 						code.append ("\t\tdata.right = new FormAttachment (" + data.right.numerator + ", " + data.right.offset + ");\n");
@@ -395,7 +395,7 @@ class FormLayoutTab extends Tab {
 					if (data.top.control != null) {
 						TableItem item = table.getItem (i);
 						String controlString = item.getText (TOP_COL);
-						int index = new Integer (controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (','))).intValue ();
+						int index = Integer.valueOf(controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (',')));
 						code.append ("\t\tdata.top = new FormAttachment (" + names [index] + ", " + data.top.offset + ", SWT." + alignmentString (data.top.alignment) + ");\n");
 					} else {
 						if (data.bottom != null || (data.top.numerator != 0 ||data.top.offset != 0)) {
@@ -407,7 +407,7 @@ class FormLayoutTab extends Tab {
 					if (data.bottom.control != null) {
 						TableItem item = table.getItem (i);
 						String controlString = item.getText (BOTTOM_COL);
-						int index = new Integer (controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (','))).intValue ();
+						int index = Integer.valueOf(controlString.substring (controlString.indexOf (',') - 1, controlString.indexOf (',')));
 						code.append ("\t\tdata.bottom = new FormAttachment (" + names [index] + ", " + data.bottom.offset + ", SWT." + alignmentString (data.bottom.alignment) + ");\n");
 					} else {
 						code.append ("\t\tdata.bottom = new FormAttachment (" + data.bottom.numerator + ", " + data.bottom.offset + ");\n");
@@ -468,12 +468,12 @@ class FormLayoutTab extends Tab {
 				nameText.setText (oldItem.getText (NAME_COL));
 			}
 			try {
-				new Integer (widthText.getText ()).intValue ();
+				Integer.parseInt(widthText.getText ());
 			} catch (NumberFormatException e) {
 				widthText.setText (oldItem.getText (WIDTH_COL));
 			}
 			try {
-				Integer.valueOf(heightText.getText()).intValue();
+				Integer.parseInt(heightText.getText());
 			} catch(NumberFormatException e) {
 				heightText.setText (oldItem.getText(HEIGHT_COL));
 			}
@@ -517,11 +517,11 @@ class FormLayoutTab extends Tab {
 				i++;
 			}
 			String end = control.substring (i);
-			int index = new Integer (end).intValue ();
+			int index = Integer.valueOf(end).intValue ();
 			Control attachControl = children [index];
 			int colon = attachment.indexOf (':');
 			try {
-				offset = new Integer (attachment.substring (comma + 1, colon)).intValue ();
+				offset = Integer.valueOf(attachment.substring (comma + 1, colon)).intValue ();
 			} catch (NumberFormatException e) {
 				offset = 0;
 			}
@@ -530,12 +530,12 @@ class FormLayoutTab extends Tab {
 		} else {
 			/* Case where there is a position */
 			try {
-				position = new Integer (attachment.substring (0,comma)).intValue ();
+				position = Integer.valueOf(attachment.substring (0,comma));
 			} catch (NumberFormatException e) {
 				position = 0;
 			}
 			try {
-				offset = new Integer (attachment.substring (comma + 1)).intValue ();
+				offset = Integer.valueOf(attachment.substring (comma + 1));
 			} catch (NumberFormatException e) {
 				offset = 0;
 			}
@@ -554,8 +554,8 @@ class FormLayoutTab extends Tab {
 		int width, height;
 		String left, right, top, bottom;
 		for (int i = 0; i < children.length; i++) {
-			width = new Integer (items [i].getText (WIDTH_COL)).intValue ();
-			height = new Integer (items [i].getText (HEIGHT_COL)).intValue ();
+			width = Integer.valueOf(items [i].getText (WIDTH_COL)).intValue ();
+			height = Integer.valueOf(items [i].getText (HEIGHT_COL)).intValue ();
 			data = new FormData ();
 			if (width > 0) data.width = width;
 			if (height > 0) data.height = height;
@@ -744,7 +744,7 @@ class FormLayoutTab extends Tab {
 				if (positionInput.length() == 0)
 					positionInput = "0";
 				try {
-					new Integer(positionInput).intValue();
+					Integer.parseInt(positionInput);
 				} catch (NumberFormatException except) {
 					positionInput = "0";
 				}
@@ -752,7 +752,7 @@ class FormLayoutTab extends Tab {
 				if (offsetInput.length() == 0)
 					offsetInput = "0";
 				try {
-					new Integer(offsetInput).intValue();
+					Integer.parseInt(offsetInput);
 				} catch (NumberFormatException except) {
 					offsetInput = "0";
 				}

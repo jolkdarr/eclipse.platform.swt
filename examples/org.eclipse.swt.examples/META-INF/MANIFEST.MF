@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %plugin.SWTStandaloneExampleSet.name
 Bundle-SymbolicName: org.eclipse.swt.examples; singleton:=true
-Bundle-Version: 3.106.100.qualifier
+Bundle-Version: 3.106.200.qualifier
 Bundle-Vendor: %providerName
 Bundle-Localization: plugin
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
@@ -23,3 +23,4 @@ Export-Package: org.eclipse.swt.examples.accessibility,
  org.eclipse.swt.examples.texteditor
 Require-Bundle: org.eclipse.swt
 Bundle-ActivationPolicy: lazy
+Automatic-Module-Name: org.eclipse.swt.examples

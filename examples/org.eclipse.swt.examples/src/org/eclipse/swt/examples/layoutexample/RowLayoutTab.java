@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -250,8 +250,8 @@ class RowLayoutTab extends Tab {
 	 * Generates code for the example layout.
 	 */
 	@Override
-	StringBuffer generateLayoutCode () {
-		StringBuffer code = new StringBuffer ();
+	StringBuilder generateLayoutCode () {
+		StringBuilder code = new StringBuilder ();
 		code.append ("\t\tRowLayout rowLayout = new RowLayout ();\n");
 		if (rowLayout.type == SWT.VERTICAL) {
 			code.append ("\t\trowLayout.type = SWT.VERTICAL;\n");
@@ -370,12 +370,12 @@ class RowLayoutTab extends Tab {
 				nameText.setText(oldItem.getText(NAME_COL));
 			}
 			try {
-				new Integer (widthText.getText ()).intValue ();
+				Integer.parseInt(widthText.getText ());
 			} catch (NumberFormatException e) {
 				widthText.setText (oldItem.getText (WIDTH_COL));
 			}
 			try {
-				new Integer (heightText.getText ()).intValue ();
+				Integer.parseInt(heightText.getText ());
 			} catch (NumberFormatException e) {
 				heightText.setText (oldItem.getText (HEIGHT_COL));
 			}
@@ -405,8 +405,8 @@ class RowLayoutTab extends Tab {
 		int width, height;
 		String exclude;
 		for (int i = 0; i < children.length; i++) {
-			width = new Integer (items [i].getText (WIDTH_COL)).intValue ();
-			height = new Integer (items [i].getText (HEIGHT_COL)).intValue ();
+			width = Integer.valueOf(items [i].getText (WIDTH_COL)).intValue ();
+			height = Integer.valueOf(items [i].getText (HEIGHT_COL)).intValue ();
 			data = new RowData (width, height);
 			exclude = items [i].getText (EXCLUDE_COL);
 			data.exclude = exclude.equals ("true");

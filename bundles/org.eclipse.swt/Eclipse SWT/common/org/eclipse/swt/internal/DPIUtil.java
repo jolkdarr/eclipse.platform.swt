@@ -39,6 +39,9 @@ public class DPIUtil {
 	private static AutoScaleMethod autoScaleMethodSetting = AutoScaleMethod.AUTO;
 	private static AutoScaleMethod autoScaleMethod = AutoScaleMethod.NEAREST;
 
+	private static String autoScaleValue;
+	private static boolean isGtk3 = false;
+
 	/**
 	 * System property that controls the autoScale functionality.
 	 * <ul>
@@ -73,6 +76,8 @@ public class DPIUtil {
 	 */
 	private static final String SWT_AUTOSCALE_METHOD = "swt.autoScale.method";
 	static {
+		autoScaleValue = System.getProperty (SWT_AUTOSCALE);
+
 		String value = System.getProperty (SWT_AUTOSCALE_METHOD);
 		if (value != null) {
 			if (AutoScaleMethod.NEAREST.name().equalsIgnoreCase(value)) {
@@ -265,7 +270,7 @@ public static Rectangle autoScaleBounds (Rectangle rect, int targetZoom, int cur
  */
 public static ImageData autoScaleUp (Device device, final ImageData imageData) {
 	if (deviceZoom == 100 || imageData == null || (device != null && !device.isAutoScalable())) return imageData;
-	float scaleFactor = getScalingFactor ();
+	float scaleFactor = deviceZoom / 100f;
 	return autoScaleImageData(device, imageData, scaleFactor);
 }
 
@@ -370,6 +375,9 @@ public static Rectangle autoScaleUp (Drawable drawable, Rectangle rect) {
  * @return float scaling factor
  */
 private static float getScalingFactor () {
+	if (isGtk3) {
+		return 1;
+	}
 	return deviceZoom / 100f;
 }
 
@@ -419,31 +427,7 @@ public static int getDeviceZoom() {
 
 public static void setDeviceZoom (int nativeDeviceZoom) {
 	DPIUtil.nativeDeviceZoom = nativeDeviceZoom;
-	int deviceZoom = 0;
-	String value = System.getProperty (SWT_AUTOSCALE);
- 	if (value != null) {
-		if ("false".equalsIgnoreCase (value)) {
-			deviceZoom = 100;
-		} else if ("quarter".equalsIgnoreCase (value)) {
-			deviceZoom = (int) (Math.round (nativeDeviceZoom / 25f) * 25);
-		} else if ("exact".equalsIgnoreCase (value)) {
-			deviceZoom = nativeDeviceZoom;
-		} else {
-			try {
-				int zoom = Integer.parseInt (value);
-				deviceZoom = Math.max (Math.min (zoom, 1600), 25);
-			} catch (NumberFormatException e) {
-				// unsupported value, use default
-			}
-		}
-	}
- 	if (deviceZoom == 0) { // || "integer".equalsIgnoreCase (value) || "integer200".equalsIgnoreCase (value)
-		deviceZoom = Math.max ((nativeDeviceZoom + 25) / 100 * 100, 100);
-		if (!"integer".equalsIgnoreCase(value)) {
-			// integer200, or default
-			deviceZoom = Math.min (deviceZoom, 200);
-		}
-	}
+	int deviceZoom = getZoomForAutoscaleProperty (nativeDeviceZoom);
 
 	DPIUtil.deviceZoom = deviceZoom;
 	System.setProperty("org.eclipse.swt.internal.deviceZoom", Integer.toString(deviceZoom));
@@ -454,6 +438,39 @@ public static void setDeviceZoom (int nativeDeviceZoom) {
 			autoScaleMethod = AutoScaleMethod.SMOOTH;
 		}
 	}
+}
+
+public static void setIsGtk3 (boolean gtk3) {
+	isGtk3 = gtk3;
+}
+
+
+public static int getZoomForAutoscaleProperty (int nativeDeviceZoom) {
+	int zoom = 0;
+ 	if (autoScaleValue != null) {
+		if ("false".equalsIgnoreCase (autoScaleValue)) {
+			zoom = 100;
+		} else if ("quarter".equalsIgnoreCase (autoScaleValue)) {
+			zoom = (int) (Math.round (nativeDeviceZoom / 25f) * 25);
+		} else if ("exact".equalsIgnoreCase (autoScaleValue)) {
+			zoom = nativeDeviceZoom;
+		} else {
+			try {
+				int zoomValue = Integer.parseInt (autoScaleValue);
+				zoom = Math.max (Math.min (zoomValue, 1600), 25);
+			} catch (NumberFormatException e) {
+				// unsupported value, use default
+			}
+		}
+	}
+ 	if (zoom == 0) { // || "integer".equalsIgnoreCase (value) || "integer200".equalsIgnoreCase (value)
+		zoom = Math.max ((nativeDeviceZoom + 25) / 100 * 100, 100);
+		if (!"integer".equalsIgnoreCase(autoScaleValue)) {
+			// integer200, or default
+			zoom = Math.min (zoom, 200);
+		}
+	}
+	return zoom;
 }
 
 /**

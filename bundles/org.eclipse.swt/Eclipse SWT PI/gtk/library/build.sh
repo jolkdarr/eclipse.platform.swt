@@ -1,6 +1,6 @@
 #!/bin/sh
 #*******************************************************************************
-# Copyright (c) 2000, 2017 IBM Corporation and others.
+# Copyright (c) 2000, 2018 IBM Corporation and others.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License v1.0
 # which accompanies this distribution, and is available at
@@ -72,32 +72,13 @@ cd `dirname $0`
 
 MAKE_TYPE=make
 
+export CFLAGS='-O -Wall -fPIC'
+
 # Determine which OS we are on
 if [ "${OS}" = "" ]; then
 	OS=`uname -s`
 fi
 case $OS in
-	"AIX")
-		SWT_OS=aix
-		MAKEFILE=make_aix.mak
-		;;
-	"SunOS")
-		SWT_OS=solaris
-		PROC=`uname -i`
-		MAKEFILE=make_solaris.mak
-		if [ "${MODEL}" = "" ]; then
-			MODEL=`isainfo -k`
-			if [ "${MODEL}" = "amd64" ]; then
-				MODEL=x86_64
-				MAKEFILE=make_solaris_x86_64.mak
-				MAKE_TYPE=gmake
-			fi
-		fi
-		;;
-	"FreeBSD")
-		SWT_OS=freebsd
-		MAKEFILE=make_freebsd.mak
-		;;
 	"Windows_NT")
 		SWT_OS=win32
 		MAKEFILE=make_win32.mak
@@ -124,7 +105,7 @@ case $MODEL in
 		SWT_ARCH=x86_64
 		AWT_ARCH=amd64
 		;;
-	i?86)
+	i?86 | "x86")
 		SWT_ARCH=x86
 		AWT_ARCH=i386
 		;;
@@ -140,7 +121,20 @@ case $SWT_OS.$SWT_ARCH in
 			export CC=gcc
 		fi
 		if [ "${JAVA_HOME}" = "" ]; then
-			export JAVA_HOME="/bluebird/teamswt/swt-builddir/JDKs/x86/ibm-java2-i386-50"
+
+			# Dynamically find JAVA_HOME for 32bit java on a system that also has 64bit java installed.
+			#   We cannot use `readlink $(which java)` or related methods as they point to the 64 bit java.
+			#   So instead we find the path manually and assume java.i386 is installed in the default /ur/lib/jvm path.
+			# This matches folders such as:
+			#   java-1.8.0-openjdk-........i386
+			#   java-9-openjdk....i386
+			JAVA_FOLDER=$(ls /usr/lib/jvm | grep java | grep -i openjdk | grep i386 | sort | tail -n 1)
+			if [ "${JAVA_FOLDER}" == "" ]; then
+				func_echo_error "ERROR: Could not find JAVA_HOME/AWT_LIB_PATH on 32bit build system automatically. Expecting it to be in /usr/lib/jvm/ but none was found. See also Bug 533496"
+			fi
+
+			export JAVA_HOME=/usr/lib/jvm/${JAVA_FOLDER}
+			export AWT_LIB_PATH=${JAVA_HOME}/jre/lib/i386
 		fi
 		if [ "${PKG_CONFIG_PATH}" = "" ]; then
 			export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/bluebird/teamswt/swt-builddir/cairo_1.0.2/linux_x86/lib/pkgconfig"
@@ -159,7 +153,7 @@ case $SWT_OS.$SWT_ARCH in
 			else
 				# Cross-platform method of finding JAVA_HOME.
 				# Tested on Fedora 24 and Ubuntu 16
-				DYNAMIC_JAVA_HOME=`readlink -f /usr/bin/java | sed "s:jre/bin/java::"`
+				DYNAMIC_JAVA_HOME=`readlink -f /usr/bin/java | sed "s:jre/::" | sed "s:bin/java::"`
 				if [ -a "${DYNAMIC_JAVA_HOME}include/jni.h" ]; then
                 	func_echo_plus "JAVA_HOME not set, but jni.h found, dynamically configured to $DYNAMIC_JAVA_HOME"
             		export JAVA_HOME="$DYNAMIC_JAVA_HOME"
@@ -170,17 +164,6 @@ case $SWT_OS.$SWT_ARCH in
 		fi
 		if [ "${PKG_CONFIG_PATH}" = "" ]; then
 			export PKG_CONFIG_PATH="/usr/lib64/pkgconfig"
-		fi
-		;;
-	"linux.ppc64")
-		if [ "${CC}" = "" ]; then
-			export CC=gcc
-		fi
-		if [ "${JAVA_HOME}" = "" ]; then
-			export JAVA_HOME=`readlink -f /usr/bin/java | sed "s:jre/bin/java::"`
-		fi
-		if [ "${PKG_CONFIG_PATH}" = "" ]; then
-			export PKG_CONFIG_PATH="/usr/lib64/pkgconfig/"
 		fi
 		;;
 	"linux.ppc64le")
@@ -194,17 +177,6 @@ case $SWT_OS.$SWT_ARCH in
 			export PKG_CONFIG_PATH="/usr/lib64/pkgconfig/"
 		fi
 		;;
-	"solaris.x86_64")
-		if [ "${CC}" = "" ]; then
-			export CC="cc"
-		fi
-		if [ "${CXX}" = "" ]; then
-			export CXX="CC"
-		fi
-		if [ "${JAVA_HOME}" = "" ]; then
-			export JAVA_HOME="/bluebird/teamswt/swt-builddir/build/JRE/Solaris_x64/jdk1.8.0_71"
-		fi
- 		;;
 	"linux.s390x")
 		if [ "${CC}" = "" ]; then
 			export CC=gcc
@@ -216,40 +188,21 @@ case $SWT_OS.$SWT_ARCH in
 			export PKG_CONFIG_PATH="/usr/lib64/pkgconfig"
 		fi
 		;;
-	"aix.ppc64")
-		if [ "${CC}" = "" ]; then
-			export CC=gcc
-		fi
-		if [ "${JAVA_HOME}" = "" ]; then
-			export JAVA_HOME="/bluebird/teamswt/swt-builddir/JDKs/AIX/PPC64/j564/sdk"
-		fi
-		;;
 esac	
 
 
 # For 64-bit CPUs, we have a switch
-if [ ${MODEL} = 'x86_64' -o ${MODEL} = 'ppc64' -o ${MODEL} = 'ia64' -o ${MODEL} = 's390x' -o ${MODEL} = 'ppc64le' -o ${MODEL} = 'aarch64' ]; then
+if [ ${MODEL} = 'x86_64' -o ${MODEL} = 'ia64' -o ${MODEL} = 's390x' -o ${MODEL} = 'ppc64le' -o ${MODEL} = 'aarch64' ]; then
 	SWT_PTR_CFLAGS=-DJNI64
 	if [ -d /lib64 ]; then
 		XLIB64=-L/usr/X11R6/lib64
 		export XLIB64
 	fi
-	if [ ${MODEL} = 'ppc64' -o ${MODEL} = 'ppc64le' ]; then
-		if [ ${OS} = 'AIX' ]; then
-			SWT_PTR_CFLAGS="${SWT_PTR_CFLAGS} -maix64"
-			SWT_LFLAGS=-maix64
-			export SWT_LFLAGS
-		else
-			SWT_PTR_CFLAGS="${SWT_PTR_CFLAGS} -m64"
-			XLIB64="${XLIB64} -L/usr/lib64"
-			SWT_LFLAGS=-m64
-			export SWT_LFLAGS
-		fi
-	fi
-	if [ ${OS} = 'SunOS' ]; then
-			SWT_PTR_CFLAGS="${SWT_PTR_CFLAGS} -m64"
-			SWT_LFLAGS=-m64
-			export SWT_LFLAGS
+	if [ ${MODEL} = 'ppc64le' ]; then
+		SWT_PTR_CFLAGS="${SWT_PTR_CFLAGS} -m64"
+		XLIB64="${XLIB64} -L/usr/lib64"
+		SWT_LFLAGS=-m64
+		export SWT_LFLAGS
 	fi
 	export SWT_PTR_CFLAGS
 fi
@@ -276,6 +229,9 @@ fi
 if [ -z "${AWT_LIB_PATH}" ]; then
 	if [ -f ${JAVA_HOME}/jre/lib/${AWT_ARCH}/${AWT_LIB_EXPR} ]; then
 		AWT_LIB_PATH=${JAVA_HOME}/jre/lib/${AWT_ARCH}
+		export AWT_LIB_PATH
+	elif [ -f ${JAVA_HOME}/lib/${AWT_LIB_EXPR} ]; then
+		AWT_LIB_PATH=${JAVA_HOME}/lib
 		export AWT_LIB_PATH
 	else
 		AWT_LIB_PATH=${JAVA_HOME}/jre/bin
@@ -346,6 +302,15 @@ func_echo_plus "Building SWT/GTK+ for Architectures: $SWT_OS $SWT_ARCH"
 
 func_build_gtk3 () {
 	export GTK_VERSION=3.0
+
+	# Dictate Webkit2 Extension only if pkg-config flags exist
+	pkg-config --exists webkit2gtk-web-extension-4.0
+	if [ $? == 0 ]; then
+		export BUILD_WEBKIT2EXTENSION="yes";
+	else
+		func_echo_error "Warning: Cannot compile Webkit2 Extension because 'pkg-config --exists webkit2gtk-web-extension-4-0' check failed. Please install webkitgtk4-devel.ARCH on your system."
+	fi
+
 	func_echo_plus "Building GTK3 bindings:"
 	${MAKE_TYPE} -f $MAKEFILE all $MAKE_CAIRO $MAKE_AWT "${@}"
 	RETURN_VALUE=$?   #make can return 1 or 2 if it fails. Thus need to cache it in case it's used programmatically somewhere.
@@ -360,6 +325,7 @@ func_build_gtk3 () {
 func_build_gtk2 () {
 	func_echo_plus "Building GTK2 bindings:"
 	export GTK_VERSION=2.0
+	export BUILD_WEBKIT2EXTENSION="no";
 	if [ ${MODEL} = 'x86_64' ]; then
 		# Bug 515155: Avoid memcpy@GLIBC_2.14 (old Linux compatibility)
 		SWT_PTR_CFLAGS="${SWT_PTR_CFLAGS} -fno-builtin-memmove"

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2016 IBM Corporation and others.
+ * Copyright (c) 2008, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,7 @@ package org.eclipse.swt.tools.internal;
 
 import java.io.*;
 import java.util.*;
+import java.util.Map.*;
 import java.util.stream.*;
 
 import javax.xml.parsers.*;
@@ -23,7 +24,7 @@ import org.xml.sax.*;
 public class MacGenerator {
 	String[] xmls;
 	Document[] documents;
-	String outputDir, outputLibDir, extrasDir, mainClassName;
+	String outputDir, outputLibDir, extrasDir, mainClassName, selectorEnumName;
 	String delimiter = System.getProperty("line.separator");
 	boolean generate64Code;
 	PrintWriter out;
@@ -156,8 +157,7 @@ void merge(Document document, Document extraDocument) {
 		return compare;
 	});
 	String delimiter = System.getProperty("line.separator");
-	for (Iterator<Node> iterator = sortedNodes.iterator(); iterator.hasNext();) {
-		Node node = iterator.next();
+	for (Node node : sortedNodes) {
 		String name = node.getNodeName();
 		if ("arg".equals(name) || "retval".equals(name)) {
 			if (!sortedNodes.contains(node.getParentNode())) continue;
@@ -182,7 +182,7 @@ void merge(Document document, Document extraDocument) {
 
 public void generate(ProgressMonitor progress) {
 	if (progress != null) {
-		progress.setTotal(BUILD_C_SOURCE ? 4 : 3);
+		progress.setTotal(BUILD_C_SOURCE ? 5 : 4);
 		progress.setMessage("extra attributes...");
 	}
 	generateExtraAttributes();
@@ -194,6 +194,11 @@ public void generate(ProgressMonitor progress) {
 	if (progress != null) {
 		progress.step();
 		progress.setMessage("classes...");
+	}
+	generateSelectorEnum();
+	if (progress != null) {
+		progress.step();
+		progress.setMessage("selector enum...");
 	}
 	generateClasses();
 	if (GENERATE_STRUCTS) {
@@ -226,7 +231,7 @@ void generateCSource() {
 String fixDelimiter(String str) {
 	if (delimiter.equals("\n")) return str;
 	int index = 0, length = str.length();
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	while (index != -1) {
 		int start = index;
 		index = str.indexOf('\n', start);
@@ -265,9 +270,8 @@ String getParamName(Node param, int i) {
 	return paramName;
 }
 
-void generateFields(String structName, ArrayList<?> fields) {
-	for (Iterator<?> iterator = fields.iterator(); iterator.hasNext();) {
-		Node field = (Node)iterator.next();
+void generateFields(ArrayList<Node> fields) {
+	for (Node field : fields) {
 		NamedNodeMap fieldAttributes = field.getAttributes();
 		String fieldName = fieldAttributes.getNamedItem("name").getNodeValue();
 		String type = getJavaType(field), type64 = getJavaType64(field);
@@ -309,9 +313,8 @@ private String getDeclaredType(NamedNodeMap map, Node location) {
 	return value;
 }
 
-void generateMethods(String className, ArrayList<?> methods) {
-	for (Iterator<?> iterator = methods.iterator(); iterator.hasNext();) {
-		Node method = (Node)iterator.next();
+void generateMethods(String className, ArrayList<Node> methods) {
+	for (Node method : methods) {
 		NamedNodeMap mthAttributes = method.getAttributes();
 		String sel = mthAttributes.getNamedItem("selector").getNodeValue();
 		if ("NSObject".equals(className)) {
@@ -666,14 +669,13 @@ void copyClassMethodsDown(final Map<String, Object[]> classes) {
 			return getHierarchyLevel((Node)((Object[])arg0)[0]) - getHierarchyLevel((Node)((Object[])arg1)[0]);
 		}
 	});
-	for (Iterator<Object[]> iterator = sortedClasses.iterator(); iterator.hasNext();) {
-		Object[] clazz = iterator.next();
+	for (Object[] clazz : sortedClasses) {
 		Node node = (Node)clazz[0];
 		ArrayList<Node> methods = (ArrayList<Node>)clazz[1];
 		Object[] superclass = classes.get(getSuperclassName(node));
 		if (superclass != null) {
-			for (Iterator<?> iterator2 = ((ArrayList<?>)superclass[1]).iterator(); iterator2.hasNext();) {
-				Node method = (Node) iterator2.next();
+			for (Iterator<Node> iterator2 = ((ArrayList<Node>)superclass[1]).iterator(); iterator2.hasNext();) {
+				Node method = iterator2.next();
 				if (isStatic(method)) {
 					methods.add(method);
 				}
@@ -687,14 +689,12 @@ String getSuperclassName (Node node) {
 	Node superclass = attributes.getNamedItem("swt_superclass");
 	if (superclass != null) {
 		return superclass.getNodeValue();
-	} else {
-		Node name = attributes.getNamedItem("name");
-		if (name.getNodeValue().equals("NSObject")) {
-			return "id";
-		} else {
-			return "NSObject";
-		}
+	} 
+	Node name = attributes.getNamedItem("name");
+	if (name.getNodeValue().equals("NSObject")) {
+		return "id";
 	}
+	return "NSObject";
 }
 
 void generateClasses() {
@@ -702,19 +702,18 @@ void generateClasses() {
 	TreeMap<String, Object[]> classes = getGeneratedClasses();
 	copyClassMethodsDown(classes);
 
-	Set<String> classNames = classes.keySet();
-	for (Iterator<String> iterator = classNames.iterator(); iterator.hasNext();) {
+	for (Entry<String, Object[]> clazzes: classes.entrySet()) {
 		CharArrayWriter out = new CharArrayWriter();
 		this.out = new PrintWriter(out);
 
 		out(fixDelimiter(metaData.getCopyright()));
 
-		String className = iterator.next();
-		Object[] clazz = classes.get(className);
+		String className = clazzes.getKey();
+		Object[] clazz = clazzes.getValue();
 		Node node = (Node)clazz[0];
-		ArrayList<?> methods = (ArrayList<?>)clazz[1];
+		ArrayList<Node> methods = (ArrayList<Node>)clazz[1];
 		out("package ");
-		String packageName = getPackageName(mainClassName);
+		String packageName = getPackageName();
 		out(packageName);
 		out(";");
 		outln();
@@ -742,18 +741,17 @@ void generateStructs() {
 	MetaData metaData = new MetaData(mainClassName);
 	TreeMap<String, Object[]> structs = getGeneratedStructs();
 
-	Set<String> structNames = structs.keySet();
-	for (Iterator<String> iterator = structNames.iterator(); iterator.hasNext();) {
+	for (Entry<String, Object[]> structEntry: structs.entrySet()) {
 		CharArrayWriter out = new CharArrayWriter();
 		this.out = new PrintWriter(out);
 
 		out(fixDelimiter(metaData.getCopyright()));
 
-		String className = iterator.next();
-		Object[] clazz = structs.get(className);
-		ArrayList<?> methods = (ArrayList<?>)clazz[1];
+		String className = structEntry.getKey();
+		Object[] clazz = structEntry.getValue();
+		ArrayList<Node> methods = (ArrayList<Node>)clazz[1];
 		out("package ");
-		String packageName = getPackageName(mainClassName);
+		String packageName = getPackageName();
 		out(packageName);
 		out(";");
 		outln();
@@ -762,7 +760,7 @@ void generateStructs() {
 		out(className);
 		out(" {");
 		outln();
-		generateFields(className, methods);
+		generateFields(methods);
 		generateExtraFields(className);
 		out("}");
 		outln();
@@ -791,7 +789,7 @@ void generateMainClass() {
 	String fileName = outputDir + mainClassName.replace('.', '/') + ".java";
 	try (FileInputStream is = new FileInputStream(fileName);
 		InputStreamReader input = new InputStreamReader(new BufferedInputStream(is))){
-		StringBuffer str = new StringBuffer();
+		StringBuilder str = new StringBuilder();
 		char[] buffer = new char[4096];
 		int read;
 		while ((read = input.read(buffer)) != -1) {
@@ -857,6 +855,57 @@ void generateMainClass() {
 	this.out = null;
 }
 
+void generateSelectorEnum() {
+	CharArrayWriter out = new CharArrayWriter();
+	this.out = new PrintWriter(out);
+
+	String header = "", footer = "";
+	String fileName = outputDir + selectorEnumName.replace('.', '/') + ".java";
+	try (FileInputStream is = new FileInputStream(fileName);
+		InputStreamReader input = new InputStreamReader(new BufferedInputStream(is))){
+		StringBuilder str = new StringBuilder();
+		char[] buffer = new char[4096];
+		int read;
+		while ((read = input.read(buffer)) != -1) {
+			str.append(buffer, 0, read);
+		}
+		String section = "/** This section is auto generated */";
+		int start = str.indexOf(section) + section.length();
+		int end = str.indexOf(section, start);
+		header = str.substring(0, start);
+		footer = end == -1 ? "\n}" : str.substring(end);
+		input.close();
+	} catch (IOException e) {
+	}
+
+	out(header);
+	outln();
+	outln();
+
+	generateSelectorsEnumLiteral();
+	
+	out(";"); outln();
+	
+	String mainClassShortName = mainClassName.substring(mainClassName.lastIndexOf('.')+1);
+	out("	final String name;"); outln();
+	out("	final long value;"); outln();
+	outln();
+	out("	private Selector(String name) {"); outln();
+	out("		this.name= name;"); outln();
+	out("		this.value = "+mainClassShortName+".sel_registerName(name);"); outln();
+	out("		"+mainClassShortName+".registerSelector(value,this);"); outln();
+	out("	}"); outln();
+	outln();
+	out("	public static Selector valueOf(long value) {"); outln();
+	out("		return "+mainClassShortName+".getSelector(value);"); outln();
+	out("	}"); outln();
+	
+	out(footer);
+	this.out.flush();
+	output(fileName, out.toCharArray());
+	this.out = null;
+}
+
 public Document[] getDocuments() {
 	if (documents == null) {
 		String[] xmls = getXmls();
@@ -866,7 +915,7 @@ public Document[] getDocuments() {
 			Document document = documents[i] = getDocument(xmlPath);
 			if (document == null) continue;
 			if (mainClassName != null && outputDir != null) {
-				String packageName = getPackageName(mainClassName);
+				String packageName = getPackageName();
 				String folder = extrasDir != null ? extrasDir : outputDir + packageName.replace('.', '/');
 				String extrasPath = folder + "/" + getFileName(xmlPath) + ".extras";
 				merge(document, getDocument(extrasPath));
@@ -884,9 +933,12 @@ public String[] getXmls() {
 			list(new File("/System/Library/Frameworks/CoreServices.framework/Frameworks"), array);
 			list(new File("/System/Library/Frameworks/ApplicationServices.framework/Frameworks"), array);
 		} else {
-			String packageName = getPackageName(mainClassName);
+			String packageName = getPackageName();
 			File folder = new File(extrasDir != null ? extrasDir : outputDir + packageName.replace('.', '/'));
 			File[] files = folder.listFiles((FilenameFilter) (dir, name) -> name.endsWith("Full.bridgesupport"));
+			if(files == null) {
+				files = new File[0];
+			}
 			for (int i = 0; i < files.length; i++) {
 				array.add(files[i].getAbsolutePath());
 			}
@@ -899,7 +951,7 @@ public String[] getXmls() {
 
 void saveExtraAttributes(String xmlPath, Document document) {
 	try {
-		String packageName = getPackageName(mainClassName);
+		String packageName = getPackageName();
 		String folder = extrasDir != null ? extrasDir : outputDir + packageName.replace('.', '/');
 		String fileName = folder + "/" + getFileName(xmlPath) + ".extras";
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -960,6 +1012,10 @@ public void setMainClass(String mainClassName) {
 	this.mainClassName = mainClassName;
 }
 
+public void setSelectorEnum(String selectorEnumName) {
+	this.selectorEnumName = selectorEnumName;
+}
+
 Document getDocument(String xmlPath) {
 	try {
 		InputStream is = null;
@@ -1012,11 +1068,11 @@ int indexOfNode(Node node) {
 }
 
 String getKey (Node node) {
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	while (node != null) {
 		if (buffer.length() > 0) buffer.append("_");
 		String name = node.getNodeName();
-		StringBuffer key = new StringBuffer(name);
+		StringBuilder key = new StringBuilder(name);
 		if ("arg".equals(name)) {
 			key.append("-");
 			key.append(indexOfNode(node));
@@ -1250,7 +1306,7 @@ void buildLookup(Node node, HashMap<String, Node> table) {
 	}
 }
 
-boolean isUnique(Node method, ArrayList<?> methods) {
+boolean isUnique(Node method, ArrayList<Node> methods) {
 	String methodName = method.getAttributes().getNamedItem("selector").getNodeValue();
 	String signature = "";
 	NodeList params = method.getChildNodes();
@@ -1262,8 +1318,7 @@ boolean isUnique(Node method, ArrayList<?> methods) {
 	}
 	int index = methodName.indexOf(":");
 	if (index != -1) methodName = methodName.substring(0, index);
-	for (Iterator<?> iterator = methods.iterator(); iterator.hasNext();) {
-		Node other = (Node) iterator.next();
+	for (Node other : methods) {
 		NamedNodeMap attributes = other.getAttributes();
 		Node otherSel = null;
 		if (attributes != null) otherSel = attributes.getNamedItem("selector");
@@ -1316,15 +1371,56 @@ void generateSelectorsConst() {
 		set.add("alloc");
 		set.add("dealloc");
 	}
-	for (Iterator<String> iterator = set.iterator(); iterator.hasNext();) {
-		String sel = iterator.next();
+	out ("private static java.util.Map<Long,Selector> SELECTORS;"); outln();
+	out ("public static void registerSelector (Long value, Selector selector) {"); outln();
+	out ("	if (SELECTORS == null) {"); outln();
+	out ("		SELECTORS = new java.util.HashMap<>();"); outln();
+	out ("	}"); outln();
+	out ("	SELECTORS.put(value, selector);"); outln();
+	out ("}"); outln();
+	out ("public static Selector getSelector (long value) {"); outln();
+	out ("	return SELECTORS.get(value);"); outln();
+	out ("}"); outln();
+	for (String sel : set) {
 		String selConst = getSelConst(sel);
 		out("public static final int /*long*/ ");
 		out(selConst);
 		out(" = ");
-		out("sel_registerName(\"");
-		out(sel);
-		out("\");");
+		out("Selector."+selConst+".value;");
+		outln();
+	}
+}
+
+void generateSelectorsEnumLiteral() {
+	TreeSet<String> set = new TreeSet<>();
+	for (int x = 0; x < xmls.length; x++) {
+		Document document = documents[x];
+		if (document == null) continue;
+		NodeList list = document.getDocumentElement().getChildNodes();
+		for (int i = 0; i < list.getLength(); i++) {
+			Node node = list.item(i);
+			if ("class".equals(node.getNodeName()) || "informal_protocol".equals(node.getNodeName())) {
+				if (getGen(node)) {
+					NodeList methods = node.getChildNodes();
+					for (int j = 0; j < methods.getLength(); j++) {
+						Node method = methods.item(j);
+						if (getGen(method)) {
+							NamedNodeMap mthAttributes = method.getAttributes();
+							String sel = mthAttributes.getNamedItem("selector").getNodeValue();
+							set.add(sel);
+						}
+					}
+				}
+			}
+		}
+	}
+	if (set.size() > 0) {
+		set.add("alloc");
+		set.add("dealloc");
+	}
+	for (String sel: set) {
+		String selConst = getSelConst(sel);
+		out("	, "+selConst+"(\""+sel+"\")");
 		outln();
 	}
 }
@@ -1344,8 +1440,7 @@ void generateStructNatives() {
 	}
 	out("/** Sizeof natives */");
 	outln();
-	for (Iterator<String> iterator = set.iterator(); iterator.hasNext();) {
-		String struct = iterator.next();
+	for (String struct : set) {
 		out("public static final native int ");
 		out(struct);
 		out("_sizeof();");
@@ -1355,8 +1450,7 @@ void generateStructNatives() {
 	out("/** Memmove natives */");
 	outln();
 	outln();
-	for (Iterator<String> iterator = set.iterator(); iterator.hasNext();) {
-		String struct = iterator.next();
+	for (String struct : set) {
 		out("/**");
 		outln();
 		out(" * @param dest cast=(void *),flags=no_in critical");
@@ -1389,7 +1483,7 @@ void generateStructNatives() {
 
 String buildSend(Node method, boolean tags, boolean only64, boolean superCall) {
 	Node returnNode = getReturnNode(method.getChildNodes());
-	StringBuffer buffer = new StringBuffer();
+	StringBuilder buffer = new StringBuilder();
 	buffer.append("public static final native ");
 	if (returnNode != null && isStruct(returnNode)) {
 		buffer.append("void ");
@@ -1524,9 +1618,9 @@ void generateCustomCallbacks() {
 			}
 		}
 	}
-	for (Iterator<String> iterator = set.keySet().iterator(); iterator.hasNext();) {
-		String key = iterator.next();
-		Node method = set.get(key);
+	for (Entry<String, Node> entry: set.entrySet()) {
+		String key = entry.getKey();
+		Node method = entry.getValue();
 		if ("informal_protocol".equals(method.getParentNode().getNodeName())) {
 			method = findNSObjectMethod(method);
 			if (method == null) continue;
@@ -1603,21 +1697,17 @@ void generateSends(boolean superCall) {
 		}
 	}
 	TreeMap<String, Node> all = new TreeMap<>();
-	for (Iterator<String> iterator = tagsSet.keySet().iterator(); iterator.hasNext();) {
-		String key = iterator.next();
+	for (String key : tagsSet.keySet()) {
 		Node method = tagsSet.get(key);
 		all.put(buildSend(method, true, false, superCall), method);
 	}
-	for (Iterator<String> iterator = set.keySet().iterator(); iterator.hasNext();) {
-		String key = iterator.next();
+	for (String key : set.keySet()) {
 		all.put(key, set.get(key));
 	}
-	for (Iterator<String> iterator = set64.keySet().iterator(); iterator.hasNext();) {
-		String key = iterator.next();
+	for (String key : set64.keySet()) {
 		all.put(key, set64.get(key));
 	}
-	for (Iterator<String> iterator = all.keySet().iterator(); iterator.hasNext();) {
-		String key = iterator.next();
+	for (String key : all.keySet()) {
 		Node method = all.get(key);
 		NodeList params = method.getChildNodes();
 		ArrayList<String> tags = new ArrayList<>();
@@ -1638,8 +1728,7 @@ void generateSends(boolean superCall) {
 		}
 		out(" @method flags=cast");
 		if (tags.size() > 0) outln();
-		for (Iterator<String> iterator2 = tags.iterator(); iterator2.hasNext();) {
-			String tag = iterator2.next();
+		for (String tag : tags) {
 			out(tag);
 			outln();
 		}
@@ -1671,8 +1760,7 @@ void generateClassesConst() {
 			}
 		}
 	}
-	for (Iterator<String> iterator = set.iterator(); iterator.hasNext();) {
-		String cls = iterator.next();
+	for (String cls : set) {
 		String clsConst = "class_" + cls;
 		out("public static final int /*long*/ ");
 		out(clsConst);
@@ -1701,8 +1789,7 @@ void generateProtocolsConst() {
 			}
 		}
 	}
-	for (Iterator<String> iterator = set.iterator(); iterator.hasNext();) {
-		String cls = iterator.next();
+	for (String cls : set) {
 		String clsConst = "protocol_" + cls;
 		out("public static final int /*long*/ ");
 		out(clsConst);
@@ -1714,13 +1801,13 @@ void generateProtocolsConst() {
 	}
 }
 
-String getPackageName(String className) {
+String getPackageName() {
 	int dot = mainClassName.lastIndexOf('.');
 	if (dot == -1) return "";
 	return mainClassName.substring(0, dot);
 }
 
-String getClassName(String className) {
+String getClassName() {
 	int dot = mainClassName.lastIndexOf('.');
 	if (dot == -1) return mainClassName;
 	return mainClassName.substring(dot + 1);
@@ -2050,6 +2137,7 @@ public static void main(String[] args) {
 		gen.setXmls(args);
 		gen.setOutputDir("../org.eclipse.swt/Eclipse SWT PI/cocoa/");
 		gen.setMainClass("org.eclipse.swt.internal.cocoa.OS");
+		gen.setSelectorEnum("org.eclipse.swt.internal.cocoa.Selector");
 		gen.generate(null);
 	} catch (Throwable e) {
 		e.printStackTrace();

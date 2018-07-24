@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -1566,49 +1566,6 @@ void setDIBSECTIONFields(JNIEnv *env, jobject lpObject, DIBSECTION *lpStruct)
 }
 #endif
 
-#ifndef NO_DLLVERSIONINFO
-typedef struct DLLVERSIONINFO_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID cbSize, dwMajorVersion, dwMinorVersion, dwBuildNumber, dwPlatformID;
-} DLLVERSIONINFO_FID_CACHE;
-
-DLLVERSIONINFO_FID_CACHE DLLVERSIONINFOFc;
-
-void cacheDLLVERSIONINFOFields(JNIEnv *env, jobject lpObject)
-{
-	if (DLLVERSIONINFOFc.cached) return;
-	DLLVERSIONINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	DLLVERSIONINFOFc.cbSize = (*env)->GetFieldID(env, DLLVERSIONINFOFc.clazz, "cbSize", "I");
-	DLLVERSIONINFOFc.dwMajorVersion = (*env)->GetFieldID(env, DLLVERSIONINFOFc.clazz, "dwMajorVersion", "I");
-	DLLVERSIONINFOFc.dwMinorVersion = (*env)->GetFieldID(env, DLLVERSIONINFOFc.clazz, "dwMinorVersion", "I");
-	DLLVERSIONINFOFc.dwBuildNumber = (*env)->GetFieldID(env, DLLVERSIONINFOFc.clazz, "dwBuildNumber", "I");
-	DLLVERSIONINFOFc.dwPlatformID = (*env)->GetFieldID(env, DLLVERSIONINFOFc.clazz, "dwPlatformID", "I");
-	DLLVERSIONINFOFc.cached = 1;
-}
-
-DLLVERSIONINFO *getDLLVERSIONINFOFields(JNIEnv *env, jobject lpObject, DLLVERSIONINFO *lpStruct)
-{
-	if (!DLLVERSIONINFOFc.cached) cacheDLLVERSIONINFOFields(env, lpObject);
-	lpStruct->cbSize = (*env)->GetIntField(env, lpObject, DLLVERSIONINFOFc.cbSize);
-	lpStruct->dwMajorVersion = (*env)->GetIntField(env, lpObject, DLLVERSIONINFOFc.dwMajorVersion);
-	lpStruct->dwMinorVersion = (*env)->GetIntField(env, lpObject, DLLVERSIONINFOFc.dwMinorVersion);
-	lpStruct->dwBuildNumber = (*env)->GetIntField(env, lpObject, DLLVERSIONINFOFc.dwBuildNumber);
-	lpStruct->dwPlatformID = (*env)->GetIntField(env, lpObject, DLLVERSIONINFOFc.dwPlatformID);
-	return lpStruct;
-}
-
-void setDLLVERSIONINFOFields(JNIEnv *env, jobject lpObject, DLLVERSIONINFO *lpStruct)
-{
-	if (!DLLVERSIONINFOFc.cached) cacheDLLVERSIONINFOFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, DLLVERSIONINFOFc.cbSize, (jint)lpStruct->cbSize);
-	(*env)->SetIntField(env, lpObject, DLLVERSIONINFOFc.dwMajorVersion, (jint)lpStruct->dwMajorVersion);
-	(*env)->SetIntField(env, lpObject, DLLVERSIONINFOFc.dwMinorVersion, (jint)lpStruct->dwMinorVersion);
-	(*env)->SetIntField(env, lpObject, DLLVERSIONINFOFc.dwBuildNumber, (jint)lpStruct->dwBuildNumber);
-	(*env)->SetIntField(env, lpObject, DLLVERSIONINFOFc.dwPlatformID, (jint)lpStruct->dwPlatformID);
-}
-#endif
-
 #ifndef NO_DOCHOSTUIINFO
 typedef struct DOCHOSTUIINFO_FID_CACHE {
 	int cached;
@@ -1636,12 +1593,8 @@ DOCHOSTUIINFO *getDOCHOSTUIINFOFields(JNIEnv *env, jobject lpObject, DOCHOSTUIIN
 	lpStruct->cbSize = (*env)->GetIntField(env, lpObject, DOCHOSTUIINFOFc.cbSize);
 	lpStruct->dwFlags = (*env)->GetIntField(env, lpObject, DOCHOSTUIINFOFc.dwFlags);
 	lpStruct->dwDoubleClick = (*env)->GetIntField(env, lpObject, DOCHOSTUIINFOFc.dwDoubleClick);
-#ifndef _WIN32_WCE
-	lpStruct->pchHostCss = (OLECHAR*)(*env)->GetIntLongField(env, lpObject, DOCHOSTUIINFOFc.pchHostCss);
-#endif
-#ifndef _WIN32_WCE
-	lpStruct->pchHostNS = (OLECHAR*)(*env)->GetIntLongField(env, lpObject, DOCHOSTUIINFOFc.pchHostNS);
-#endif
+	lpStruct->pchHostCss = (OLECHAR *)(*env)->GetIntLongField(env, lpObject, DOCHOSTUIINFOFc.pchHostCss);
+	lpStruct->pchHostNS = (OLECHAR *)(*env)->GetIntLongField(env, lpObject, DOCHOSTUIINFOFc.pchHostNS);
 	return lpStruct;
 }
 
@@ -1651,12 +1604,8 @@ void setDOCHOSTUIINFOFields(JNIEnv *env, jobject lpObject, DOCHOSTUIINFO *lpStru
 	(*env)->SetIntField(env, lpObject, DOCHOSTUIINFOFc.cbSize, (jint)lpStruct->cbSize);
 	(*env)->SetIntField(env, lpObject, DOCHOSTUIINFOFc.dwFlags, (jint)lpStruct->dwFlags);
 	(*env)->SetIntField(env, lpObject, DOCHOSTUIINFOFc.dwDoubleClick, (jint)lpStruct->dwDoubleClick);
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, DOCHOSTUIINFOFc.pchHostCss, (jintLong)lpStruct->pchHostCss);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, DOCHOSTUIINFOFc.pchHostNS, (jintLong)lpStruct->pchHostNS);
-#endif
 }
 #endif
 
@@ -1889,46 +1838,6 @@ void setDTTOPTSFields(JNIEnv *env, jobject lpObject, DTTOPTS *lpStruct)
 }
 #endif
 
-#ifndef NO_DWM_BLURBEHIND
-typedef struct DWM_BLURBEHIND_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID dwFlags, fEnable, hRgnBlur, fTransitionOnMaximized;
-} DWM_BLURBEHIND_FID_CACHE;
-
-DWM_BLURBEHIND_FID_CACHE DWM_BLURBEHINDFc;
-
-void cacheDWM_BLURBEHINDFields(JNIEnv *env, jobject lpObject)
-{
-	if (DWM_BLURBEHINDFc.cached) return;
-	DWM_BLURBEHINDFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	DWM_BLURBEHINDFc.dwFlags = (*env)->GetFieldID(env, DWM_BLURBEHINDFc.clazz, "dwFlags", "I");
-	DWM_BLURBEHINDFc.fEnable = (*env)->GetFieldID(env, DWM_BLURBEHINDFc.clazz, "fEnable", "Z");
-	DWM_BLURBEHINDFc.hRgnBlur = (*env)->GetFieldID(env, DWM_BLURBEHINDFc.clazz, "hRgnBlur", I_J);
-	DWM_BLURBEHINDFc.fTransitionOnMaximized = (*env)->GetFieldID(env, DWM_BLURBEHINDFc.clazz, "fTransitionOnMaximized", "Z");
-	DWM_BLURBEHINDFc.cached = 1;
-}
-
-DWM_BLURBEHIND *getDWM_BLURBEHINDFields(JNIEnv *env, jobject lpObject, DWM_BLURBEHIND *lpStruct)
-{
-	if (!DWM_BLURBEHINDFc.cached) cacheDWM_BLURBEHINDFields(env, lpObject);
-	lpStruct->dwFlags = (*env)->GetIntField(env, lpObject, DWM_BLURBEHINDFc.dwFlags);
-	lpStruct->fEnable = (*env)->GetBooleanField(env, lpObject, DWM_BLURBEHINDFc.fEnable);
-	lpStruct->hRgnBlur = (HRGN)(*env)->GetIntLongField(env, lpObject, DWM_BLURBEHINDFc.hRgnBlur);
-	lpStruct->fTransitionOnMaximized = (*env)->GetBooleanField(env, lpObject, DWM_BLURBEHINDFc.fTransitionOnMaximized);
-	return lpStruct;
-}
-
-void setDWM_BLURBEHINDFields(JNIEnv *env, jobject lpObject, DWM_BLURBEHIND *lpStruct)
-{
-	if (!DWM_BLURBEHINDFc.cached) cacheDWM_BLURBEHINDFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, DWM_BLURBEHINDFc.dwFlags, (jint)lpStruct->dwFlags);
-	(*env)->SetBooleanField(env, lpObject, DWM_BLURBEHINDFc.fEnable, (jboolean)lpStruct->fEnable);
-	(*env)->SetIntLongField(env, lpObject, DWM_BLURBEHINDFc.hRgnBlur, (jintLong)lpStruct->hRgnBlur);
-	(*env)->SetBooleanField(env, lpObject, DWM_BLURBEHINDFc.fTransitionOnMaximized, (jboolean)lpStruct->fTransitionOnMaximized);
-}
-#endif
-
 #ifndef NO_EMR
 typedef struct EMR_FID_CACHE {
 	int cached;
@@ -2096,61 +2005,6 @@ void setEXTLOGFONTWFields(JNIEnv *env, jobject lpObject, EXTLOGFONTW *lpStruct)
 	{
 	jobject lpObject1 = (*env)->GetObjectField(env, lpObject, EXTLOGFONTWFc.elfPanose);
 	if (lpObject1 != NULL) setPANOSEFields(env, lpObject1, &lpStruct->elfPanose);
-	}
-}
-#endif
-
-#ifndef NO_EXTLOGPEN
-typedef struct EXTLOGPEN_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID elpPenStyle, elpWidth, elpBrushStyle, elpColor, elpHatch, elpNumEntries, elpStyleEntry;
-} EXTLOGPEN_FID_CACHE;
-
-EXTLOGPEN_FID_CACHE EXTLOGPENFc;
-
-void cacheEXTLOGPENFields(JNIEnv *env, jobject lpObject)
-{
-	if (EXTLOGPENFc.cached) return;
-	EXTLOGPENFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	EXTLOGPENFc.elpPenStyle = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpPenStyle", "I");
-	EXTLOGPENFc.elpWidth = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpWidth", "I");
-	EXTLOGPENFc.elpBrushStyle = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpBrushStyle", "I");
-	EXTLOGPENFc.elpColor = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpColor", "I");
-	EXTLOGPENFc.elpHatch = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpHatch", I_J);
-	EXTLOGPENFc.elpNumEntries = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpNumEntries", "I");
-	EXTLOGPENFc.elpStyleEntry = (*env)->GetFieldID(env, EXTLOGPENFc.clazz, "elpStyleEntry", "[I");
-	EXTLOGPENFc.cached = 1;
-}
-
-EXTLOGPEN *getEXTLOGPENFields(JNIEnv *env, jobject lpObject, EXTLOGPEN *lpStruct)
-{
-	if (!EXTLOGPENFc.cached) cacheEXTLOGPENFields(env, lpObject);
-	lpStruct->elpPenStyle = (*env)->GetIntField(env, lpObject, EXTLOGPENFc.elpPenStyle);
-	lpStruct->elpWidth = (*env)->GetIntField(env, lpObject, EXTLOGPENFc.elpWidth);
-	lpStruct->elpBrushStyle = (*env)->GetIntField(env, lpObject, EXTLOGPENFc.elpBrushStyle);
-	lpStruct->elpColor = (*env)->GetIntField(env, lpObject, EXTLOGPENFc.elpColor);
-	lpStruct->elpHatch = (*env)->GetIntLongField(env, lpObject, EXTLOGPENFc.elpHatch);
-	lpStruct->elpNumEntries = (*env)->GetIntField(env, lpObject, EXTLOGPENFc.elpNumEntries);
-	{
-	jintArray lpObject1 = (jintArray)(*env)->GetObjectField(env, lpObject, EXTLOGPENFc.elpStyleEntry);
-	(*env)->GetIntArrayRegion(env, lpObject1, 0, sizeof(lpStruct->elpStyleEntry) / sizeof(jint), (jint *)lpStruct->elpStyleEntry);
-	}
-	return lpStruct;
-}
-
-void setEXTLOGPENFields(JNIEnv *env, jobject lpObject, EXTLOGPEN *lpStruct)
-{
-	if (!EXTLOGPENFc.cached) cacheEXTLOGPENFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, EXTLOGPENFc.elpPenStyle, (jint)lpStruct->elpPenStyle);
-	(*env)->SetIntField(env, lpObject, EXTLOGPENFc.elpWidth, (jint)lpStruct->elpWidth);
-	(*env)->SetIntField(env, lpObject, EXTLOGPENFc.elpBrushStyle, (jint)lpStruct->elpBrushStyle);
-	(*env)->SetIntField(env, lpObject, EXTLOGPENFc.elpColor, (jint)lpStruct->elpColor);
-	(*env)->SetIntLongField(env, lpObject, EXTLOGPENFc.elpHatch, (jintLong)lpStruct->elpHatch);
-	(*env)->SetIntField(env, lpObject, EXTLOGPENFc.elpNumEntries, (jint)lpStruct->elpNumEntries);
-	{
-	jintArray lpObject1 = (jintArray)(*env)->GetObjectField(env, lpObject, EXTLOGPENFc.elpStyleEntry);
-	(*env)->SetIntArrayRegion(env, lpObject1, 0, sizeof(lpStruct->elpStyleEntry) / sizeof(jint), (jint *)lpStruct->elpStyleEntry);
 	}
 }
 #endif
@@ -2608,12 +2462,8 @@ HDITEM *getHDITEMFields(JNIEnv *env, jobject lpObject, HDITEM *lpStruct)
 	lpStruct->lParam = (*env)->GetIntLongField(env, lpObject, HDITEMFc.lParam);
 	lpStruct->iImage = (*env)->GetIntField(env, lpObject, HDITEMFc.iImage);
 	lpStruct->iOrder = (*env)->GetIntField(env, lpObject, HDITEMFc.iOrder);
-#ifndef _WIN32_WCE
 	lpStruct->type = (*env)->GetIntField(env, lpObject, HDITEMFc.type);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->pvFilter = (void *)(*env)->GetIntLongField(env, lpObject, HDITEMFc.pvFilter);
-#endif
 	return lpStruct;
 }
 
@@ -2629,12 +2479,8 @@ void setHDITEMFields(JNIEnv *env, jobject lpObject, HDITEM *lpStruct)
 	(*env)->SetIntLongField(env, lpObject, HDITEMFc.lParam, (jintLong)lpStruct->lParam);
 	(*env)->SetIntField(env, lpObject, HDITEMFc.iImage, (jint)lpStruct->iImage);
 	(*env)->SetIntField(env, lpObject, HDITEMFc.iOrder, (jint)lpStruct->iOrder);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, HDITEMFc.type, (jint)lpStruct->type);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, HDITEMFc.pvFilter, (jintLong)lpStruct->pvFilter);
-#endif
 }
 #endif
 
@@ -3416,15 +3262,9 @@ LVITEM *getLVITEMFields(JNIEnv *env, jobject lpObject, LVITEM *lpStruct)
 	lpStruct->iImage = (*env)->GetIntField(env, lpObject, LVITEMFc.iImage);
 	lpStruct->lParam = (*env)->GetIntLongField(env, lpObject, LVITEMFc.lParam);
 	lpStruct->iIndent = (*env)->GetIntField(env, lpObject, LVITEMFc.iIndent);
-#ifndef _WIN32_WCE
 	lpStruct->iGroupId = (*env)->GetIntField(env, lpObject, LVITEMFc.iGroupId);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->cColumns = (*env)->GetIntField(env, lpObject, LVITEMFc.cColumns);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->puColumns = (PUINT)(*env)->GetIntLongField(env, lpObject, LVITEMFc.puColumns);
-#endif
 	return lpStruct;
 }
 
@@ -3441,15 +3281,9 @@ void setLVITEMFields(JNIEnv *env, jobject lpObject, LVITEM *lpStruct)
 	(*env)->SetIntField(env, lpObject, LVITEMFc.iImage, (jint)lpStruct->iImage);
 	(*env)->SetIntLongField(env, lpObject, LVITEMFc.lParam, (jintLong)lpStruct->lParam);
 	(*env)->SetIntField(env, lpObject, LVITEMFc.iIndent, (jint)lpStruct->iIndent);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, LVITEMFc.iGroupId, (jint)lpStruct->iGroupId);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, LVITEMFc.cColumns, (jint)lpStruct->cColumns);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, LVITEMFc.puColumns, (jintLong)lpStruct->puColumns);
-#endif
 }
 #endif
 
@@ -3737,9 +3571,7 @@ MENUITEMINFO *getMENUITEMINFOFields(JNIEnv *env, jobject lpObject, MENUITEMINFO 
 	lpStruct->dwItemData = (*env)->GetIntLongField(env, lpObject, MENUITEMINFOFc.dwItemData);
 	lpStruct->dwTypeData = (LPTSTR)(*env)->GetIntLongField(env, lpObject, MENUITEMINFOFc.dwTypeData);
 	lpStruct->cch = (*env)->GetIntField(env, lpObject, MENUITEMINFOFc.cch);
-#ifndef _WIN32_WCE
 	lpStruct->hbmpItem = (HBITMAP)(*env)->GetIntLongField(env, lpObject, MENUITEMINFOFc.hbmpItem);
-#endif
 	return lpStruct;
 }
 
@@ -3757,9 +3589,7 @@ void setMENUITEMINFOFields(JNIEnv *env, jobject lpObject, MENUITEMINFO *lpStruct
 	(*env)->SetIntLongField(env, lpObject, MENUITEMINFOFc.dwItemData, (jintLong)lpStruct->dwItemData);
 	(*env)->SetIntLongField(env, lpObject, MENUITEMINFOFc.dwTypeData, (jintLong)lpStruct->dwTypeData);
 	(*env)->SetIntField(env, lpObject, MENUITEMINFOFc.cch, (jint)lpStruct->cch);
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, MENUITEMINFOFc.hbmpItem, (jintLong)lpStruct->hbmpItem);
-#endif
 }
 #endif
 
@@ -4263,39 +4093,17 @@ NMLVCUSTOMDRAW *getNMLVCUSTOMDRAWFields(JNIEnv *env, jobject lpObject, NMLVCUSTO
 	lpStruct->clrText = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.clrText);
 	lpStruct->clrTextBk = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.clrTextBk);
 	lpStruct->iSubItem = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iSubItem);
-#ifndef _WIN32_WCE
 	lpStruct->dwItemType = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.dwItemType);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->clrFace = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.clrFace);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->iIconEffect = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iIconEffect);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->iIconPhase = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iIconPhase);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->iPartId = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iPartId);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->iStateId = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iStateId);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcText.left = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_left);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcText.top = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_top);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcText.right = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_right);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcText.bottom = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_bottom);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->uAlign = (*env)->GetIntField(env, lpObject, NMLVCUSTOMDRAWFc.uAlign);
-#endif
 	return lpStruct;
 }
 
@@ -4306,39 +4114,17 @@ void setNMLVCUSTOMDRAWFields(JNIEnv *env, jobject lpObject, NMLVCUSTOMDRAW *lpSt
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.clrText, (jint)lpStruct->clrText);
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.clrTextBk, (jint)lpStruct->clrTextBk);
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iSubItem, (jint)lpStruct->iSubItem);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.dwItemType, (jint)lpStruct->dwItemType);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.clrFace, (jint)lpStruct->clrFace);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iIconEffect, (jint)lpStruct->iIconEffect);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iIconPhase, (jint)lpStruct->iIconPhase);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iPartId, (jint)lpStruct->iPartId);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.iStateId, (jint)lpStruct->iStateId);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_left, (jint)lpStruct->rcText.left);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_top, (jint)lpStruct->rcText.top);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_right, (jint)lpStruct->rcText.right);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.rcText_bottom, (jint)lpStruct->rcText.bottom);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVCUSTOMDRAWFc.uAlign, (jint)lpStruct->uAlign);
-#endif
 }
 #endif
 
@@ -4386,15 +4172,9 @@ NMLVDISPINFO *getNMLVDISPINFOFields(JNIEnv *env, jobject lpObject, NMLVDISPINFO 
 	lpStruct->item.iImage = (*env)->GetIntField(env, lpObject, NMLVDISPINFOFc.iImage);
 	lpStruct->item.lParam = (*env)->GetIntLongField(env, lpObject, NMLVDISPINFOFc.lParam);
 	lpStruct->item.iIndent = (*env)->GetIntField(env, lpObject, NMLVDISPINFOFc.iIndent);
-#ifndef _WIN32_WCE
 	lpStruct->item.iGroupId = (*env)->GetIntField(env, lpObject, NMLVDISPINFOFc.iGroupId);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->item.cColumns = (*env)->GetIntField(env, lpObject, NMLVDISPINFOFc.cColumns);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->item.puColumns = (PUINT)(*env)->GetIntLongField(env, lpObject, NMLVDISPINFOFc.puColumns);
-#endif
 	return lpStruct;
 }
 
@@ -4412,15 +4192,9 @@ void setNMLVDISPINFOFields(JNIEnv *env, jobject lpObject, NMLVDISPINFO *lpStruct
 	(*env)->SetIntField(env, lpObject, NMLVDISPINFOFc.iImage, (jint)lpStruct->item.iImage);
 	(*env)->SetIntLongField(env, lpObject, NMLVDISPINFOFc.lParam, (jintLong)lpStruct->item.lParam);
 	(*env)->SetIntField(env, lpObject, NMLVDISPINFOFc.iIndent, (jint)lpStruct->item.iIndent);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVDISPINFOFc.iGroupId, (jint)lpStruct->item.iGroupId);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMLVDISPINFOFc.cColumns, (jint)lpStruct->item.cColumns);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, NMLVDISPINFOFc.puColumns, (jintLong)lpStruct->item.puColumns);
-#endif
 }
 #endif
 
@@ -4635,43 +4409,91 @@ void setNMREBARCHILDSIZEFields(JNIEnv *env, jobject lpObject, NMREBARCHILDSIZE *
 }
 #endif
 
-#ifndef NO_NMRGINFO
-typedef struct NMRGINFO_FID_CACHE {
+#ifndef NO_NMTBCUSTOMDRAW
+typedef struct NMTBCUSTOMDRAW_FID_CACHE {
 	int cached;
 	jclass clazz;
-	jfieldID x, y, dwItemSpec;
-} NMRGINFO_FID_CACHE;
+	jfieldID nmcd, hbrMonoDither, hbrLines, hpenLines, clrText, clrMark, clrTextHighlight, clrBtnFace, clrBtnHighlight, clrHighlightHotTrack, rcText_left, rcText_top, rcText_right, rcText_bottom, nStringBkMode, nHLStringBkMode, iListGap;
+} NMTBCUSTOMDRAW_FID_CACHE;
 
-NMRGINFO_FID_CACHE NMRGINFOFc;
+NMTBCUSTOMDRAW_FID_CACHE NMTBCUSTOMDRAWFc;
 
-void cacheNMRGINFOFields(JNIEnv *env, jobject lpObject)
+void cacheNMTBCUSTOMDRAWFields(JNIEnv *env, jobject lpObject)
 {
-	if (NMRGINFOFc.cached) return;
-	cacheNMHDRFields(env, lpObject);
-	NMRGINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	NMRGINFOFc.x = (*env)->GetFieldID(env, NMRGINFOFc.clazz, "x", "I");
-	NMRGINFOFc.y = (*env)->GetFieldID(env, NMRGINFOFc.clazz, "y", "I");
-	NMRGINFOFc.dwItemSpec = (*env)->GetFieldID(env, NMRGINFOFc.clazz, "dwItemSpec", "I");
-	NMRGINFOFc.cached = 1;
+	if (NMTBCUSTOMDRAWFc.cached) return;
+	cacheNMCUSTOMDRAWFields(env, lpObject);
+	NMTBCUSTOMDRAWFc.clazz = (*env)->GetObjectClass(env, lpObject);
+	NMTBCUSTOMDRAWFc.nmcd = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "nmcd", "Lorg/eclipse/swt/internal/win32/NMCUSTOMDRAW;");
+	NMTBCUSTOMDRAWFc.hbrMonoDither = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "hbrMonoDither", I_J);
+	NMTBCUSTOMDRAWFc.hbrLines = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "hbrLines", I_J);
+	NMTBCUSTOMDRAWFc.hpenLines = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "hpenLines", I_J);
+	NMTBCUSTOMDRAWFc.clrText = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "clrText", "I");
+	NMTBCUSTOMDRAWFc.clrMark = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "clrMark", "I");
+	NMTBCUSTOMDRAWFc.clrTextHighlight = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "clrTextHighlight", "I");
+	NMTBCUSTOMDRAWFc.clrBtnFace = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "clrBtnFace", "I");
+	NMTBCUSTOMDRAWFc.clrBtnHighlight = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "clrBtnHighlight", "I");
+	NMTBCUSTOMDRAWFc.clrHighlightHotTrack = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "clrHighlightHotTrack", "I");
+	NMTBCUSTOMDRAWFc.rcText_left = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "rcText_left", "I");
+	NMTBCUSTOMDRAWFc.rcText_top = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "rcText_top", "I");
+	NMTBCUSTOMDRAWFc.rcText_right = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "rcText_right", "I");
+	NMTBCUSTOMDRAWFc.rcText_bottom = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "rcText_bottom", "I");
+	NMTBCUSTOMDRAWFc.nStringBkMode = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "nStringBkMode", "I");
+	NMTBCUSTOMDRAWFc.nHLStringBkMode = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "nHLStringBkMode", "I");
+	NMTBCUSTOMDRAWFc.iListGap = (*env)->GetFieldID(env, NMTBCUSTOMDRAWFc.clazz, "iListGap", "I");
+	NMTBCUSTOMDRAWFc.cached = 1;
 }
 
-NMRGINFO *getNMRGINFOFields(JNIEnv *env, jobject lpObject, NMRGINFO *lpStruct)
+NMTBCUSTOMDRAW *getNMTBCUSTOMDRAWFields(JNIEnv *env, jobject lpObject, NMTBCUSTOMDRAW *lpStruct)
 {
-	if (!NMRGINFOFc.cached) cacheNMRGINFOFields(env, lpObject);
-	getNMHDRFields(env, lpObject, (NMHDR *)lpStruct);
-	lpStruct->ptAction.x = (*env)->GetIntField(env, lpObject, NMRGINFOFc.x);
-	lpStruct->ptAction.y = (*env)->GetIntField(env, lpObject, NMRGINFOFc.y);
-	lpStruct->dwItemSpec = (*env)->GetIntField(env, lpObject, NMRGINFOFc.dwItemSpec);
+	if (!NMTBCUSTOMDRAWFc.cached) cacheNMTBCUSTOMDRAWFields(env, lpObject);
+	getNMCUSTOMDRAWFields(env, lpObject, (NMCUSTOMDRAW *)lpStruct);
+	{
+	jobject lpObject1 = (*env)->GetObjectField(env, lpObject, NMTBCUSTOMDRAWFc.nmcd);
+	if (lpObject1 != NULL) getNMCUSTOMDRAWFields(env, lpObject1, &lpStruct->nmcd);
+	}
+	lpStruct->hbrMonoDither = (HBRUSH)(*env)->GetIntLongField(env, lpObject, NMTBCUSTOMDRAWFc.hbrMonoDither);
+	lpStruct->hbrLines = (HBRUSH)(*env)->GetIntLongField(env, lpObject, NMTBCUSTOMDRAWFc.hbrLines);
+	lpStruct->hpenLines = (HPEN)(*env)->GetIntLongField(env, lpObject, NMTBCUSTOMDRAWFc.hpenLines);
+	lpStruct->clrText = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrText);
+	lpStruct->clrMark = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrMark);
+	lpStruct->clrTextHighlight = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrTextHighlight);
+	lpStruct->clrBtnFace = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrBtnFace);
+	lpStruct->clrBtnHighlight = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrBtnHighlight);
+	lpStruct->clrHighlightHotTrack = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrHighlightHotTrack);
+	lpStruct->rcText.left = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_left);
+	lpStruct->rcText.top = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_top);
+	lpStruct->rcText.right = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_right);
+	lpStruct->rcText.bottom = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_bottom);
+	lpStruct->nStringBkMode = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.nStringBkMode);
+	lpStruct->nHLStringBkMode = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.nHLStringBkMode);
+	lpStruct->iListGap = (*env)->GetIntField(env, lpObject, NMTBCUSTOMDRAWFc.iListGap);
 	return lpStruct;
 }
 
-void setNMRGINFOFields(JNIEnv *env, jobject lpObject, NMRGINFO *lpStruct)
+void setNMTBCUSTOMDRAWFields(JNIEnv *env, jobject lpObject, NMTBCUSTOMDRAW *lpStruct)
 {
-	if (!NMRGINFOFc.cached) cacheNMRGINFOFields(env, lpObject);
-	setNMHDRFields(env, lpObject, (NMHDR *)lpStruct);
-	(*env)->SetIntField(env, lpObject, NMRGINFOFc.x, (jint)lpStruct->ptAction.x);
-	(*env)->SetIntField(env, lpObject, NMRGINFOFc.y, (jint)lpStruct->ptAction.y);
-	(*env)->SetIntField(env, lpObject, NMRGINFOFc.dwItemSpec, (jint)lpStruct->dwItemSpec);
+	if (!NMTBCUSTOMDRAWFc.cached) cacheNMTBCUSTOMDRAWFields(env, lpObject);
+	setNMCUSTOMDRAWFields(env, lpObject, (NMCUSTOMDRAW *)lpStruct);
+	{
+	jobject lpObject1 = (*env)->GetObjectField(env, lpObject, NMTBCUSTOMDRAWFc.nmcd);
+	if (lpObject1 != NULL) setNMCUSTOMDRAWFields(env, lpObject1, &lpStruct->nmcd);
+	}
+	(*env)->SetIntLongField(env, lpObject, NMTBCUSTOMDRAWFc.hbrMonoDither, (jintLong)lpStruct->hbrMonoDither);
+	(*env)->SetIntLongField(env, lpObject, NMTBCUSTOMDRAWFc.hbrLines, (jintLong)lpStruct->hbrLines);
+	(*env)->SetIntLongField(env, lpObject, NMTBCUSTOMDRAWFc.hpenLines, (jintLong)lpStruct->hpenLines);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrText, (jint)lpStruct->clrText);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrMark, (jint)lpStruct->clrMark);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrTextHighlight, (jint)lpStruct->clrTextHighlight);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrBtnFace, (jint)lpStruct->clrBtnFace);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrBtnHighlight, (jint)lpStruct->clrBtnHighlight);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.clrHighlightHotTrack, (jint)lpStruct->clrHighlightHotTrack);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_left, (jint)lpStruct->rcText.left);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_top, (jint)lpStruct->rcText.top);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_right, (jint)lpStruct->rcText.right);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.rcText_bottom, (jint)lpStruct->rcText.bottom);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.nStringBkMode, (jint)lpStruct->nStringBkMode);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.nHLStringBkMode, (jint)lpStruct->nHLStringBkMode);
+	(*env)->SetIntField(env, lpObject, NMTBCUSTOMDRAWFc.iListGap, (jint)lpStruct->iListGap);
 }
 #endif
 
@@ -4758,18 +4580,10 @@ NMTOOLBAR *getNMTOOLBARFields(JNIEnv *env, jobject lpObject, NMTOOLBAR *lpStruct
 	lpStruct->tbButton.iString = (*env)->GetIntLongField(env, lpObject, NMTOOLBARFc.iString);
 	lpStruct->cchText = (*env)->GetIntField(env, lpObject, NMTOOLBARFc.cchText);
 	lpStruct->pszText = (LPTSTR)(*env)->GetIntLongField(env, lpObject, NMTOOLBARFc.pszText);
-#ifndef _WIN32_WCE
 	lpStruct->rcButton.left = (*env)->GetIntField(env, lpObject, NMTOOLBARFc.left);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcButton.top = (*env)->GetIntField(env, lpObject, NMTOOLBARFc.top);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcButton.right = (*env)->GetIntField(env, lpObject, NMTOOLBARFc.right);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->rcButton.bottom = (*env)->GetIntField(env, lpObject, NMTOOLBARFc.bottom);
-#endif
 	return lpStruct;
 }
 
@@ -4786,18 +4600,10 @@ void setNMTOOLBARFields(JNIEnv *env, jobject lpObject, NMTOOLBAR *lpStruct)
 	(*env)->SetIntLongField(env, lpObject, NMTOOLBARFc.iString, (jintLong)lpStruct->tbButton.iString);
 	(*env)->SetIntField(env, lpObject, NMTOOLBARFc.cchText, (jint)lpStruct->cchText);
 	(*env)->SetIntLongField(env, lpObject, NMTOOLBARFc.pszText, (jintLong)lpStruct->pszText);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMTOOLBARFc.left, (jint)lpStruct->rcButton.left);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMTOOLBARFc.top, (jint)lpStruct->rcButton.top);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMTOOLBARFc.right, (jint)lpStruct->rcButton.right);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMTOOLBARFc.bottom, (jint)lpStruct->rcButton.bottom);
-#endif
 }
 #endif
 
@@ -5067,9 +4873,7 @@ NMTVCUSTOMDRAW *getNMTVCUSTOMDRAWFields(JNIEnv *env, jobject lpObject, NMTVCUSTO
 	getNMCUSTOMDRAWFields(env, lpObject, (NMCUSTOMDRAW *)lpStruct);
 	lpStruct->clrText = (*env)->GetIntField(env, lpObject, NMTVCUSTOMDRAWFc.clrText);
 	lpStruct->clrTextBk = (*env)->GetIntField(env, lpObject, NMTVCUSTOMDRAWFc.clrTextBk);
-#ifndef _WIN32_WCE
 	lpStruct->iLevel = (*env)->GetIntField(env, lpObject, NMTVCUSTOMDRAWFc.iLevel);
-#endif
 	return lpStruct;
 }
 
@@ -5079,9 +4883,7 @@ void setNMTVCUSTOMDRAWFields(JNIEnv *env, jobject lpObject, NMTVCUSTOMDRAW *lpSt
 	setNMCUSTOMDRAWFields(env, lpObject, (NMCUSTOMDRAW *)lpStruct);
 	(*env)->SetIntField(env, lpObject, NMTVCUSTOMDRAWFc.clrText, (jint)lpStruct->clrText);
 	(*env)->SetIntField(env, lpObject, NMTVCUSTOMDRAWFc.clrTextBk, (jint)lpStruct->clrTextBk);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NMTVCUSTOMDRAWFc.iLevel, (jint)lpStruct->iLevel);
-#endif
 }
 #endif
 
@@ -5510,18 +5312,10 @@ NOTIFYICONDATA *getNOTIFYICONDATAFields(JNIEnv *env, jobject lpObject, NOTIFYICO
 	lpStruct->uFlags = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uFlags);
 	lpStruct->uCallbackMessage = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uCallbackMessage);
 	lpStruct->hIcon = (HICON)(*env)->GetIntLongField(env, lpObject, NOTIFYICONDATAFc.hIcon);
-#ifndef _WIN32_WCE
 	lpStruct->dwState = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwState);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwStateMask = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwStateMask);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->uVersion = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uVersion);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwInfoFlags = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwInfoFlags);
-#endif
 	return lpStruct;
 }
 
@@ -5534,18 +5328,10 @@ void setNOTIFYICONDATAFields(JNIEnv *env, jobject lpObject, NOTIFYICONDATA *lpSt
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uFlags, (jint)lpStruct->uFlags);
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uCallbackMessage, (jint)lpStruct->uCallbackMessage);
 	(*env)->SetIntLongField(env, lpObject, NOTIFYICONDATAFc.hIcon, (jintLong)lpStruct->hIcon);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwState, (jint)lpStruct->dwState);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwStateMask, (jint)lpStruct->dwStateMask);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uVersion, (jint)lpStruct->uVersion);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwInfoFlags, (jint)lpStruct->dwInfoFlags);
-#endif
 }
 #endif
 
@@ -5578,34 +5364,22 @@ NOTIFYICONDATAA *getNOTIFYICONDATAAFields(JNIEnv *env, jobject lpObject, NOTIFYI
 	lpStruct->uFlags = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uFlags);
 	lpStruct->uCallbackMessage = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uCallbackMessage);
 	lpStruct->hIcon = (HICON)(*env)->GetIntLongField(env, lpObject, NOTIFYICONDATAFc.hIcon);
-#ifndef _WIN32_WCE
 	lpStruct->dwState = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwState);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwStateMask = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwStateMask);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->uVersion = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uVersion);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwInfoFlags = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwInfoFlags);
-#endif
 	{
 	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAAFc.szTip);
 	(*env)->GetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szTip), (jbyte *)lpStruct->szTip);
 	}
-#ifndef _WIN32_WCE
 	{
 	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAAFc.szInfo);
 	(*env)->GetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfo), (jbyte *)lpStruct->szInfo);
 	}
-#endif
-#ifndef _WIN32_WCE
 	{
 	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAAFc.szInfoTitle);
 	(*env)->GetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfoTitle), (jbyte *)lpStruct->szInfoTitle);
 	}
-#endif
 	return lpStruct;
 }
 
@@ -5618,34 +5392,22 @@ void setNOTIFYICONDATAAFields(JNIEnv *env, jobject lpObject, NOTIFYICONDATAA *lp
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uFlags, (jint)lpStruct->uFlags);
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uCallbackMessage, (jint)lpStruct->uCallbackMessage);
 	(*env)->SetIntLongField(env, lpObject, NOTIFYICONDATAFc.hIcon, (jintLong)lpStruct->hIcon);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwState, (jint)lpStruct->dwState);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwStateMask, (jint)lpStruct->dwStateMask);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uVersion, (jint)lpStruct->uVersion);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwInfoFlags, (jint)lpStruct->dwInfoFlags);
-#endif
 	{
 	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAAFc.szTip);
 	(*env)->SetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szTip), (jbyte *)lpStruct->szTip);
 	}
-#ifndef _WIN32_WCE
 	{
 	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAAFc.szInfo);
 	(*env)->SetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfo), (jbyte *)lpStruct->szInfo);
 	}
-#endif
-#ifndef _WIN32_WCE
 	{
 	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAAFc.szInfoTitle);
 	(*env)->SetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfoTitle), (jbyte *)lpStruct->szInfoTitle);
 	}
-#endif
 }
 #endif
 
@@ -5678,34 +5440,22 @@ NOTIFYICONDATAW *getNOTIFYICONDATAWFields(JNIEnv *env, jobject lpObject, NOTIFYI
 	lpStruct->uFlags = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uFlags);
 	lpStruct->uCallbackMessage = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uCallbackMessage);
 	lpStruct->hIcon = (HICON)(*env)->GetIntLongField(env, lpObject, NOTIFYICONDATAFc.hIcon);
-#ifndef _WIN32_WCE
 	lpStruct->dwState = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwState);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwStateMask = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwStateMask);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->uVersion = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.uVersion);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwInfoFlags = (*env)->GetIntField(env, lpObject, NOTIFYICONDATAFc.dwInfoFlags);
-#endif
 	{
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAWFc.szTip);
 	(*env)->GetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szTip) / sizeof(jchar), (jchar *)lpStruct->szTip);
 	}
-#ifndef _WIN32_WCE
 	{
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAWFc.szInfo);
 	(*env)->GetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfo) / sizeof(jchar), (jchar *)lpStruct->szInfo);
 	}
-#endif
-#ifndef _WIN32_WCE
 	{
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAWFc.szInfoTitle);
 	(*env)->GetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfoTitle) / sizeof(jchar), (jchar *)lpStruct->szInfoTitle);
 	}
-#endif
 	return lpStruct;
 }
 
@@ -5718,34 +5468,22 @@ void setNOTIFYICONDATAWFields(JNIEnv *env, jobject lpObject, NOTIFYICONDATAW *lp
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uFlags, (jint)lpStruct->uFlags);
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uCallbackMessage, (jint)lpStruct->uCallbackMessage);
 	(*env)->SetIntLongField(env, lpObject, NOTIFYICONDATAFc.hIcon, (jintLong)lpStruct->hIcon);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwState, (jint)lpStruct->dwState);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwStateMask, (jint)lpStruct->dwStateMask);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.uVersion, (jint)lpStruct->uVersion);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, NOTIFYICONDATAFc.dwInfoFlags, (jint)lpStruct->dwInfoFlags);
-#endif
 	{
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAWFc.szTip);
 	(*env)->SetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szTip) / sizeof(jchar), (jchar *)lpStruct->szTip);
 	}
-#ifndef _WIN32_WCE
 	{
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAWFc.szInfo);
 	(*env)->SetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfo) / sizeof(jchar), (jchar *)lpStruct->szInfo);
 	}
-#endif
-#ifndef _WIN32_WCE
 	{
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, NOTIFYICONDATAWFc.szInfoTitle);
 	(*env)->SetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szInfoTitle) / sizeof(jchar), (jchar *)lpStruct->szInfoTitle);
 	}
-#endif
 }
 #endif
 
@@ -5848,15 +5586,9 @@ OPENFILENAME *getOPENFILENAMEFields(JNIEnv *env, jobject lpObject, OPENFILENAME 
 	lpStruct->lCustData = (*env)->GetIntLongField(env, lpObject, OPENFILENAMEFc.lCustData);
 	lpStruct->lpfnHook = (LPOFNHOOKPROC)(*env)->GetIntLongField(env, lpObject, OPENFILENAMEFc.lpfnHook);
 	lpStruct->lpTemplateName = (LPCTSTR)(*env)->GetIntLongField(env, lpObject, OPENFILENAMEFc.lpTemplateName);
-#ifndef _WIN32_WCE
 	lpStruct->pvReserved = (void *)(*env)->GetIntLongField(env, lpObject, OPENFILENAMEFc.pvReserved);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->dwReserved = (*env)->GetIntField(env, lpObject, OPENFILENAMEFc.dwReserved);
-#endif
-#ifndef _WIN32_WCE
 	lpStruct->FlagsEx = (*env)->GetIntField(env, lpObject, OPENFILENAMEFc.FlagsEx);
-#endif
 	return lpStruct;
 }
 
@@ -5883,300 +5615,9 @@ void setOPENFILENAMEFields(JNIEnv *env, jobject lpObject, OPENFILENAME *lpStruct
 	(*env)->SetIntLongField(env, lpObject, OPENFILENAMEFc.lCustData, (jintLong)lpStruct->lCustData);
 	(*env)->SetIntLongField(env, lpObject, OPENFILENAMEFc.lpfnHook, (jintLong)lpStruct->lpfnHook);
 	(*env)->SetIntLongField(env, lpObject, OPENFILENAMEFc.lpTemplateName, (jintLong)lpStruct->lpTemplateName);
-#ifndef _WIN32_WCE
 	(*env)->SetIntLongField(env, lpObject, OPENFILENAMEFc.pvReserved, (jintLong)lpStruct->pvReserved);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, OPENFILENAMEFc.dwReserved, (jint)lpStruct->dwReserved);
-#endif
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, OPENFILENAMEFc.FlagsEx, (jint)lpStruct->FlagsEx);
-#endif
-}
-#endif
-
-#ifndef NO_OSVERSIONINFO
-typedef struct OSVERSIONINFO_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID dwOSVersionInfoSize, dwMajorVersion, dwMinorVersion, dwBuildNumber, dwPlatformId;
-} OSVERSIONINFO_FID_CACHE;
-
-OSVERSIONINFO_FID_CACHE OSVERSIONINFOFc;
-
-void cacheOSVERSIONINFOFields(JNIEnv *env, jobject lpObject)
-{
-	if (OSVERSIONINFOFc.cached) return;
-	OSVERSIONINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	OSVERSIONINFOFc.dwOSVersionInfoSize = (*env)->GetFieldID(env, OSVERSIONINFOFc.clazz, "dwOSVersionInfoSize", "I");
-	OSVERSIONINFOFc.dwMajorVersion = (*env)->GetFieldID(env, OSVERSIONINFOFc.clazz, "dwMajorVersion", "I");
-	OSVERSIONINFOFc.dwMinorVersion = (*env)->GetFieldID(env, OSVERSIONINFOFc.clazz, "dwMinorVersion", "I");
-	OSVERSIONINFOFc.dwBuildNumber = (*env)->GetFieldID(env, OSVERSIONINFOFc.clazz, "dwBuildNumber", "I");
-	OSVERSIONINFOFc.dwPlatformId = (*env)->GetFieldID(env, OSVERSIONINFOFc.clazz, "dwPlatformId", "I");
-	OSVERSIONINFOFc.cached = 1;
-}
-
-OSVERSIONINFO *getOSVERSIONINFOFields(JNIEnv *env, jobject lpObject, OSVERSIONINFO *lpStruct)
-{
-	if (!OSVERSIONINFOFc.cached) cacheOSVERSIONINFOFields(env, lpObject);
-	lpStruct->dwOSVersionInfoSize = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwOSVersionInfoSize);
-	lpStruct->dwMajorVersion = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwMajorVersion);
-	lpStruct->dwMinorVersion = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwMinorVersion);
-	lpStruct->dwBuildNumber = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwBuildNumber);
-	lpStruct->dwPlatformId = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwPlatformId);
-	return lpStruct;
-}
-
-void setOSVERSIONINFOFields(JNIEnv *env, jobject lpObject, OSVERSIONINFO *lpStruct)
-{
-	if (!OSVERSIONINFOFc.cached) cacheOSVERSIONINFOFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwOSVersionInfoSize, (jint)lpStruct->dwOSVersionInfoSize);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwMajorVersion, (jint)lpStruct->dwMajorVersion);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwMinorVersion, (jint)lpStruct->dwMinorVersion);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwBuildNumber, (jint)lpStruct->dwBuildNumber);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwPlatformId, (jint)lpStruct->dwPlatformId);
-}
-#endif
-
-#ifndef NO_OSVERSIONINFOA
-typedef struct OSVERSIONINFOA_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID szCSDVersion;
-} OSVERSIONINFOA_FID_CACHE;
-
-OSVERSIONINFOA_FID_CACHE OSVERSIONINFOAFc;
-
-void cacheOSVERSIONINFOAFields(JNIEnv *env, jobject lpObject)
-{
-	if (OSVERSIONINFOAFc.cached) return;
-	cacheOSVERSIONINFOFields(env, lpObject);
-	OSVERSIONINFOAFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	OSVERSIONINFOAFc.szCSDVersion = (*env)->GetFieldID(env, OSVERSIONINFOAFc.clazz, "szCSDVersion", "[B");
-	OSVERSIONINFOAFc.cached = 1;
-}
-
-OSVERSIONINFOA *getOSVERSIONINFOAFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOA *lpStruct)
-{
-	if (!OSVERSIONINFOAFc.cached) cacheOSVERSIONINFOAFields(env, lpObject);
-	lpStruct->dwOSVersionInfoSize = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwOSVersionInfoSize);
-	lpStruct->dwMajorVersion = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwMajorVersion);
-	lpStruct->dwMinorVersion = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwMinorVersion);
-	lpStruct->dwBuildNumber = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwBuildNumber);
-	lpStruct->dwPlatformId = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwPlatformId);
-	{
-	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOAFc.szCSDVersion);
-	(*env)->GetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion), (jbyte *)lpStruct->szCSDVersion);
-	}
-	return lpStruct;
-}
-
-void setOSVERSIONINFOAFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOA *lpStruct)
-{
-	if (!OSVERSIONINFOAFc.cached) cacheOSVERSIONINFOAFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwOSVersionInfoSize, (jint)lpStruct->dwOSVersionInfoSize);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwMajorVersion, (jint)lpStruct->dwMajorVersion);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwMinorVersion, (jint)lpStruct->dwMinorVersion);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwBuildNumber, (jint)lpStruct->dwBuildNumber);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwPlatformId, (jint)lpStruct->dwPlatformId);
-	{
-	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOAFc.szCSDVersion);
-	(*env)->SetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion), (jbyte *)lpStruct->szCSDVersion);
-	}
-}
-#endif
-
-#ifndef NO_OSVERSIONINFOEX
-typedef struct OSVERSIONINFOEX_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID wServicePackMajor, wServicePackMinor, wSuiteMask, wProductType, wReserved;
-} OSVERSIONINFOEX_FID_CACHE;
-
-OSVERSIONINFOEX_FID_CACHE OSVERSIONINFOEXFc;
-
-void cacheOSVERSIONINFOEXFields(JNIEnv *env, jobject lpObject)
-{
-	if (OSVERSIONINFOEXFc.cached) return;
-	cacheOSVERSIONINFOFields(env, lpObject);
-	OSVERSIONINFOEXFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	OSVERSIONINFOEXFc.wServicePackMajor = (*env)->GetFieldID(env, OSVERSIONINFOEXFc.clazz, "wServicePackMajor", "S");
-	OSVERSIONINFOEXFc.wServicePackMinor = (*env)->GetFieldID(env, OSVERSIONINFOEXFc.clazz, "wServicePackMinor", "S");
-	OSVERSIONINFOEXFc.wSuiteMask = (*env)->GetFieldID(env, OSVERSIONINFOEXFc.clazz, "wSuiteMask", "S");
-	OSVERSIONINFOEXFc.wProductType = (*env)->GetFieldID(env, OSVERSIONINFOEXFc.clazz, "wProductType", "B");
-	OSVERSIONINFOEXFc.wReserved = (*env)->GetFieldID(env, OSVERSIONINFOEXFc.clazz, "wReserved", "B");
-	OSVERSIONINFOEXFc.cached = 1;
-}
-
-OSVERSIONINFOEX *getOSVERSIONINFOEXFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOEX *lpStruct)
-{
-	if (!OSVERSIONINFOEXFc.cached) cacheOSVERSIONINFOEXFields(env, lpObject);
-	getOSVERSIONINFOFields(env, lpObject, (OSVERSIONINFO *)lpStruct);
-	lpStruct->wServicePackMajor = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMajor);
-	lpStruct->wServicePackMinor = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMinor);
-	lpStruct->wSuiteMask = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wSuiteMask);
-	lpStruct->wProductType = (*env)->GetByteField(env, lpObject, OSVERSIONINFOEXFc.wProductType);
-	lpStruct->wReserved = (*env)->GetByteField(env, lpObject, OSVERSIONINFOEXFc.wReserved);
-	return lpStruct;
-}
-
-void setOSVERSIONINFOEXFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOEX *lpStruct)
-{
-	if (!OSVERSIONINFOEXFc.cached) cacheOSVERSIONINFOEXFields(env, lpObject);
-	setOSVERSIONINFOFields(env, lpObject, (OSVERSIONINFO *)lpStruct);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMajor, (jshort)lpStruct->wServicePackMajor);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMinor, (jshort)lpStruct->wServicePackMinor);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wSuiteMask, (jshort)lpStruct->wSuiteMask);
-	(*env)->SetByteField(env, lpObject, OSVERSIONINFOEXFc.wProductType, (jbyte)lpStruct->wProductType);
-	(*env)->SetByteField(env, lpObject, OSVERSIONINFOEXFc.wReserved, (jbyte)lpStruct->wReserved);
-}
-#endif
-
-#ifndef NO_OSVERSIONINFOEXA
-typedef struct OSVERSIONINFOEXA_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID szCSDVersion;
-} OSVERSIONINFOEXA_FID_CACHE;
-
-OSVERSIONINFOEXA_FID_CACHE OSVERSIONINFOEXAFc;
-
-void cacheOSVERSIONINFOEXAFields(JNIEnv *env, jobject lpObject)
-{
-	if (OSVERSIONINFOEXAFc.cached) return;
-	cacheOSVERSIONINFOEXFields(env, lpObject);
-	OSVERSIONINFOEXAFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	OSVERSIONINFOEXAFc.szCSDVersion = (*env)->GetFieldID(env, OSVERSIONINFOEXAFc.clazz, "szCSDVersion", "[B");
-	OSVERSIONINFOEXAFc.cached = 1;
-}
-
-OSVERSIONINFOEXA *getOSVERSIONINFOEXAFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOEXA *lpStruct)
-{
-	if (!OSVERSIONINFOEXAFc.cached) cacheOSVERSIONINFOEXAFields(env, lpObject);
-	getOSVERSIONINFOFields(env, lpObject, (OSVERSIONINFO *)lpStruct);
-	lpStruct->wServicePackMajor = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMajor);
-	lpStruct->wServicePackMinor = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMinor);
-	lpStruct->wSuiteMask = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wSuiteMask);
-	lpStruct->wProductType = (*env)->GetByteField(env, lpObject, OSVERSIONINFOEXFc.wProductType);
-	lpStruct->wReserved = (*env)->GetByteField(env, lpObject, OSVERSIONINFOEXFc.wReserved);
-	{
-	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOEXAFc.szCSDVersion);
-	(*env)->GetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion), (jbyte *)lpStruct->szCSDVersion);
-	}
-	return lpStruct;
-}
-
-void setOSVERSIONINFOEXAFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOEXA *lpStruct)
-{
-	if (!OSVERSIONINFOEXAFc.cached) cacheOSVERSIONINFOEXAFields(env, lpObject);
-	setOSVERSIONINFOFields(env, lpObject, (OSVERSIONINFO *)lpStruct);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMajor, (jshort)lpStruct->wServicePackMajor);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMinor, (jshort)lpStruct->wServicePackMinor);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wSuiteMask, (jshort)lpStruct->wSuiteMask);
-	(*env)->SetByteField(env, lpObject, OSVERSIONINFOEXFc.wProductType, (jbyte)lpStruct->wProductType);
-	(*env)->SetByteField(env, lpObject, OSVERSIONINFOEXFc.wReserved, (jbyte)lpStruct->wReserved);
-	{
-	jbyteArray lpObject1 = (jbyteArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOEXAFc.szCSDVersion);
-	(*env)->SetByteArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion), (jbyte *)lpStruct->szCSDVersion);
-	}
-}
-#endif
-
-#ifndef NO_OSVERSIONINFOEXW
-typedef struct OSVERSIONINFOEXW_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID szCSDVersion;
-} OSVERSIONINFOEXW_FID_CACHE;
-
-OSVERSIONINFOEXW_FID_CACHE OSVERSIONINFOEXWFc;
-
-void cacheOSVERSIONINFOEXWFields(JNIEnv *env, jobject lpObject)
-{
-	if (OSVERSIONINFOEXWFc.cached) return;
-	cacheOSVERSIONINFOEXFields(env, lpObject);
-	OSVERSIONINFOEXWFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	OSVERSIONINFOEXWFc.szCSDVersion = (*env)->GetFieldID(env, OSVERSIONINFOEXWFc.clazz, "szCSDVersion", "[C");
-	OSVERSIONINFOEXWFc.cached = 1;
-}
-
-OSVERSIONINFOEXW *getOSVERSIONINFOEXWFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOEXW *lpStruct)
-{
-	if (!OSVERSIONINFOEXWFc.cached) cacheOSVERSIONINFOEXWFields(env, lpObject);
-	getOSVERSIONINFOFields(env, lpObject, (OSVERSIONINFO *)lpStruct);
-	lpStruct->wServicePackMajor = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMajor);
-	lpStruct->wServicePackMinor = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMinor);
-	lpStruct->wSuiteMask = (*env)->GetShortField(env, lpObject, OSVERSIONINFOEXFc.wSuiteMask);
-	lpStruct->wProductType = (*env)->GetByteField(env, lpObject, OSVERSIONINFOEXFc.wProductType);
-	lpStruct->wReserved = (*env)->GetByteField(env, lpObject, OSVERSIONINFOEXFc.wReserved);
-	{
-	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOEXWFc.szCSDVersion);
-	(*env)->GetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion) / sizeof(jchar), (jchar *)lpStruct->szCSDVersion);
-	}
-	return lpStruct;
-}
-
-void setOSVERSIONINFOEXWFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOEXW *lpStruct)
-{
-	if (!OSVERSIONINFOEXWFc.cached) cacheOSVERSIONINFOEXWFields(env, lpObject);
-	setOSVERSIONINFOFields(env, lpObject, (OSVERSIONINFO *)lpStruct);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMajor, (jshort)lpStruct->wServicePackMajor);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wServicePackMinor, (jshort)lpStruct->wServicePackMinor);
-	(*env)->SetShortField(env, lpObject, OSVERSIONINFOEXFc.wSuiteMask, (jshort)lpStruct->wSuiteMask);
-	(*env)->SetByteField(env, lpObject, OSVERSIONINFOEXFc.wProductType, (jbyte)lpStruct->wProductType);
-	(*env)->SetByteField(env, lpObject, OSVERSIONINFOEXFc.wReserved, (jbyte)lpStruct->wReserved);
-	{
-	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOEXWFc.szCSDVersion);
-	(*env)->SetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion) / sizeof(jchar), (jchar *)lpStruct->szCSDVersion);
-	}
-}
-#endif
-
-#ifndef NO_OSVERSIONINFOW
-typedef struct OSVERSIONINFOW_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID szCSDVersion;
-} OSVERSIONINFOW_FID_CACHE;
-
-OSVERSIONINFOW_FID_CACHE OSVERSIONINFOWFc;
-
-void cacheOSVERSIONINFOWFields(JNIEnv *env, jobject lpObject)
-{
-	if (OSVERSIONINFOWFc.cached) return;
-	cacheOSVERSIONINFOFields(env, lpObject);
-	OSVERSIONINFOWFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	OSVERSIONINFOWFc.szCSDVersion = (*env)->GetFieldID(env, OSVERSIONINFOWFc.clazz, "szCSDVersion", "[C");
-	OSVERSIONINFOWFc.cached = 1;
-}
-
-OSVERSIONINFOW *getOSVERSIONINFOWFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOW *lpStruct)
-{
-	if (!OSVERSIONINFOWFc.cached) cacheOSVERSIONINFOWFields(env, lpObject);
-	lpStruct->dwOSVersionInfoSize = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwOSVersionInfoSize);
-	lpStruct->dwMajorVersion = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwMajorVersion);
-	lpStruct->dwMinorVersion = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwMinorVersion);
-	lpStruct->dwBuildNumber = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwBuildNumber);
-	lpStruct->dwPlatformId = (*env)->GetIntField(env, lpObject, OSVERSIONINFOFc.dwPlatformId);
-	{
-	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOWFc.szCSDVersion);
-	(*env)->GetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion) / sizeof(jchar), (jchar *)lpStruct->szCSDVersion);
-	}
-	return lpStruct;
-}
-
-void setOSVERSIONINFOWFields(JNIEnv *env, jobject lpObject, OSVERSIONINFOW *lpStruct)
-{
-	if (!OSVERSIONINFOWFc.cached) cacheOSVERSIONINFOWFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwOSVersionInfoSize, (jint)lpStruct->dwOSVersionInfoSize);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwMajorVersion, (jint)lpStruct->dwMajorVersion);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwMinorVersion, (jint)lpStruct->dwMinorVersion);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwBuildNumber, (jint)lpStruct->dwBuildNumber);
-	(*env)->SetIntField(env, lpObject, OSVERSIONINFOFc.dwPlatformId, (jint)lpStruct->dwPlatformId);
-	{
-	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, OSVERSIONINFOWFc.szCSDVersion);
-	(*env)->SetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szCSDVersion) / sizeof(jchar), (jchar *)lpStruct->szCSDVersion);
-	}
 }
 #endif
 
@@ -7030,9 +6471,7 @@ REBARBANDINFO *getREBARBANDINFOFields(JNIEnv *env, jobject lpObject, REBARBANDIN
 	lpStruct->cyIntegral = (*env)->GetIntField(env, lpObject, REBARBANDINFOFc.cyIntegral);
 	lpStruct->cxIdeal = (*env)->GetIntField(env, lpObject, REBARBANDINFOFc.cxIdeal);
 	lpStruct->lParam = (*env)->GetIntLongField(env, lpObject, REBARBANDINFOFc.lParam);
-#ifndef _WIN32_WCE
 	lpStruct->cxHeader = (*env)->GetIntField(env, lpObject, REBARBANDINFOFc.cxHeader);
-#endif
 	return lpStruct;
 }
 
@@ -7058,9 +6497,7 @@ void setREBARBANDINFOFields(JNIEnv *env, jobject lpObject, REBARBANDINFO *lpStru
 	(*env)->SetIntField(env, lpObject, REBARBANDINFOFc.cyIntegral, (jint)lpStruct->cyIntegral);
 	(*env)->SetIntField(env, lpObject, REBARBANDINFOFc.cxIdeal, (jint)lpStruct->cxIdeal);
 	(*env)->SetIntLongField(env, lpObject, REBARBANDINFOFc.lParam, (jintLong)lpStruct->lParam);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, REBARBANDINFOFc.cxHeader, (jint)lpStruct->cxHeader);
-#endif
 }
 #endif
 
@@ -7722,52 +7159,6 @@ void setSCROLLINFOFields(JNIEnv *env, jobject lpObject, SCROLLINFO *lpStruct)
 }
 #endif
 
-#ifndef NO_SHACTIVATEINFO
-typedef struct SHACTIVATEINFO_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID cbSize, hwndLastFocus, fSipUp, fSipOnDeactivation, fActive, fReserved;
-} SHACTIVATEINFO_FID_CACHE;
-
-SHACTIVATEINFO_FID_CACHE SHACTIVATEINFOFc;
-
-void cacheSHACTIVATEINFOFields(JNIEnv *env, jobject lpObject)
-{
-	if (SHACTIVATEINFOFc.cached) return;
-	SHACTIVATEINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	SHACTIVATEINFOFc.cbSize = (*env)->GetFieldID(env, SHACTIVATEINFOFc.clazz, "cbSize", "I");
-	SHACTIVATEINFOFc.hwndLastFocus = (*env)->GetFieldID(env, SHACTIVATEINFOFc.clazz, "hwndLastFocus", I_J);
-	SHACTIVATEINFOFc.fSipUp = (*env)->GetFieldID(env, SHACTIVATEINFOFc.clazz, "fSipUp", "I");
-	SHACTIVATEINFOFc.fSipOnDeactivation = (*env)->GetFieldID(env, SHACTIVATEINFOFc.clazz, "fSipOnDeactivation", "I");
-	SHACTIVATEINFOFc.fActive = (*env)->GetFieldID(env, SHACTIVATEINFOFc.clazz, "fActive", "I");
-	SHACTIVATEINFOFc.fReserved = (*env)->GetFieldID(env, SHACTIVATEINFOFc.clazz, "fReserved", "I");
-	SHACTIVATEINFOFc.cached = 1;
-}
-
-SHACTIVATEINFO *getSHACTIVATEINFOFields(JNIEnv *env, jobject lpObject, SHACTIVATEINFO *lpStruct)
-{
-	if (!SHACTIVATEINFOFc.cached) cacheSHACTIVATEINFOFields(env, lpObject);
-	lpStruct->cbSize = (*env)->GetIntField(env, lpObject, SHACTIVATEINFOFc.cbSize);
-	lpStruct->hwndLastFocus = (HWND)(*env)->GetIntLongField(env, lpObject, SHACTIVATEINFOFc.hwndLastFocus);
-	lpStruct->fSipUp = (*env)->GetIntField(env, lpObject, SHACTIVATEINFOFc.fSipUp);
-	lpStruct->fSipOnDeactivation = (*env)->GetIntField(env, lpObject, SHACTIVATEINFOFc.fSipOnDeactivation);
-	lpStruct->fActive = (*env)->GetIntField(env, lpObject, SHACTIVATEINFOFc.fActive);
-	lpStruct->fReserved = (*env)->GetIntField(env, lpObject, SHACTIVATEINFOFc.fReserved);
-	return lpStruct;
-}
-
-void setSHACTIVATEINFOFields(JNIEnv *env, jobject lpObject, SHACTIVATEINFO *lpStruct)
-{
-	if (!SHACTIVATEINFOFc.cached) cacheSHACTIVATEINFOFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, SHACTIVATEINFOFc.cbSize, (jint)lpStruct->cbSize);
-	(*env)->SetIntLongField(env, lpObject, SHACTIVATEINFOFc.hwndLastFocus, (jintLong)lpStruct->hwndLastFocus);
-	(*env)->SetIntField(env, lpObject, SHACTIVATEINFOFc.fSipUp, (jint)lpStruct->fSipUp);
-	(*env)->SetIntField(env, lpObject, SHACTIVATEINFOFc.fSipOnDeactivation, (jint)lpStruct->fSipOnDeactivation);
-	(*env)->SetIntField(env, lpObject, SHACTIVATEINFOFc.fActive, (jint)lpStruct->fActive);
-	(*env)->SetIntField(env, lpObject, SHACTIVATEINFOFc.fReserved, (jint)lpStruct->fReserved);
-}
-#endif
-
 #ifndef NO_SHDRAGIMAGE
 typedef struct SHDRAGIMAGE_FID_CACHE {
 	int cached;
@@ -8033,165 +7424,6 @@ void setSHFILEINFOWFields(JNIEnv *env, jobject lpObject, SHFILEINFOW *lpStruct)
 	jcharArray lpObject1 = (jcharArray)(*env)->GetObjectField(env, lpObject, SHFILEINFOWFc.szTypeName);
 	(*env)->SetCharArrayRegion(env, lpObject1, 0, sizeof(lpStruct->szTypeName) / sizeof(jchar), (jchar *)lpStruct->szTypeName);
 	}
-}
-#endif
-
-#ifndef NO_SHMENUBARINFO
-typedef struct SHMENUBARINFO_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID cbSize, hwndParent, dwFlags, nToolBarId, hInstRes, nBmpId, cBmpImages, hwndMB;
-} SHMENUBARINFO_FID_CACHE;
-
-SHMENUBARINFO_FID_CACHE SHMENUBARINFOFc;
-
-void cacheSHMENUBARINFOFields(JNIEnv *env, jobject lpObject)
-{
-	if (SHMENUBARINFOFc.cached) return;
-	SHMENUBARINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	SHMENUBARINFOFc.cbSize = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "cbSize", "I");
-	SHMENUBARINFOFc.hwndParent = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "hwndParent", I_J);
-	SHMENUBARINFOFc.dwFlags = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "dwFlags", "I");
-	SHMENUBARINFOFc.nToolBarId = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "nToolBarId", "I");
-	SHMENUBARINFOFc.hInstRes = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "hInstRes", I_J);
-	SHMENUBARINFOFc.nBmpId = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "nBmpId", "I");
-	SHMENUBARINFOFc.cBmpImages = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "cBmpImages", "I");
-	SHMENUBARINFOFc.hwndMB = (*env)->GetFieldID(env, SHMENUBARINFOFc.clazz, "hwndMB", I_J);
-	SHMENUBARINFOFc.cached = 1;
-}
-
-SHMENUBARINFO *getSHMENUBARINFOFields(JNIEnv *env, jobject lpObject, SHMENUBARINFO *lpStruct)
-{
-	if (!SHMENUBARINFOFc.cached) cacheSHMENUBARINFOFields(env, lpObject);
-	lpStruct->cbSize = (*env)->GetIntField(env, lpObject, SHMENUBARINFOFc.cbSize);
-	lpStruct->hwndParent = (HWND)(*env)->GetIntLongField(env, lpObject, SHMENUBARINFOFc.hwndParent);
-	lpStruct->dwFlags = (*env)->GetIntField(env, lpObject, SHMENUBARINFOFc.dwFlags);
-	lpStruct->nToolBarId = (*env)->GetIntField(env, lpObject, SHMENUBARINFOFc.nToolBarId);
-	lpStruct->hInstRes = (HINSTANCE)(*env)->GetIntLongField(env, lpObject, SHMENUBARINFOFc.hInstRes);
-	lpStruct->nBmpId = (*env)->GetIntField(env, lpObject, SHMENUBARINFOFc.nBmpId);
-	lpStruct->cBmpImages = (*env)->GetIntField(env, lpObject, SHMENUBARINFOFc.cBmpImages);
-	lpStruct->hwndMB = (HWND)(*env)->GetIntLongField(env, lpObject, SHMENUBARINFOFc.hwndMB);
-	return lpStruct;
-}
-
-void setSHMENUBARINFOFields(JNIEnv *env, jobject lpObject, SHMENUBARINFO *lpStruct)
-{
-	if (!SHMENUBARINFOFc.cached) cacheSHMENUBARINFOFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, SHMENUBARINFOFc.cbSize, (jint)lpStruct->cbSize);
-	(*env)->SetIntLongField(env, lpObject, SHMENUBARINFOFc.hwndParent, (jintLong)lpStruct->hwndParent);
-	(*env)->SetIntField(env, lpObject, SHMENUBARINFOFc.dwFlags, (jint)lpStruct->dwFlags);
-	(*env)->SetIntField(env, lpObject, SHMENUBARINFOFc.nToolBarId, (jint)lpStruct->nToolBarId);
-	(*env)->SetIntLongField(env, lpObject, SHMENUBARINFOFc.hInstRes, (jintLong)lpStruct->hInstRes);
-	(*env)->SetIntField(env, lpObject, SHMENUBARINFOFc.nBmpId, (jint)lpStruct->nBmpId);
-	(*env)->SetIntField(env, lpObject, SHMENUBARINFOFc.cBmpImages, (jint)lpStruct->cBmpImages);
-	(*env)->SetIntLongField(env, lpObject, SHMENUBARINFOFc.hwndMB, (jintLong)lpStruct->hwndMB);
-}
-#endif
-
-#ifndef NO_SHRGINFO
-typedef struct SHRGINFO_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID cbSize, hwndClient, ptDown_x, ptDown_y, dwFlags;
-} SHRGINFO_FID_CACHE;
-
-SHRGINFO_FID_CACHE SHRGINFOFc;
-
-void cacheSHRGINFOFields(JNIEnv *env, jobject lpObject)
-{
-	if (SHRGINFOFc.cached) return;
-	SHRGINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	SHRGINFOFc.cbSize = (*env)->GetFieldID(env, SHRGINFOFc.clazz, "cbSize", "I");
-	SHRGINFOFc.hwndClient = (*env)->GetFieldID(env, SHRGINFOFc.clazz, "hwndClient", I_J);
-	SHRGINFOFc.ptDown_x = (*env)->GetFieldID(env, SHRGINFOFc.clazz, "ptDown_x", "I");
-	SHRGINFOFc.ptDown_y = (*env)->GetFieldID(env, SHRGINFOFc.clazz, "ptDown_y", "I");
-	SHRGINFOFc.dwFlags = (*env)->GetFieldID(env, SHRGINFOFc.clazz, "dwFlags", "I");
-	SHRGINFOFc.cached = 1;
-}
-
-SHRGINFO *getSHRGINFOFields(JNIEnv *env, jobject lpObject, SHRGINFO *lpStruct)
-{
-	if (!SHRGINFOFc.cached) cacheSHRGINFOFields(env, lpObject);
-	lpStruct->cbSize = (*env)->GetIntField(env, lpObject, SHRGINFOFc.cbSize);
-	lpStruct->hwndClient = (HWND)(*env)->GetIntLongField(env, lpObject, SHRGINFOFc.hwndClient);
-	lpStruct->ptDown.x = (*env)->GetIntField(env, lpObject, SHRGINFOFc.ptDown_x);
-	lpStruct->ptDown.y = (*env)->GetIntField(env, lpObject, SHRGINFOFc.ptDown_y);
-	lpStruct->dwFlags = (*env)->GetIntField(env, lpObject, SHRGINFOFc.dwFlags);
-	return lpStruct;
-}
-
-void setSHRGINFOFields(JNIEnv *env, jobject lpObject, SHRGINFO *lpStruct)
-{
-	if (!SHRGINFOFc.cached) cacheSHRGINFOFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, SHRGINFOFc.cbSize, (jint)lpStruct->cbSize);
-	(*env)->SetIntLongField(env, lpObject, SHRGINFOFc.hwndClient, (jintLong)lpStruct->hwndClient);
-	(*env)->SetIntField(env, lpObject, SHRGINFOFc.ptDown_x, (jint)lpStruct->ptDown.x);
-	(*env)->SetIntField(env, lpObject, SHRGINFOFc.ptDown_y, (jint)lpStruct->ptDown.y);
-	(*env)->SetIntField(env, lpObject, SHRGINFOFc.dwFlags, (jint)lpStruct->dwFlags);
-}
-#endif
-
-#ifndef NO_SIPINFO
-typedef struct SIPINFO_FID_CACHE {
-	int cached;
-	jclass clazz;
-	jfieldID cbSize, fdwFlags, rcVisibleDesktop_left, rcVisibleDesktop_top, rcVisibleDesktop_right, rcVisibleDesktop_bottom, rcSipRect_left, rcSipRect_top, rcSipRect_right, rcSipRect_bottom, dwImDataSize, pvImData;
-} SIPINFO_FID_CACHE;
-
-SIPINFO_FID_CACHE SIPINFOFc;
-
-void cacheSIPINFOFields(JNIEnv *env, jobject lpObject)
-{
-	if (SIPINFOFc.cached) return;
-	SIPINFOFc.clazz = (*env)->GetObjectClass(env, lpObject);
-	SIPINFOFc.cbSize = (*env)->GetFieldID(env, SIPINFOFc.clazz, "cbSize", "I");
-	SIPINFOFc.fdwFlags = (*env)->GetFieldID(env, SIPINFOFc.clazz, "fdwFlags", "I");
-	SIPINFOFc.rcVisibleDesktop_left = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcVisibleDesktop_left", "I");
-	SIPINFOFc.rcVisibleDesktop_top = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcVisibleDesktop_top", "I");
-	SIPINFOFc.rcVisibleDesktop_right = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcVisibleDesktop_right", "I");
-	SIPINFOFc.rcVisibleDesktop_bottom = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcVisibleDesktop_bottom", "I");
-	SIPINFOFc.rcSipRect_left = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcSipRect_left", "I");
-	SIPINFOFc.rcSipRect_top = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcSipRect_top", "I");
-	SIPINFOFc.rcSipRect_right = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcSipRect_right", "I");
-	SIPINFOFc.rcSipRect_bottom = (*env)->GetFieldID(env, SIPINFOFc.clazz, "rcSipRect_bottom", "I");
-	SIPINFOFc.dwImDataSize = (*env)->GetFieldID(env, SIPINFOFc.clazz, "dwImDataSize", "I");
-	SIPINFOFc.pvImData = (*env)->GetFieldID(env, SIPINFOFc.clazz, "pvImData", I_J);
-	SIPINFOFc.cached = 1;
-}
-
-SIPINFO *getSIPINFOFields(JNIEnv *env, jobject lpObject, SIPINFO *lpStruct)
-{
-	if (!SIPINFOFc.cached) cacheSIPINFOFields(env, lpObject);
-	lpStruct->cbSize = (*env)->GetIntField(env, lpObject, SIPINFOFc.cbSize);
-	lpStruct->fdwFlags = (*env)->GetIntField(env, lpObject, SIPINFOFc.fdwFlags);
-	lpStruct->rcVisibleDesktop.left = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_left);
-	lpStruct->rcVisibleDesktop.top = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_top);
-	lpStruct->rcVisibleDesktop.right = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_right);
-	lpStruct->rcVisibleDesktop.bottom = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_bottom);
-	lpStruct->rcSipRect.left = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcSipRect_left);
-	lpStruct->rcSipRect.top = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcSipRect_top);
-	lpStruct->rcSipRect.right = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcSipRect_right);
-	lpStruct->rcSipRect.bottom = (*env)->GetIntField(env, lpObject, SIPINFOFc.rcSipRect_bottom);
-	lpStruct->dwImDataSize = (*env)->GetIntField(env, lpObject, SIPINFOFc.dwImDataSize);
-	lpStruct->pvImData = (void *)(*env)->GetIntLongField(env, lpObject, SIPINFOFc.pvImData);
-	return lpStruct;
-}
-
-void setSIPINFOFields(JNIEnv *env, jobject lpObject, SIPINFO *lpStruct)
-{
-	if (!SIPINFOFc.cached) cacheSIPINFOFields(env, lpObject);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.cbSize, (jint)lpStruct->cbSize);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.fdwFlags, (jint)lpStruct->fdwFlags);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_left, (jint)lpStruct->rcVisibleDesktop.left);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_top, (jint)lpStruct->rcVisibleDesktop.top);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_right, (jint)lpStruct->rcVisibleDesktop.right);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcVisibleDesktop_bottom, (jint)lpStruct->rcVisibleDesktop.bottom);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcSipRect_left, (jint)lpStruct->rcSipRect.left);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcSipRect_top, (jint)lpStruct->rcSipRect.top);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcSipRect_right, (jint)lpStruct->rcSipRect.right);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.rcSipRect_bottom, (jint)lpStruct->rcSipRect.bottom);
-	(*env)->SetIntField(env, lpObject, SIPINFOFc.dwImDataSize, (jint)lpStruct->dwImDataSize);
-	(*env)->SetIntLongField(env, lpObject, SIPINFOFc.pvImData, (jintLong)lpStruct->pvImData);
 }
 #endif
 
@@ -9165,9 +8397,7 @@ TVINSERTSTRUCT *getTVINSERTSTRUCTFields(JNIEnv *env, jobject lpObject, TVINSERTS
 	lpStruct->item.iSelectedImage = (*env)->GetIntField(env, lpObject, TVINSERTSTRUCTFc.iSelectedImage);
 	lpStruct->item.cChildren = (*env)->GetIntField(env, lpObject, TVINSERTSTRUCTFc.cChildren);
 	lpStruct->item.lParam = (*env)->GetIntLongField(env, lpObject, TVINSERTSTRUCTFc.lParam);
-#ifndef _WIN32_WCE
 	lpStruct->itemex.iIntegral = (*env)->GetIntField(env, lpObject, TVINSERTSTRUCTFc.iIntegral);
-#endif
 	return lpStruct;
 }
 
@@ -9186,9 +8416,7 @@ void setTVINSERTSTRUCTFields(JNIEnv *env, jobject lpObject, TVINSERTSTRUCT *lpSt
 	(*env)->SetIntField(env, lpObject, TVINSERTSTRUCTFc.iSelectedImage, (jint)lpStruct->item.iSelectedImage);
 	(*env)->SetIntField(env, lpObject, TVINSERTSTRUCTFc.cChildren, (jint)lpStruct->item.cChildren);
 	(*env)->SetIntLongField(env, lpObject, TVINSERTSTRUCTFc.lParam, (jintLong)lpStruct->item.lParam);
-#ifndef _WIN32_WCE
 	(*env)->SetIntField(env, lpObject, TVINSERTSTRUCTFc.iIntegral, (jint)lpStruct->itemex.iIntegral);
-#endif
 }
 #endif
 

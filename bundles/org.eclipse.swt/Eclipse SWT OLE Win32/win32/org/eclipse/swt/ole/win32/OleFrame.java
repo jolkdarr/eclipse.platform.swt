@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -233,41 +233,34 @@ static long /*int*/ getMsgProc(long /*int*/ code, long /*int*/ wParam, long /*in
 					switch (msg.message) {
 						case OS.WM_KEYDOWN:
 						case OS.WM_SYSKEYDOWN: {
-							if (!OS.IsWinCE) {
-								switch ((int)/*64*/msg.wParam) {
-									case OS.VK_SHIFT:
-									case OS.VK_MENU:
-									case OS.VK_CONTROL:
-									case OS.VK_CAPITAL:
-									case OS.VK_NUMLOCK:
-									case OS.VK_SCROLL:
-										break;
-									default: {
-										/*
-										* Bug in Windows. The high bit in the result of MapVirtualKey() on
-										* Windows NT is bit 32 while the high bit on Windows 95 is bit 16.
-										* They should both be bit 32.  The fix is to test the right bit.
-										*/
-										int mapKey = OS.MapVirtualKey ((int)/*64*/msg.wParam, 2);
-										if (mapKey != 0) {
-											accentKey = (mapKey & (OS.IsWinNT ? 0x80000000 : 0x8000)) != 0;
-											if (!accentKey) {
-												for (int i=0; i<ACCENTS.length; i++) {
-													int value = OS.VkKeyScan (ACCENTS [i]);
-													if (value != -1 && (value & 0xFF) == msg.wParam) {
-														int state = value >> 8;
-														if ((OS.GetKeyState (OS.VK_SHIFT) < 0) == ((state & 0x1) != 0) &&
-															(OS.GetKeyState (OS.VK_CONTROL) < 0) == ((state & 0x2) != 0) &&
-															(OS.GetKeyState (OS.VK_MENU) < 0) == ((state & 0x4) != 0)) {
-																if ((state & 0x7) != 0) accentKey = true;
-																break;
-														}
+							switch ((int)/*64*/msg.wParam) {
+								case OS.VK_SHIFT:
+								case OS.VK_MENU:
+								case OS.VK_CONTROL:
+								case OS.VK_CAPITAL:
+								case OS.VK_NUMLOCK:
+								case OS.VK_SCROLL:
+									break;
+								default: {
+									int mapKey = OS.MapVirtualKey ((int)/*64*/msg.wParam, 2);
+									if (mapKey != 0) {
+										accentKey = (mapKey & 0x80000000) != 0;
+										if (!accentKey) {
+											for (int i=0; i<ACCENTS.length; i++) {
+												int value = OS.VkKeyScan (ACCENTS [i]);
+												if (value != -1 && (value & 0xFF) == msg.wParam) {
+													int state = value >> 8;
+													if ((OS.GetKeyState (OS.VK_SHIFT) < 0) == ((state & 0x1) != 0) &&
+														(OS.GetKeyState (OS.VK_CONTROL) < 0) == ((state & 0x2) != 0) &&
+														(OS.GetKeyState (OS.VK_MENU) < 0) == ((state & 0x4) != 0)) {
+															if ((state & 0x7) != 0) accentKey = true;
+															break;
 													}
 												}
 											}
 										}
-										break;
 									}
+									break;
 								}
 							}
 							break;
@@ -444,7 +437,7 @@ private long /*int*/ getMenuItemID(long /*int*/ hMenu, int index) {
 }
 private int GetWindow(long /*int*/ phwnd) {
 	if (phwnd != 0) {
-		COM.MoveMemory(phwnd, new long /*int*/[] {handle}, OS.PTR_SIZEOF);
+		OS.MoveMemory(phwnd, new long /*int*/[] {handle}, C.PTR_SIZEOF);
 	}
 	return COM.S_OK;
 }
@@ -470,7 +463,7 @@ private int InsertMenus(long /*int*/ hmenuShared, long /*int*/ lpMenuWidths) {
 	// locate menu bar
 	Menu menubar = getShell().getMenuBar();
 	if (menubar == null || menubar.isDisposed()) {
-		COM.MoveMemory(lpMenuWidths, new int[] {0}, 4);
+		OS.MoveMemory(lpMenuWidths, new int[] {0}, 4);
 		return COM.S_OK;
 	}
 	long /*int*/ hMenu = menubar.handle;
@@ -511,7 +504,7 @@ private int InsertMenus(long /*int*/ hmenuShared, long /*int*/ lpMenuWidths) {
 	}
 
 	// copy the menu item count information to the pointer
-	COM.MoveMemory(lpMenuWidths, new int[] {fileMenuCount}, 4);
+	OS.MoveMemory(lpMenuWidths, new int[] {fileMenuCount}, 4);
 
 	// Loop over all "Container-like" menus in the menubar and get information about the
 	// item from the OS.
@@ -536,7 +529,7 @@ private int InsertMenus(long /*int*/ hmenuShared, long /*int*/ lpMenuWidths) {
 	}
 
 	// copy the menu item count information to the pointer
-	COM.MoveMemory(lpMenuWidths + 8, new int[] {containerMenuCount}, 4);
+	OS.MoveMemory(lpMenuWidths + 8, new int[] {containerMenuCount}, 4);
 
 	// Loop over all "Window-like" menus in the menubar and get information about the
 	// item from the OS.
@@ -561,7 +554,7 @@ private int InsertMenus(long /*int*/ hmenuShared, long /*int*/ lpMenuWidths) {
 	}
 
 	// copy the menu item count information to the pointer
-	COM.MoveMemory(lpMenuWidths + 16, new int[] {windowMenuCount}, 4);
+	OS.MoveMemory(lpMenuWidths + 16, new int[] {windowMenuCount}, 4);
 
 	// free resources used in querying the OS
 	if (pszText != 0)
@@ -615,12 +608,12 @@ private int QueryInterface(long /*int*/ riid, long /*int*/ ppvObject) {
 	GUID guid = new GUID();
 	COM.MoveMemory(guid, riid, GUID.sizeof);
 	if (COM.IsEqualGUID(guid, COM.IIDIUnknown) || COM.IsEqualGUID(guid, COM.IIDIOleInPlaceFrame) ) {
-		COM.MoveMemory(ppvObject, new long /*int*/ [] {iOleInPlaceFrame.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/ [] {iOleInPlaceFrame.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
 
-	COM.MoveMemory(ppvObject, new long /*int*/ [] {0}, OS.PTR_SIZEOF);
+	OS.MoveMemory(ppvObject, new long /*int*/ [] {0}, C.PTR_SIZEOF);
 	return COM.E_NOINTERFACE;
 }
 /**

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -155,10 +155,10 @@ void createWidget (int index) {
 @Override
 void createHandle (int index) {
 	state |= HANDLE;
-	handle = OS.gtk_status_icon_new ();
+	handle = GTK.gtk_status_icon_new ();
 	if (handle == 0) error (SWT.ERROR_NO_HANDLES);
-	imageHandle = OS.gtk_image_new ();
-	OS.gtk_status_icon_set_visible (handle,true);
+	imageHandle = GTK.gtk_image_new ();
+	GTK.gtk_status_icon_set_visible (handle,true);
 }
 
 @Override
@@ -251,17 +251,17 @@ long /*int*/ gtk_activate (long /*int*/ widget) {
 	* the single-click as the current event and for the double-click in the
 	* event queue.
 	*/
-	long /*int*/ nextEvent = OS.gdk_event_peek ();
+	long /*int*/ nextEvent = GDK.gdk_event_peek ();
 	if (nextEvent != 0) {
-		int nextEventType = OS.GDK_EVENT_TYPE (nextEvent);
-		long /*int*/ currEvent = OS.gtk_get_current_event ();
+		int nextEventType = GDK.GDK_EVENT_TYPE (nextEvent);
+		long /*int*/ currEvent = GTK.gtk_get_current_event ();
 		int currEventType = 0;
 		if (currEvent != 0) {
-			currEventType = OS.GDK_EVENT_TYPE (currEvent);
-			OS.gdk_event_free (currEvent);
+			currEventType = GDK.GDK_EVENT_TYPE (currEvent);
+			GDK.gdk_event_free (currEvent);
 		}
-		OS.gdk_event_free (nextEvent);
-		if (currEventType == OS.GDK_BUTTON_PRESS && nextEventType == OS.GDK_2BUTTON_PRESS) {
+		GDK.gdk_event_free (nextEvent);
+		if (currEventType == GDK.GDK_BUTTON_PRESS && nextEventType == GDK.GDK_2BUTTON_PRESS) {
 			sendSelectionEvent (SWT.DefaultSelection);
 		}
 	}
@@ -272,12 +272,12 @@ long /*int*/ gtk_activate (long /*int*/ widget) {
 long /*int*/ gtk_button_press_event (long /*int*/ widget, long /*int*/ eventPtr) {
 	GdkEventButton gdkEvent = new GdkEventButton ();
 	OS.memmove (gdkEvent, eventPtr, GdkEventButton.sizeof);
-	if (gdkEvent.type == OS.GDK_3BUTTON_PRESS) return 0;
-	if (gdkEvent.button == 3 && gdkEvent.type == OS.GDK_BUTTON_PRESS) {
+	if (gdkEvent.type == GDK.GDK_3BUTTON_PRESS) return 0;
+	if (gdkEvent.button == 3 && gdkEvent.type == GDK.GDK_BUTTON_PRESS) {
 		sendEvent (SWT.MenuDetect);
 		return 0;
 	}
-	if (gdkEvent.type == OS.GDK_2BUTTON_PRESS) {
+	if (gdkEvent.type == GDK.GDK_2BUTTON_PRESS) {
 		sendSelectionEvent (SWT.DefaultSelection);
 	} else {
 		sendSelectionEvent (SWT.Selection);
@@ -288,18 +288,18 @@ long /*int*/ gtk_button_press_event (long /*int*/ widget, long /*int*/ eventPtr)
 @Override
 long /*int*/ gtk_size_allocate (long /*int*/ widget, long /*int*/ allocation) {
 	if (image != null && image.mask != 0) {
-		if (OS.gdk_drawable_get_depth (image.mask) == 1) {
+		if (GDK.gdk_drawable_get_depth (image.mask) == 1) {
 			GtkAllocation widgetAllocation = new GtkAllocation ();
-			OS.gtk_widget_get_allocation (widget, widgetAllocation);
-			int xoffset = (int) Math.floor (widgetAllocation.x + ((widgetAllocation.width -OS.GTK_WIDGET_REQUISITION_WIDTH (widget)) * 0.5) + 0.5);
-			int yoffset = (int) Math.floor (widgetAllocation.y + ((widgetAllocation.height - OS.GTK_WIDGET_REQUISITION_HEIGHT (widget)) * 0.5) + 0.5);
+			GTK.gtk_widget_get_allocation (widget, widgetAllocation);
+			int xoffset = (int) Math.floor (widgetAllocation.x + ((widgetAllocation.width -GTK.GTK_WIDGET_REQUISITION_WIDTH (widget)) * 0.5) + 0.5);
+			int yoffset = (int) Math.floor (widgetAllocation.y + ((widgetAllocation.height - GTK.GTK_WIDGET_REQUISITION_HEIGHT (widget)) * 0.5) + 0.5);
 			Rectangle b = image.getBoundsInPixels();
-			long /*int*/ gdkImagePtr = OS.gdk_drawable_get_image (image.mask, 0, 0, b.width, b.height);
+			long /*int*/ gdkImagePtr = GDK.gdk_drawable_get_image (image.mask, 0, 0, b.width, b.height);
 			if (gdkImagePtr == 0) error(SWT.ERROR_NO_HANDLES);
 			GdkImage gdkImage = new GdkImage();
 			OS.memmove (gdkImage, gdkImagePtr);
 			byte[] maskData = new byte [gdkImage.bpl * gdkImage.height];
-			OS.memmove (maskData, gdkImage.mem, maskData.length);
+			C.memmove (maskData, gdkImage.mem, maskData.length);
 			OS.g_object_unref (gdkImagePtr);
 			Region region = new Region (display);
 			for (int y = 0; y < b.height; y++) {
@@ -313,9 +313,9 @@ long /*int*/ gtk_size_allocate (long /*int*/ widget, long /*int*/ allocation) {
 					}
 				}
 			}
-			OS.gtk_widget_realize (handle);
+			GTK.gtk_widget_realize (handle);
 			long /*int*/ window = gtk_widget_get_window (handle);
-			OS.gdk_window_shape_combine_region (window, region.handle, 0, 0);
+			GDK.gdk_window_shape_combine_region (window, region.handle, 0, 0);
 			region.dispose ();
 		}
 	}
@@ -355,7 +355,7 @@ void hookEvents () {
  */
 public boolean getVisible () {
 	checkWidget ();
-	return OS.gtk_status_icon_get_visible (handle);
+	return GTK.gtk_status_icon_get_visible (handle);
 }
 
 @Override
@@ -485,12 +485,12 @@ public void setImage (Image image) {
 			imageList.put (imageIndex, image);
 		}
 		long /*int*/ pixbuf = imageList.getPixbuf (imageIndex);
-		OS.gtk_status_icon_set_from_pixbuf (handle, pixbuf);
-		OS.gtk_status_icon_set_visible (handle, true);
+		GTK.gtk_status_icon_set_from_pixbuf (handle, pixbuf);
+		GTK.gtk_status_icon_set_visible (handle, true);
 	} else {
-		OS.gtk_widget_set_size_request (handle, 1, 1);
-		OS.gtk_status_icon_set_from_pixbuf (handle, 0);
-		OS.gtk_status_icon_set_visible (handle, false);
+		GTK.gtk_widget_set_size_request (handle, 1, 1);
+		GTK.gtk_status_icon_set_from_pixbuf (handle, 0);
+		GTK.gtk_status_icon_set_visible (handle, false);
 	}
 }
 
@@ -527,6 +527,11 @@ public void setToolTip (ToolTip toolTip) {
  * To display a single '&amp;' in the tool tip, the character '&amp;' can be
  * escaped by doubling it in the string.
  * </p>
+ * <p>
+ * NOTE: This operation is a hint and behavior is platform specific, on Windows
+ * for CJK-style mnemonics of the form " (&C)" at the end of the tooltip text
+ * are not shown in tooltip.
+ * </p>
  *
  * @param string the new tool tip text (or null)
  *
@@ -542,7 +547,7 @@ public void setToolTipText (String string) {
 	if (string != null && string.length () > 0) {
 		buffer = Converter.wcsToMbcs (string, true);
 	}
-	OS.gtk_status_icon_set_tooltip_text (handle, buffer);
+	GTK.gtk_status_icon_set_tooltip_text (handle, buffer);
 }
 
 /**
@@ -558,7 +563,7 @@ public void setToolTipText (String string) {
  */
 public void setVisible (boolean visible) {
 	checkWidget ();
-	if(OS.gtk_status_icon_get_visible (handle) == visible) return;
+	if(GTK.gtk_status_icon_get_visible (handle) == visible) return;
 	if (visible) {
 		/*
 		* It is possible (but unlikely), that application
@@ -567,9 +572,9 @@ public void setVisible (boolean visible) {
 		*/
 		sendEvent (SWT.Show);
 		if (isDisposed ()) return;
-		OS.gtk_status_icon_set_visible (handle, visible);
+		GTK.gtk_status_icon_set_visible (handle, visible);
 	} else {
-		OS.gtk_status_icon_set_visible (handle, visible);
+		GTK.gtk_status_icon_set_visible (handle, visible);
 		sendEvent (SWT.Hide);
 	}
 }

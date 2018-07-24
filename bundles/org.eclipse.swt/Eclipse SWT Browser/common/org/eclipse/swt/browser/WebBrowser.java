@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2016 IBM Corporation and others.
+ * Copyright (c) 2003, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -35,12 +35,11 @@ abstract class WebBrowser {
 	static final String EXECUTE_ID = "SWTExecuteTemporaryFunction"; // $NON-NLS-1$
 
 	static List<String[]> NativePendingCookies = new ArrayList<> ();
-	static List<String[]> MozillaPendingCookies = new ArrayList<> ();
 	static String CookieName, CookieValue, CookieUrl;
 	static boolean CookieResult;
-	static Runnable MozillaClearSessions, NativeClearSessions;
-	static Runnable MozillaGetCookie, NativeGetCookie;
-	static Runnable MozillaSetCookie, NativeSetCookie;
+	static Runnable NativeClearSessions;
+	static Runnable NativeGetCookie;
+	static Runnable NativeSetCookie;
 
 	/* Key Mappings */
 	static final int [][] KeyTable = {
@@ -99,6 +98,7 @@ abstract class WebBrowser {
 		{192,	'`'},
 		{220,	'\\'},
 		{108,	'|'},
+		{226,	'<'},
 
 		/* Non-Numeric Keypad Keys */
 		{37,	SWT.ARROW_LEFT},
@@ -261,13 +261,11 @@ public abstract boolean back ();
 
 public static void clearSessions () {
 	if (NativeClearSessions != null) NativeClearSessions.run ();
-	if (MozillaClearSessions != null) MozillaClearSessions.run ();
 }
 
 public static String GetCookie (String name, String url) {
 	CookieName = name; CookieUrl = url; CookieValue = null;
 	if (NativeGetCookie != null) NativeGetCookie.run ();
-	if (CookieValue == null && MozillaGetCookie != null) MozillaGetCookie.run ();
 	String result = CookieValue;
 	CookieName = CookieValue = CookieUrl = null;
 	return result;
@@ -281,13 +279,6 @@ public static boolean SetCookie (String value, String url, boolean addToPending)
 	} else {
 		if (addToPending && NativePendingCookies != null) {
 			NativePendingCookies.add (new String[] {value, url});
-		}
-	}
-	if (MozillaSetCookie != null) {
-		MozillaSetCookie.run ();
-	} else {
-		if (addToPending && MozillaPendingCookies != null) {
-			MozillaPendingCookies.add (new String[] {value, url});
 		}
 	}
 	CookieValue = CookieUrl = null;
@@ -320,10 +311,7 @@ public void createFunction (BrowserFunction function) {
 	 * remove it so that it is not recreated on subsequent pages
 	 * (the new function overwrites the old one).
 	 */
-	Iterator<Integer> keys = functions.keySet().iterator ();
-	while (keys.hasNext ()) {
-		Integer key = keys.next ();
-		BrowserFunction current = functions.get (key);
+	for (BrowserFunction current : functions.values()) {
 		if (current.name.equals (function.name)) {
 			deregisterFunction (current);
 			break;
@@ -333,7 +321,7 @@ public void createFunction (BrowserFunction function) {
 	function.index = getNextFunctionIndex ();
 	registerFunction (function);
 
-	StringBuffer functionBuffer = new StringBuffer (function.name);
+	StringBuilder functionBuffer = new StringBuilder (function.name);
 	functionBuffer.append (" = function "); //$NON-NLS-1$
 	functionBuffer.append (function.name);
 	functionBuffer.append ("() {var result = callJava("); //$NON-NLS-1$
@@ -348,7 +336,7 @@ public void createFunction (BrowserFunction function) {
 
 	String javaCallDeclaration = getJavaCallDeclaration();
 
-	StringBuffer buffer = new StringBuffer (); //$NON-NLS-1$
+	StringBuilder buffer = new StringBuilder (); //$NON-NLS-1$
 	buffer.append (javaCallDeclaration); //$NON-NLS-1$
 	if (function.top) {
 		buffer.append (functionBuffer.toString ());
@@ -374,7 +362,7 @@ public void createFunction (BrowserFunction function) {
 	buffer.append ("}} catch(e) {}};"); //$NON-NLS-1$
 
 	function.functionString = buffer.toString ();
-	execute (function.functionString);
+	nonBlockingExecute (function.functionString);
 }
 
 /**
@@ -395,12 +383,18 @@ void deregisterFunction (BrowserFunction function) {
 
 public void destroyFunction (BrowserFunction function) {
 	String deleteString = getDeleteFunctionString (function.name);
-	StringBuffer buffer = new StringBuffer ("for (var i = 0; i < frames.length; i++) {try {frames[i].eval(\""); //$NON-NLS-1$
+	StringBuilder buffer = new StringBuilder ("for (var i = 0; i < frames.length; i++) {try {frames[i].eval(\""); //$NON-NLS-1$
 	buffer.append (deleteString);
 	buffer.append ("\");} catch (e) {}}"); //$NON-NLS-1$
-	execute (buffer.toString ());
-	execute (deleteString);
+	nonBlockingExecute (buffer.toString ());
+	nonBlockingExecute (deleteString);
 	deregisterFunction (function);
+}
+
+// Designed to be overriden by platform implementations, used for optimization and avoiding deadlocks.
+// Webkit2 is async, we often don't need to bother waiting for a return type if we never use it.
+void nonBlockingExecute(String script) {
+	execute(script);
 }
 
 public abstract boolean execute (String script);
@@ -410,26 +404,26 @@ public Object evaluate (String script, boolean trusted) throws SWTException {
 }
 
 public Object evaluate (String script) throws SWTException {
-	// Developer note:
-	// Webkit1 & Mozilla use this mechanism.
+	// Gtk Developer note:
+	// Webkit1 uses this mechanism.
 	// Webkit2 uses a different mechanism. See WebKit:evaluate();
 	BrowserFunction function = new EvaluateFunction (browser, ""); // $NON-NLS-1$
 	int index = getNextFunctionIndex ();
 	function.index = index;
-	function.isEvaluate = true;
+	function.isEvaluate = true;  // Note, Webkit2 doesn't use 'isEvaluate' machinery because it doesn't use a function for evaluation.
 	registerFunction (function);
 	String functionName = EXECUTE_ID + index;
 
-	StringBuffer buffer = new StringBuffer ("window."); // $NON-NLS-1$
+	StringBuilder buffer = new StringBuilder ("window."); // $NON-NLS-1$
 	buffer.append (functionName);
 	buffer.append (" = function "); // $NON-NLS-1$
 	buffer.append (functionName);
 	buffer.append ("() {\n"); // $NON-NLS-1$
 	buffer.append (script);
 	buffer.append ("\n};"); // $NON-NLS-1$
-	execute (buffer.toString ());
+	nonBlockingExecute (buffer.toString ());
 
-	buffer = new StringBuffer ("if (window."); // $NON-NLS-1$
+	buffer = new StringBuilder ("if (window."); // $NON-NLS-1$
 	buffer.append (functionName);
 	buffer.append (" == undefined) {window.external.callJava("); // $NON-NLS-1$
 	buffer.append (index);
@@ -450,8 +444,8 @@ public Object evaluate (String script) throws SWTException {
 	buffer.append ("', ['"); // $NON-NLS-1$
 	buffer.append (ERROR_ID);
 	buffer.append ("' + e.message]);}}"); // $NON-NLS-1$
-	execute (buffer.toString ());
-	execute (getDeleteFunctionString (functionName));
+	nonBlockingExecute (buffer.toString ());
+	nonBlockingExecute (getDeleteFunctionString (functionName));
 	deregisterFunction (function);
 
 	Object result = evaluateResult;

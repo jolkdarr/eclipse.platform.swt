@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -21,7 +21,7 @@ import org.eclipse.swt.internal.gtk.*;
 import org.eclipse.swt.widgets.*;
 
 class AccessibleObject {
-	long /*int*/ handle;
+	long /*int*/ atkHandle;
 	int index = -1, id = ACC.CHILDID_SELF;
 	Accessible accessible;
 	AccessibleObject parent;
@@ -44,7 +44,7 @@ class AccessibleObject {
 
 		// Gtk3.2 has a minimum requirement of ATK 2.1.5
 		// ATK_ROLE_TABLE_ROW was introduced in ATK 2.1.0. See Bug 470629  for details.
-		if (OS.GTK_VERSION >= OS.VERSION(3, 2, 0)) {
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 2, 0)) {
 			ROW_ROLE = ATK.ATK_ROLE_TABLE_ROW;
 		} else {
 			ROW_ROLE = ATK.atk_role_register(Converter.wcsToMbcs("row", true)); //$NON-NLS-1$
@@ -53,12 +53,28 @@ class AccessibleObject {
 
 	AccessibleObject (long /*int*/ type, long /*int*/ widget, Accessible accessible, boolean isLightweight) {
 		super ();
-		handle = ATK.g_object_new (type, 0);
-		ATK.atk_object_initialize (handle, widget);
+		if (GTK.GTK3) {
+			if (type == OS.swt_fixed_get_type()) {
+				if (widget != 0 && !isLightweight) {
+					atkHandle = GTK.gtk_widget_get_accessible(widget);
+				} else {
+					// Lightweight widgets map to no "real" GTK widget, so we
+					// just instantiate a new SwtFixedAccessible
+					atkHandle = OS.g_object_new (OS.swt_fixed_accessible_get_type(), 0);
+				}
+				OS.swt_fixed_accessible_register_accessible(atkHandle, false, widget);
+			} else {
+				// TODO_a11y: accessibility listeners on the Java side have not yet
+				// been implemented for native GTK widgets on GTK3.
+				atkHandle = GTK.gtk_widget_get_accessible(widget);
+			}
+		} else {
+			atkHandle = OS.g_object_new (type, 0);
+			ATK.atk_object_initialize (atkHandle, widget);
+		}
 		this.accessible = accessible;
 		this.isLightweight = isLightweight;
-		AccessibleObjects.put (new LONG (handle), this);
-		if (DEBUG) print("new AccessibleObject: " + handle + " control=" + accessible.control + " lw=" + isLightweight);
+		AccessibleObjects.put (new LONG (atkHandle), this);
 	}
 
 	static void print (String str) {
@@ -69,17 +85,41 @@ class AccessibleObject {
 		return listeners == null ? 0 : listeners.size();
 	}
 
-	static AtkActionIface getActionIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_ACTION())) {
+	/**
+	 * Fills a Java AtkActionIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkActionIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkActionIface getParentActionIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_ACTION())) {
 			AtkActionIface iface = new AtkActionIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_ACTION_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_ACTION_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
+	/**
+	 * Performs the specified action on atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index the action index corresponding to the action to be performed
+	 *
+	 * @return long int representing whether the action succeeded: 1 for success,
+	 * 0 for failure
+	 */
 	static long /*int*/ atkAction_do_action (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkAction_do_action");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -96,15 +136,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkActionIface iface = getActionIface (atkObject);
+		AtkActionIface iface = getParentActionIface (atkObject);
 		if (iface != null && iface.do_action != 0) {
 			parentResult = ATK.call (iface.do_action, atkObject, index);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Returns the number of accessible actions available on atkObject.
+	 * If there are more than one, the first is considered the default
+	 * action of the object.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return the number of actions available
+	 */
 	static long /*int*/ atkAction_get_n_actions (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkAction_get_n_actions");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -120,15 +173,27 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkActionIface iface = getActionIface (atkObject);
+		AtkActionIface iface = getParentActionIface (atkObject);
 		if (iface != null && iface.get_n_actions != 0) {
 			parentResult = ATK.call (iface.get_n_actions, atkObject);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Returns a description of the specified action of the atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index the action index corresponding to the action to be performed
+	 *
+	 * @return a pointer to the description string
+	 */
 	static long /*int*/ atkAction_get_description (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkAction_get_description");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -147,18 +212,31 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkActionIface iface = getActionIface (atkObject);
+		AtkActionIface iface = getParentActionIface (atkObject);
 		if (iface != null && iface.get_description != 0) {
 			parentResult = ATK.call (iface.get_description, atkObject, index);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Returns the keybinding which can be used to activate
+	 * this atkObject, if one exists. Example: "Ctrl+1"
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index the action index corresponding to the action to be performed
+	 *
+	 * @return a pointer to the keybinding string
+	 */
 	static long /*int*/ atkAction_get_keybinding (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkAction_get_keybinding");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkActionIface iface = getActionIface (atkObject);
+		AtkActionIface iface = getParentActionIface (atkObject);
 		if (iface != null && iface.get_keybinding != 0) {
 			parentResult = ATK.call (iface.get_keybinding, atkObject, index);
 		}
@@ -197,11 +275,23 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Returns the name of the specified action of the atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index the action index corresponding to the action to be performed
+	 *
+	 * @return a pointer to the name string
+	 */
 	static long /*int*/ atkAction_get_name (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkAction_get_name");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkActionIface iface = getActionIface (atkObject);
+		AtkActionIface iface = getParentActionIface (atkObject);
 		if (iface != null && iface.get_name != 0) {
 			parentResult = ATK.call (iface.get_name, atkObject, index);
 		}
@@ -242,25 +332,54 @@ class AccessibleObject {
 		return parentResult;
 	}
 
-	static AtkComponentIface getComponentIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_COMPONENT())) {
+	/**
+	 * Fills a Java AtkComponentIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkComponentIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkComponentIface getParentComponentIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_COMPONENT())) {
 			AtkComponentIface iface = new AtkComponentIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_COMPONENT_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_COMPONENT_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
-	static long /*int*/ atkComponent_get_extents (long /*int*/ atkObject, long /*int*/ x, long /*int*/ y, long /*int*/ width, long /*int*/ height, long /*int*/ coord_type) {
-		if (DEBUG) print ("-->atkComponent_get_extents: " + atkObject);
+	/**
+	 * Gets the rectangle which gives the extent of the component.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param x memory address of gint to put x coordinate
+	 * @param y memory address of gint to put y coordinate
+	 * @param width memory address of gint to put width coordinate
+	 * @param height memory address of gint to put height coordinate
+	 * @param coord_type specifies whether the coordinates are relative to
+	 * the screen or to the components top level window
+	 *
+	 * @return 0 (this is a void function at the native level)
+	 */
+	static long /*int*/ atkComponent_get_extents (long /*int*/ atkObject, long /*int*/ x, long /*int*/ y,
+			long /*int*/ width, long /*int*/ height, long /*int*/ coord_type) {
 		AccessibleObject object = getAccessibleObject (atkObject);
-		OS.memmove (x, new int[] {0}, 4);
-		OS.memmove (y, new int[] {0}, 4);
-		OS.memmove (width, new int[] {0}, 4);
-		OS.memmove (height, new int[] {0}, 4);
-		AtkComponentIface iface = getComponentIface (atkObject);
+		C.memmove (x, new int[] {0}, 4);
+		C.memmove (y, new int[] {0}, 4);
+		C.memmove (width, new int[] {0}, 4);
+		C.memmove (height, new int[] {0}, 4);
+		AtkComponentIface iface = getParentComponentIface (atkObject);
 		if (iface != null && iface.get_extents != 0) {
-			ATK.call (iface.get_extents, atkObject, x, y, width, height, coord_type);
+			OS.call (iface.get_extents, atkObject, x, y, width, height, coord_type);
 		}
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -269,10 +388,10 @@ class AccessibleObject {
 			if (length > 0) {
 				int[] parentX = new int [1], parentY = new int [1];
 				int[] parentWidth = new int [1], parentHeight = new int [1];
-				OS.memmove (parentX, x, 4);
-				OS.memmove (parentY, y, 4);
-				OS.memmove (parentWidth, width, 4);
-				OS.memmove (parentHeight, height, 4);
+				C.memmove (parentX, x, 4);
+				C.memmove (parentY, y, 4);
+				C.memmove (parentWidth, width, 4);
+				C.memmove (parentHeight, height, 4);
 				AccessibleControlEvent event = new AccessibleControlEvent (accessible);
 				event.childID = object.id;
 				event.x = parentX [0]; event.y = parentY [0];
@@ -291,24 +410,40 @@ class AccessibleObject {
 					event.x -= topWindowX [0];
 					event.y -= topWindowY [0];
 				}
-				OS.memmove (x, new int[] {event.x}, 4);
-				OS.memmove (y, new int[] {event.y}, 4);
-				OS.memmove (width, new int[] {event.width}, 4);
-				OS.memmove (height, new int[] {event.height}, 4);
-				if (DEBUG) print("--->" + event.x + "," + event.y + "," + event.width + "x" + event.height);
+				C.memmove (x, new int[] {event.x}, 4);
+				C.memmove (y, new int[] {event.y}, 4);
+				C.memmove (width, new int[] {event.width}, 4);
+				C.memmove (height, new int[] {event.height}, 4);
 			}
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkComponent_get_position (long /*int*/ atkObject, long /*int*/ x, long /*int*/ y, long /*int*/ coord_type) {
-		if (DEBUG) print ("-->atkComponent_get_position, object: " + atkObject + " x: " + x + " y: " + y + " coord: " + coord_type);
+	/**
+	 * Gets the position of component in the form of a point specifying
+	 * component's top-left corner.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param x memory address of gint to put x coordinate
+	 * @param y memory address of gint to put y coordinate
+	 * @param coord_type specifies whether the coordinates are relative to
+	 * the screen or to the components top level window
+	 *
+	 * @return 0 (this is a void function at the native level)
+	 */
+	static long /*int*/ atkComponent_get_position (long /*int*/ atkObject, long /*int*/ x,
+			long /*int*/ y, long /*int*/ coord_type) {
 		AccessibleObject object = getAccessibleObject (atkObject);
-		OS.memmove (x, new int[] {0}, 4);
-		OS.memmove (y, new int[] {0}, 4);
-		AtkComponentIface iface = getComponentIface (atkObject);
+		C.memmove (x, new int[] {0}, 4);
+		C.memmove (y, new int[] {0}, 4);
+		AtkComponentIface iface = getParentComponentIface (atkObject);
 		if (iface != null && iface.get_position != 0) {
-			ATK.call (iface.get_position, atkObject, x, y, coord_type);
+			OS.call (iface.get_position, atkObject, x, y, coord_type);
 		}
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -316,8 +451,8 @@ class AccessibleObject {
 			int length = size(listeners);
 			if (length > 0) {
 				int[] parentX = new int [1], parentY = new int [1];
-				OS.memmove (parentX, x, 4);
-				OS.memmove (parentY, y, 4);
+				C.memmove (parentX, x, 4);
+				C.memmove (parentY, y, 4);
 				AccessibleControlEvent event = new AccessibleControlEvent (accessible);
 				event.childID = object.id;
 				event.x = parentX [0]; event.y = parentY [0];
@@ -335,21 +470,43 @@ class AccessibleObject {
 					event.x -= topWindowX [0];
 					event.y -= topWindowY [0];
 				}
-				OS.memmove (x, new int[] {event.x}, 4);
-				OS.memmove (y, new int[] {event.y}, 4);
+				C.memmove (x, new int[] {event.x}, 4);
+				C.memmove (y, new int[] {event.y}, 4);
 			}
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkComponent_get_size (long /*int*/ atkObject, long /*int*/ width, long /*int*/ height, long /*int*/ coord_type) {
-		if (DEBUG) print ("-->atkComponent_get_size");
+	/**
+	 * Gets the size of the component in terms of width and height.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param width memory address of gint to put x coordinate
+	 * @param height memory address of gint to put y coordinate
+	 * @param coord_type specifies whether the coordinates are relative to
+	 * the screen or to the components top level window (this parameter is always 0
+	 * on GTK3)
+	 *
+	 * @return 0 (this is a void function at the native level)
+	 */
+	static long /*int*/ atkComponent_get_size (long /*int*/ atkObject, long /*int*/ width,
+			long /*int*/ height, long /*int*/ coord_type) {
 		AccessibleObject object = getAccessibleObject (atkObject);
-		OS.memmove (width, new int[] {0}, 4);
-		OS.memmove (height, new int[] {0}, 4);
-		AtkComponentIface iface = getComponentIface (atkObject);
+		C.memmove (width, new int[] {0}, 4);
+		C.memmove (height, new int[] {0}, 4);
+		AtkComponentIface iface = getParentComponentIface (atkObject);
 		if (iface != null && iface.get_size != 0) {
-			ATK.call (iface.get_size, atkObject, width, height, coord_type);
+			// ATK with GTK3 doesn't have the coord_type parameter
+			if (!GTK.GTK3) {
+				OS.call (iface.get_size, atkObject, width, height, coord_type);
+			} else {
+				ATK.call (iface.get_size, atkObject, width, height);
+			}
 		}
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -357,8 +514,8 @@ class AccessibleObject {
 			int length = size(listeners);
 			if (length > 0) {
 				int[] parentWidth = new int [1], parentHeight = new int [1];
-				OS.memmove (parentWidth, width, 4);
-				OS.memmove (parentHeight, height, 4);
+				C.memmove (parentWidth, width, 4);
+				C.memmove (parentHeight, height, 4);
 				AccessibleControlEvent event = new AccessibleControlEvent (accessible);
 				event.childID = object.id;
 				event.width = parentWidth [0]; event.height = parentHeight [0];
@@ -366,15 +523,32 @@ class AccessibleObject {
 					AccessibleControlListener listener = listeners.get (i);
 					listener.getLocation (event);
 				}
-				OS.memmove (width, new int[] {event.width}, 4);
-				OS.memmove (height, new int[] {event.height}, 4);
+				C.memmove (width, new int[] {event.width}, 4);
+				C.memmove (height, new int[] {event.height}, 4);
 			}
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkComponent_ref_accessible_at_point (long /*int*/ atkObject, long /*int*/ x, long /*int*/ y, long /*int*/ coord_type) {
-		if (DEBUG) print ("-->atkComponent_ref_accessible_at_point: " + atkObject + " " + x + "," + y);
+	/**
+	 * Gets a reference to the accessible child, if one exists,
+	 * at the coordinate point specified by x and y.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param x long integer representing the x coordinate
+	 * @param y long integer representing the y coordinate
+	 * @param coord_type specifies whether the coordinates are relative to
+	 * the screen or to the components top level window
+	 *
+	 * @return a pointer to the accessible child, if one exists
+	 */
+	static long /*int*/ atkComponent_ref_accessible_at_point (long /*int*/ atkObject, long /*int*/ x,
+			long /*int*/ y, long /*int*/ coord_type) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -398,31 +572,56 @@ class AccessibleObject {
 				Accessible result = event.accessible;
 				AccessibleObject accObj = result != null ? result.getAccessibleObject() : object.getChildByID (event.childID);
 				if (accObj != null) {
-					return OS.g_object_ref (accObj.handle);
+					return OS.g_object_ref (accObj.atkHandle);
 				}
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkComponentIface iface = getComponentIface (atkObject);
+		AtkComponentIface iface = getParentComponentIface (atkObject);
 		if (iface != null && iface.ref_accessible_at_point != 0) {
-			parentResult = ATK.call (iface.ref_accessible_at_point, atkObject, x, y, coord_type);
+			parentResult = OS.call (iface.ref_accessible_at_point, atkObject, x, y, coord_type);
 		}
 		return parentResult;
 	}
 
 
-	static AtkEditableTextIface getEditableTextIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_EDITABLE_TEXT())) {
+	/**
+	 * Fills a Java AtkEditableTextIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkEdtiableTextIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkEditableTextIface getParentEditableTextIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_EDITABLE_TEXT())) {
 			AtkEditableTextIface iface = new AtkEditableTextIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_EDITABLE_TEXT_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_EDITABLE_TEXT_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
-//	gboolean atk_editable_text_set_run_attributes(AtkEditableText *text, AtkAttributeSet *attrib_set, gint start_offset, gint end_offset);
-	static long /*int*/ atkEditableText_set_run_attributes (long /*int*/ atkObject, long /*int*/ attrib_set, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkEditableText_set_run_attributes");
+	/**
+	 * Sets the attributes for a specified range.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param attrib_set a pointer to an AtkAttributeSet
+	 * @param start_offset start range in which to set attributes
+	 * @param end_offset end of range in which to set attributes
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
+	static long /*int*/ atkEditableText_set_run_attributes (long /*int*/ atkObject, long /*int*/ attrib_set,
+			long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -444,7 +643,6 @@ class AccessibleObject {
 						String name = getString(attr.name);
 						String value = getString(attr.value);
 						OS.g_free(attrPtr);
-						if (DEBUG) print("name=" + name + ", value=" + value);
 						String [] newAttributes = new String [attributes.length + 2];
 						System.arraycopy (attributes, 0, newAttributes, 0, attributes.length);
 						newAttributes[attributes.length] = name;
@@ -561,9 +759,9 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.set_run_attributes != 0) {
-			parentResult = ATK.call (iface.set_run_attributes, atkObject, attrib_set, start_offset, end_offset);
+			parentResult = OS.call (iface.set_run_attributes, atkObject, attrib_set, start_offset, end_offset);
 		}
 		return parentResult;
 	}
@@ -585,9 +783,20 @@ class AccessibleObject {
 		return null;
 	}
 
-//	void atk_editable_text_set_text_contents (AtkEditableText *text, const gchar *string);
+	/**
+	 * Sets text contents of the atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param string the text to be set
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkEditableText_set_text_contents (long /*int*/ atkObject, long /*int*/ string) {
-		if (DEBUG) print ("-->atkEditableText_set_text_contents");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -607,16 +816,32 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.set_text_contents != 0) {
 			parentResult = ATK.call (iface.set_text_contents, atkObject, string);
 		}
 		return parentResult;
 	}
 
-//	void atk_editable_text_insert_text (AtkEditableText *text, const gchar *string, gint length, gint *position);
-	static long /*int*/ atkEditableText_insert_text (long /*int*/ atkObject, long /*int*/ string, long /*int*/ string_length, long /*int*/ position) {
-		if (DEBUG) print ("-->atkEditableText_insert_text");
+	/**
+	 * Inserts text at a given position.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param string the text to insert
+	 * @param string_length the length of the text to insert, in bytes
+	 * @param position the caller initializes this to the position at which to
+	 * insert the text. After the call, it points at the position after the
+	 * newly inserted text.
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
+	static long /*int*/ atkEditableText_insert_text (long /*int*/ atkObject, long /*int*/ string,
+			long /*int*/ string_length, long /*int*/ position) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -625,7 +850,7 @@ class AccessibleObject {
 			if (length > 0) {
 				AccessibleEditableTextEvent event = new AccessibleEditableTextEvent(accessible);
 				int[] pos = new int [1];
-				OS.memmove (pos, position, OS.PTR_SIZEOF);
+				C.memmove (pos, position, C.PTR_SIZEOF);
 				event.start = event.end = pos[0];
 				event.string = getString (string);
 				for (int i = 0; i < length; i++) {
@@ -636,16 +861,29 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.insert_text != 0) {
-			parentResult = ATK.call (iface.insert_text, atkObject, string, string_length, position);
+			parentResult = OS.call (iface.insert_text, atkObject, string, string_length, position);
 		}
 		return parentResult;
 	}
 
-//	void atk_editable_text_copy_text (AtkEditableText *text, gint start_pos, gint end_pos);
+	/**
+	 * Copies text from start_pos up to (but not including) end_pos
+	 * into the clipboard.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param start_pos the start position of the text to be copied
+	 * @param end_pos the end position of the text to be copied
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkEditableText_copy_text(long /*int*/ atkObject, long /*int*/ start_pos, long /*int*/ end_pos) {
-		if (DEBUG) print ("-->atkEditableText_copy_text");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -663,16 +901,29 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.copy_text != 0) {
 			parentResult = ATK.call (iface.copy_text, atkObject, start_pos, end_pos);
 		}
 		return parentResult;
 	}
 
-//	void atk_editable_text_cut_text (AtkEditableText *text, gint start_pos, gint end_pos);
+	/**
+	 * Cuts text from start_pos up to (but not including) end_pos
+	 * into the clipboard.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param start_pos the start position of the text to be cut
+	 * @param end_pos the end position of the text to be cut
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkEditableText_cut_text (long /*int*/ atkObject, long /*int*/ start_pos, long /*int*/ end_pos) {
-		if (DEBUG) print ("-->atkEditableText_cut_text");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -690,16 +941,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.cut_text != 0) {
 			parentResult = ATK.call (iface.cut_text, atkObject, start_pos, end_pos);
 		}
 		return parentResult;
 	}
 
-//	void atk_editable_text_delete_text (AtkEditableText *text, gint start_pos, gint end_pos);
+	/**
+	 * Delete text start_pos up to (but not including) end_pos.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param start_pos the start position of the text to be deleted
+	 * @param end_pos the end position of the text to be deleted
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkEditableText_delete_text (long /*int*/ atkObject, long /*int*/ start_pos, long /*int*/ end_pos) {
-		if (DEBUG) print ("-->atkEditableText_delete_text");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -718,16 +981,27 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.delete_text != 0) {
 			parentResult = ATK.call (iface.delete_text, atkObject, start_pos, end_pos);
 		}
 		return parentResult;
 	}
 
-//	void atk_editable_text_paste_text (AtkEditableText *text, gint position);
+	/**
+	 * Paste text from clipboard to specified position.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param position the position to paste
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkEditableText_paste_text (long /*int*/ atkObject, long /*int*/ position) {
-		if (DEBUG) print ("-->atkEditableText_paste_text");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -744,24 +1018,47 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkEditableTextIface iface = getEditableTextIface (atkObject);
+		AtkEditableTextIface iface = getParentEditableTextIface (atkObject);
 		if (iface != null && iface.paste_text != 0) {
 			parentResult = ATK.call (iface.paste_text, atkObject, position);
 		}
 		return parentResult;
 	}
 
-	static AtkHypertextIface getHypertextIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_HYPERTEXT())) {
+	/**
+	 * Fills a Java AtkHypertextIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkHypertextIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkHypertextIface getParentHypertextIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_HYPERTEXT())) {
 			AtkHypertextIface iface = new AtkHypertextIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_HYPERTEXT_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_HYPERTEXT_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
+	/**
+	 * Gets the link in this hypertext document at index link_index.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param link_index the index of the link
+	 *
+	 * @return a pointer to the AtkHypertext at link_index in atkObject
+	 */
 	static long /*int*/ atkHypertext_get_link (long /*int*/ atkObject, long /*int*/ link_index) {
-		if (DEBUG) print ("-->atkHypertext_get_link");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -775,19 +1072,31 @@ class AccessibleObject {
 					listener.getHyperlink(event);
 				}
 				Accessible result = event.accessible;
-				return result != null ? result.getAccessibleObject().handle : 0;
+				return result != null ? result.getAccessibleObject().atkHandle : 0;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkHypertextIface iface = getHypertextIface (atkObject);
+		AtkHypertextIface iface = getParentHypertextIface (atkObject);
 		if (iface != null && iface.get_link != 0) {
 			parentResult = ATK.call (iface.get_link, atkObject, link_index);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the number of links in this hypertext document.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an integer representing the number of links in the hypertext
+	 * in atkObject
+	 */
 	static long /*int*/ atkHypertext_get_n_links (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkHypertext_get_n_links");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -803,15 +1112,29 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkHypertextIface iface = getHypertextIface (atkObject);
+		AtkHypertextIface iface = getParentHypertextIface (atkObject);
 		if (iface != null && iface.get_n_links != 0) {
 			parentResult = ATK.call (iface.get_n_links, atkObject);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the index into the array of hyperlinks that is
+	 * associated with the character specified by char_index.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param char_index a character index
+	 *
+	 * @return an integer representing the index into the array of
+	 * hypertexts
+	 */
 	static long /*int*/ atkHypertext_get_link_index (long /*int*/ atkObject, long /*int*/ char_index) {
-		if (DEBUG) print ("-->atkHypertext_get_link_index");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -829,24 +1152,50 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkHypertextIface iface = getHypertextIface (atkObject);
+		AtkHypertextIface iface = getParentHypertextIface (atkObject);
 		if (iface != null && iface.get_link_index != 0) {
 			parentResult = ATK.call (iface.get_link_index, atkObject, char_index);
 		}
 		return parentResult;
 	}
 
-	static AtkObjectClass getObjectClass (long /*int*/ atkObject) {
+	/**
+	 * Fills a Java AtkObjectClass struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkObjectClass object representing the class struct of atkObject's
+	 * parent
+	 */
+	static AtkObjectClass getParentAtkObjectClass (long /*int*/ atkObject) {
 		AtkObjectClass objectClass = new AtkObjectClass ();
-		ATK.memmove (objectClass, ATK.g_type_class_peek (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject))));
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (type != 0) {
+			long /*int*/ parentType = OS.g_type_parent (type);
+			if (parentType != 0) ATK.memmove (objectClass, OS.g_type_class_peek (parentType));
+		}
 		return objectClass;
 	}
 
+	/**
+	 * Gets the accessible description of the widget associated with
+	 * atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the gchar representation of the accessible description
+	 */
 	static long /*int*/ atkObject_get_description (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_description: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_description != 0) {
 			parentResult = ATK.call (objectClass.get_description, atkObject);
 		}
@@ -862,7 +1211,6 @@ class AccessibleObject {
 					AccessibleListener listener = listeners.get (i);
 					listener.getDescription (event);
 				}
-				if (DEBUG) print ("---> " + event.result);
 				if (event.result == null) return parentResult;
 				if (descriptionPtr != -1) OS.g_free (descriptionPtr);
 				return descriptionPtr = getStringPtr (event.result);
@@ -871,11 +1219,24 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Get a list of properties applied to this object as a whole,
+	 * as an AtkAttributeSet consisting of name-value pairs.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the AtkAttributeSet consisting of all properties
+	 * applied to atkObject (can be empty if no properties are set)
+	 */
 	static long /*int*/ atkObject_get_attributes (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_attributes: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_attributes != 0) {
 			parentResult = ATK.call (objectClass.get_attributes, atkObject);
 		}
@@ -1005,11 +1366,23 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the accessible name of the widget associated with
+	 * atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the gchar representation of the accessible name
+	 */
 	static long /*int*/ atkObject_get_name (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_name: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_name != 0) {
 			parentResult = ATK.call (objectClass.get_name, atkObject);
 		}
@@ -1025,7 +1398,6 @@ class AccessibleObject {
 					AccessibleListener listener = listeners.get (i);
 					listener.getName (event);
 				}
-				if (DEBUG) print ("---> " + event.result);
 				if (event.result == null) return parentResult;
 				if (namePtr != -1) OS.g_free (namePtr);
 				return namePtr = getStringPtr (event.result);
@@ -1034,11 +1406,24 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the number of accessible children of the widget associated with
+	 * atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an int representing the number of accessible children associated
+	 * with atkObject
+	 */
 	static long /*int*/ atkObject_get_n_children (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_n_children: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_n_children != 0) {
 			parentResult = ATK.call (objectClass.get_n_children, atkObject);
 		}
@@ -1054,15 +1439,27 @@ class AccessibleObject {
 					AccessibleControlListener listener = listeners.get (i);
 					listener.getChildCount (event);
 				}
-				if (DEBUG) print ("--->" + event.detail);
 				return event.detail;
 			}
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the 0-based index of the widget (associated with atkObject)
+	 * in its parent.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an int which is the index of the accessible atkObject in its
+	 * parent
+	 */
 	static long /*int*/ atkObject_get_index_in_parent (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_index_in_parent: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1075,39 +1472,58 @@ class AccessibleObject {
 				listener.getChild(event);
 			}
 			if (event.detail != -1) {
-				if (DEBUG) print ("---> " + object.index);
 				return event.detail;
 			}
 			if (object.index != -1) {
-				if (DEBUG) print ("---> " + object.index);
 				return object.index;
 			}
 		}
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_index_in_parent == 0) return 0;
 		long /*int*/ result = ATK.call (objectClass.get_index_in_parent, atkObject);
-		if (DEBUG) print ("---*> " + result);
 		return result;
 	}
 
+	/**
+	 * Gets the accessible parent of the widget associated with
+	 * atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the AtkObject representing the accessible parent of
+	 * atkObject
+	 */
 	static long /*int*/ atkObject_get_parent (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_parent: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			if (object.parent != null) {
-				if (DEBUG) print ("---> " + object.parent.accessible.accessibleObject.handle);
-				return object.parent.handle;
+				return object.parent.atkHandle;
 			}
 		}
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_parent == 0) return 0;
 		long /*int*/ parentResult = ATK.call (objectClass.get_parent, atkObject);
-		if (DEBUG) print ("---> " + parentResult);
 		return parentResult;
 	}
 
+	/**
+	 * Gets the role of the accessible associated with atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return the AtkRole of atkObject
+	 */
 	static long /*int*/ atkObject_get_role (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_get_role: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1121,7 +1537,6 @@ class AccessibleObject {
 					AccessibleControlListener listener = listeners.get (i);
 					listener.getRole (event);
 				}
-				if (DEBUG) print ("---> " + event.detail);
 				if (event.detail != -1) {
 					switch (event.detail) {
 						/* Convert from win32 role values to atk role values */
@@ -1181,13 +1596,25 @@ class AccessibleObject {
 				}
 			}
 		}
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.get_role == 0) return 0;
 		return ATK.call (objectClass.get_role, atkObject);
 	}
 
+	/**
+	 * Gets a reference to the accessible child whose parent is atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index the index of the child
+	 *
+	 * @return a pointer to the AtkObject of the child at the provided index
+	 */
 	static long /*int*/ atkObject_ref_child (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkObject_ref_child: " + index + " of: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null && object.id == ACC.CHILDID_SELF) {
 			Accessible accessible = object.accessible;
@@ -1204,26 +1631,38 @@ class AccessibleObject {
 				if (event.accessible != null) {
 					AccessibleObject accObject = event.accessible.getAccessibleObject();
 					if (accObject != null) {
-						return OS.g_object_ref (accObject.handle);
+						return OS.g_object_ref (accObject.atkHandle);
 					}
 				}
 			}
 			object.updateChildren ();
 			AccessibleObject accObject = object.getChildByIndex ((int)/*64*/index);
 			if (accObject != null) {
-				return OS.g_object_ref (accObject.handle);
+				return OS.g_object_ref (accObject.atkHandle);
 			}
 		}
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.ref_child == 0) return 0;
 		return ATK.call (objectClass.ref_child, atkObject, index);
 	}
 
+	/**
+	 * Gets a reference to the state set of the accessible associated with
+	 * atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the AtkStateSet for the accessible widget atkObject
+	 */
 	static long /*int*/ atkObject_ref_state_set (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkObject_ref_state_set: " + atkObject);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkObjectClass objectClass = getObjectClass (atkObject);
+		AtkObjectClass objectClass = getParentAtkObjectClass (atkObject);
 		if (objectClass.ref_state_set != 0) {
 			parentResult = ATK.call (objectClass.ref_state_set, atkObject);
 		}
@@ -1272,20 +1711,43 @@ class AccessibleObject {
 		return parentResult;
 	}
 
-	static AtkSelectionIface getSelectionIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_SELECTION())) {
+	/**
+	 * Fills a Java AtkSelectionIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkSelectionIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkSelectionIface getParentSelectionIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_SELECTION())) {
 			AtkSelectionIface iface = new AtkSelectionIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_SELECTION_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_SELECTION_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
+	/**
+	 * Determines if the current child of this atkObject is selected.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index a long integer representing the index
+	 *
+	 * @return a long integer where 1 represents TRUE, 0 otherwise
+	 */
 	static long /*int*/ atkSelection_is_child_selected (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkSelection_is_child_selected");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkSelectionIface iface = getSelectionIface (atkObject);
+		AtkSelectionIface iface = getParentSelectionIface (atkObject);
 		if (iface != null && iface.is_child_selected != 0) {
 			parentResult = ATK.call (iface.is_child_selected, atkObject, index);
 		}
@@ -1310,11 +1772,25 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets a reference to the atkObject representing the specified
+	 * selected child of the object.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index a long integer representing the index
+	 *
+	 * @return a pointer to the AtkObject representing the selected accessible,
+	 * or 0
+	 */
 	static long /*int*/ atkSelection_ref_selection (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkSelection_ref_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkSelectionIface iface = getSelectionIface (atkObject);
+		AtkSelectionIface iface = getParentSelectionIface (atkObject);
 		if (iface != null && iface.ref_selection != 0) {
 			parentResult = ATK.call (iface.ref_selection, atkObject, index);
 		}
@@ -1332,25 +1808,49 @@ class AccessibleObject {
 				AccessibleObject accObj = object.getChildByID (event.childID);
 				if (accObj != null) {
 					if (parentResult != 0) OS.g_object_unref (parentResult);
-					OS.g_object_ref (accObj.handle);
-					return accObj.handle;
+					OS.g_object_ref (accObj.atkHandle);
+					return accObj.atkHandle;
 				}
 			}
 		}
 		return parentResult;
 	}
 
-	static AtkTableIface getTableIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_TABLE())) {
+	/**
+	 * Fills a Java AtkTableIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkTableIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkTableIface getParentTableIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_TABLE())) {
 			AtkTableIface iface = new AtkTableIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_TABLE_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_TABLE_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
+	/**
+	 * Get a reference to the table cell at row, column.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing a row in atkObject
+	 * @param column a long integer representing a column in atkObject
+	 *
+	 * @return a pointer to an AtkObject representing the specified table
+	 */
 	static long /*int*/ atkTable_ref_at (long /*int*/ atkObject, long /*int*/ row, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_ref_at");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1367,21 +1867,34 @@ class AccessibleObject {
 				Accessible result = event.accessible;
 				if (result != null) {
 					AccessibleObject accessibleObject = result.getAccessibleObject();
-					OS.g_object_ref(accessibleObject.handle);
-					return accessibleObject.handle;
+					OS.g_object_ref(accessibleObject.atkHandle);
+					return accessibleObject.atkHandle;
 				}
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.ref_at != 0) {
 			parentResult = ATK.call (iface.ref_at, atkObject, row, column);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Get a reference to the table cell at row, column.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing a row in atkObject
+	 * @param column a long integer representing a column in atkObject
+	 *
+	 * @return a pointer to an AtkObject representing the specified table
+	 */
 	static long /*int*/ atkTable_get_index_at (long /*int*/ atkObject, long /*int*/ row, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_get_index_at");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1406,15 +1919,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_index_at != 0) {
 			parentResult = ATK.call (iface.get_index_at, atkObject, row, column);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets a gint representing the column at the specified index.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index a long integer representing an index in the table
+	 *
+	 * @return a long integer representing the column at the specified index, or
+	 * -1
+	 */
 	static long /*int*/ atkTable_get_column_at_index (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkTable_get_column_at_index: " + atkObject + " " + index);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1427,20 +1953,32 @@ class AccessibleObject {
 					listener.getColumnCount(event);
 				}
 				long /*int*/ result = event.count == 0 ? -1 : index % event.count;
-				if (DEBUG) print ("---> " + result);
 				return result;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_column_at_index != 0) {
 			parentResult = ATK.call (iface.get_column_at_index, atkObject, index);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets a gint representing the row at the specified index.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param index a long integer representing an index in the table
+	 *
+	 * @return a long integer representing the row at the specified index, or
+	 * -1
+	 */
 	static long /*int*/ atkTable_get_row_at_index (long /*int*/ atkObject, long /*int*/ index) {
-		if (DEBUG) print ("-->atkTable_get_row_at_index: " + atkObject + " " + index);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1453,23 +1991,34 @@ class AccessibleObject {
 					listener.getColumnCount(event);
 				}
 				long /*int*/ result = event.count == 0 ? -1 : index / event.count;
-				if (DEBUG) print ("---> " + result);
 				return result;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_row_at_index != 0) {
 			parentResult = ATK.call (iface.get_row_at_index, atkObject, index);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the number of columns in the table.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a long integer representing the number of columns, or
+	 * 0
+	 */
 	static long /*int*/ atkTable_get_n_columns (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkTable_get_n_columns");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_n_columns != 0) {
 			parentResult = ATK.call (iface.get_n_columns, atkObject);
 		}
@@ -1490,11 +2039,23 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the number of rows in the table.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a long integer representing the number of rows, or
+	 * 0
+	 */
 	static long /*int*/ atkTable_get_n_rows (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkTable_get_n_rows");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_n_rows != 0) {
 			parentResult = ATK.call (iface.get_n_rows, atkObject);
 		}
@@ -1515,11 +2076,26 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the number of columns occupied at the specified row
+	 * and column.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the row
+	 * @param column a long integer representing the column
+	 *
+	 * @return a long integer representing the column extent at the
+	 * specified position, or 0
+	 */
 	static long /*int*/ atkTable_get_column_extent_at (long /*int*/ atkObject, long /*int*/ row, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_get_column_extent_at");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_column_extent_at != 0) {
 			parentResult = ATK.call (iface.get_column_extent_at, atkObject, row, column);
 		}
@@ -1554,11 +2130,26 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the number of rows occupied at the specified row
+	 * and column.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the row
+	 * @param column a long integer representing the column
+	 *
+	 * @return a long integer representing the row extent at the specified
+	 * position, or 0
+	 */
 	static long /*int*/ atkTable_get_row_extent_at (long /*int*/ atkObject, long /*int*/ row, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_get_row_extent_at");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_row_extent_at != 0) {
 			parentResult = ATK.call (iface.get_row_extent_at, atkObject, row, column);
 		}
@@ -1593,8 +2184,19 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the caption for the table.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the AtkObject representing the caption, or 0
+	 */
 	static long /*int*/ atkTable_get_caption (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkTable_get_caption");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1607,19 +2209,30 @@ class AccessibleObject {
 					listener.getCaption(event);
 				}
 				Accessible result = event.accessible;
-				if (result != null) return result.getAccessibleObject().handle;
+				if (result != null) return result.getAccessibleObject().atkHandle;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_caption != 0) {
 			parentResult = ATK.call (iface.get_caption, atkObject);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the summary for the table.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a pointer to the AtkObject representing the summary, or 0
+	 */
 	static long /*int*/ atkTable_get_summary (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkTable_get_summary");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1632,22 +2245,35 @@ class AccessibleObject {
 					listener.getSummary(event);
 				}
 				Accessible result = event.accessible;
-				if (result != null) return result.getAccessibleObject().handle;
+				if (result != null) return result.getAccessibleObject().atkHandle;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_summary != 0) {
 			parentResult = ATK.call (iface.get_summary, atkObject);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the description text of the specified column.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param column a long integer representing the specified column
+	 *
+	 * @return a pointer to the gchar representation of the column description,
+	 * or 0
+	 */
 	static long /*int*/ atkTable_get_column_description (long /*int*/ atkObject, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_get_column_description");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_column_description != 0) {
 			parentResult = ATK.call (iface.get_column_description, atkObject, column);
 		}
@@ -1671,8 +2297,21 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the column header of a specified column.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param column a long integer representing the specified column
+	 *
+	 * @return a pointer to the AtkObject representing the specified column
+	 * header, or 0
+	 */
 	static long /*int*/ atkTable_get_column_header (long /*int*/ atkObject, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_get_column_header");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1687,24 +2326,37 @@ class AccessibleObject {
 				Accessible[] accessibles = event.accessibles;
 				if (accessibles != null) {
 					if (0 <= column && column < accessibles.length) {
-						return accessibles[(int)/*64*/column].getAccessibleObject().handle;
+						return accessibles[(int)/*64*/column].getAccessibleObject().atkHandle;
 					}
 				}
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_column_header != 0) {
 			parentResult = ATK.call (iface.get_column_header, atkObject, column);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the description text of the specified row.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the specified row
+	 *
+	 * @return a pointer to the gchar representation of the row description,
+	 * or 0
+	 */
 	static long /*int*/ atkTable_get_row_description (long /*int*/ atkObject, long /*int*/ row) {
-		if (DEBUG) print ("-->atkTable_get_row_description");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_row_description != 0) {
 			parentResult = ATK.call (iface.get_row_description, atkObject, row);
 		}
@@ -1728,8 +2380,21 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the column header of a specified row.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the specified row
+	 *
+	 * @return a pointer to the AtkObject representing the specified row
+	 * header, or 0
+	 */
 	static long /*int*/ atkTable_get_row_header (long /*int*/ atkObject, long /*int*/ row) {
-		if (DEBUG) print ("-->atkTable_get_row_header");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1744,21 +2409,35 @@ class AccessibleObject {
 				Accessible[] accessibles = event.accessibles;
 				if (accessibles != null) {
 					if (0 <= row && row < accessibles.length) {
-						return accessibles[(int)/*64*/row].getAccessibleObject().handle;
+						return accessibles[(int)/*64*/row].getAccessibleObject().atkHandle;
 					}
 				}
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_row_header != 0) {
 			parentResult = ATK.call (iface.get_row_header, atkObject, row);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the selected columns of the table.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param selected an array of integer pointers that is to contain the
+	 * selected column numbers
+	 *
+	 * @return a long integer representing the number of columns selected,
+	 * or 0
+	 */
 	static long /*int*/ atkTable_get_selected_columns (long /*int*/ atkObject, long /*int*/ selected) {
-		if (DEBUG) print ("-->atkTable_get_selected_columns");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1772,21 +2451,35 @@ class AccessibleObject {
 				}
 				int count = event.selected != null ? event.selected.length : 0;
 				long /*int*/ result = OS.g_malloc(count * 4);
-				if (event.selected != null) OS.memmove(result, event.selected, count * 4);
-				if (selected != 0) OS.memmove(selected, new long /*int*/[]{result}, C.PTR_SIZEOF);
+				if (event.selected != null) C.memmove(result, event.selected, count * 4);
+				if (selected != 0) C.memmove(selected, new long /*int*/[]{result}, C.PTR_SIZEOF);
 				return count;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_selected_columns != 0) {
 			parentResult = ATK.call (iface.get_selected_columns, atkObject, selected);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the selected rows of the table.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param selected an array of integer pointers that is to contain the
+	 * selected row numbers
+	 *
+	 * @return a long integer representing the number of rows selected,
+	 * or 0
+	 */
 	static long /*int*/ atkTable_get_selected_rows (long /*int*/ atkObject, long /*int*/ selected) {
-		if (DEBUG) print ("-->atkTable_get_selected_rows");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1800,24 +2493,36 @@ class AccessibleObject {
 				}
 				int count = event.selected != null ? event.selected.length : 0;
 				long /*int*/ result = OS.g_malloc(count * 4);
-				if (event.selected != null) OS.memmove(result, event.selected, count * 4);
-				if (selected != 0) OS.memmove(selected, new long /*int*/[]{result}, C.PTR_SIZEOF);
+				if (event.selected != null) C.memmove(result, event.selected, count * 4);
+				if (selected != 0) C.memmove(selected, new long /*int*/[]{result}, C.PTR_SIZEOF);
 				return count;
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.get_selected_rows != 0) {
 			parentResult = ATK.call (iface.get_selected_rows, atkObject, selected);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Determines if the specified column is selected.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param column a long integer representing the column
+	 *
+	 * @return a long integer where 1 represents TRUE, 0 otherwise
+	 */
 	static long /*int*/ atkTable_is_column_selected (long /*int*/ atkObject, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_is_column_selected");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.is_column_selected != 0) {
 			parentResult = ATK.call (iface.is_column_selected, atkObject, column);
 		}
@@ -1839,11 +2544,23 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Determines if the specified row is selected.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the row
+	 *
+	 * @return a long integer where 1 represents TRUE, 0 otherwise
+	 */
 	static long /*int*/ atkTable_is_row_selected (long /*int*/ atkObject, long /*int*/ row) {
-		if (DEBUG) print ("-->atkTable_is_row_selected");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.is_row_selected != 0) {
 			parentResult = ATK.call (iface.is_row_selected, atkObject, row);
 		}
@@ -1865,11 +2582,25 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Determines if the AtkObject at the specified
+	 * column and row is selected.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the row
+	 * @param column a long integer representing the column
+	 *
+	 * @return a long integer where 1 represents TRUE, 0 otherwise
+	 */
 	static long /*int*/ atkTable_is_selected (long /*int*/ atkObject, long /*int*/ row, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_is_selected");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.is_selected != 0) {
 			parentResult = ATK.call (iface.is_selected, atkObject, row, column);
 		}
@@ -1904,8 +2635,21 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Adds the specified row to the selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the row
+	 *
+	 * @return a long int representing whether the action succeeded: 1 for success,
+	 * 0 for failure
+	 */
 	static long /*int*/ atkTable_add_row_selection (long /*int*/ atkObject, long /*int*/ row) {
-		if (DEBUG) print ("-->atkTable_add_row_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1922,15 +2666,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.add_row_selection != 0) {
 			parentResult = ATK.call (iface.add_row_selection, atkObject, row);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Removes the specified row to the selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param row a long integer representing the row
+	 *
+	 * @return a long int representing whether the action succeeded: 1 for success,
+	 * 0 for failure
+	 */
 	static long /*int*/ atkTable_remove_row_selection (long /*int*/ atkObject, long /*int*/ row) {
-		if (DEBUG) print ("-->atkTable_remove_row_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1947,15 +2704,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.remove_row_selection != 0) {
 			parentResult = ATK.call (iface.remove_row_selection, atkObject, row);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Adds the specified column to the selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param column a long integer representing the column
+	 *
+	 * @return a long int representing whether the action succeeded: 1 for success,
+	 * 0 for failure
+	 */
 	static long /*int*/ atkTable_add_column_selection (long /*int*/ atkObject, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_add_column_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1972,15 +2742,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.add_column_selection != 0) {
 			parentResult = ATK.call (iface.add_column_selection, atkObject, column);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Removes the specified column to the selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param column a long integer representing the column
+	 *
+	 * @return a long int representing whether the action succeeded: 1 for success,
+	 * 0 for failure
+	 */
 	static long /*int*/ atkTable_remove_column_selection (long /*int*/ atkObject, long /*int*/ column) {
-		if (DEBUG) print ("-->atkTable_remove_column_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -1997,24 +2780,70 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTableIface iface = getTableIface (atkObject);
+		AtkTableIface iface = getParentTableIface (atkObject);
 		if (iface != null && iface.remove_column_selection != 0) {
 			parentResult = ATK.call (iface.remove_column_selection, atkObject, column);
 		}
 		return parentResult;
 	}
 
-	static AtkTextIface getTextIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_TEXT())) {
+	/**
+	 * Fills a Java AtkTextIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkTextIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkTextIface getParentTextIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_TEXT())) {
 			AtkTextIface iface = new AtkTextIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_TEXT_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_TEXT_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
 
-	static long /*int*/ atkText_get_character_extents (long /*int*/ atkObject, long /*int*/ offset, long /*int*/ x, long /*int*/ y, long /*int*/ width, long /*int*/ height, long /*int*/ coords) {
-		if (DEBUG) print ("-->atkText_get_character_extents");
+	static String getString (long /*int*/ strPtr) {
+		int length = C.strlen (strPtr);
+		byte [] buffer = new byte [length];
+		C.memmove (buffer, strPtr, length);
+		return new String (Converter.mbcsToWcs (buffer));
+	}
+
+	static long /*int*/ getStringPtr (String str) {
+		byte [] buffer = Converter.wcsToMbcs(str != null ? str : "", true);
+		long /*int*/ ptr = OS.g_malloc(buffer.length);
+		C.memmove(ptr, buffer, buffer.length);
+		return ptr;
+	}
+
+	/**
+	 * Get the bounding box containing the glyph representing the character
+	 * at a particular text offset.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset the offset of the text character for which bounding info
+	 * is required
+	 * @param x the pointer for the x coordinate of the bounding box
+	 * @param y the pointer for the y coordinate of the bounding box
+	 * @param width the pointer for the width of the bounding box
+	 * @param height the pointer for the height of the bounding box
+	 * @param coords long int representing the AtkCoordType for the coordinates
+	 *
+	 * @return a long int representation of 0 indicating that the method completed
+	 * successfully
+	 */
+	static long /*int*/ atkText_get_character_extents (long /*int*/ atkObject, long /*int*/ offset,
+			long /*int*/ x, long /*int*/ y, long /*int*/ width, long /*int*/ height, long /*int*/ coords) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2034,36 +2863,41 @@ class AccessibleObject {
 					event.x -= topWindowX [0];
 					event.y -= topWindowY [0];
 				}
-				OS.memmove (x, new int[]{event.x}, 4);
-				OS.memmove (y, new int[]{event.y}, 4);
-				OS.memmove (width, new int[]{event.width}, 4);
-				OS.memmove (height, new int[]{event.height}, 4);
+				C.memmove (x, new int[]{event.x}, 4);
+				C.memmove (y, new int[]{event.y}, 4);
+				C.memmove (width, new int[]{event.width}, 4);
+				C.memmove (height, new int[]{event.height}, 4);
 				return 0;
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_character_extents != 0) {
-			ATK.call (iface.get_character_extents, atkObject, offset, x, y, width, height, coords);
+			OS.call (iface.get_character_extents, atkObject, offset, x, y, width, height, coords);
 		}
 		return 0;
 	}
 
-	static String getString (long /*int*/ strPtr) {
-		int length = OS.strlen (strPtr);
-		byte [] buffer = new byte [length];
-		OS.memmove (buffer, strPtr, length);
-		return new String (Converter.mbcsToWcs (buffer));
-	}
-
-	static long /*int*/ getStringPtr (String str) {
-		byte [] buffer = Converter.wcsToMbcs(str != null ? str : "", true);
-		long /*int*/ ptr = OS.g_malloc(buffer.length);
-		OS.memmove(ptr, buffer, buffer.length);
-		return ptr;
-	}
-
-	static long /*int*/ atkText_get_range_extents (long /*int*/ atkObject, long /*int*/ start_offset, long /*int*/ end_offset, long /*int*/ coord_type, long /*int*/ rect) {
-		if (DEBUG) print ("-->atkText_get_range_extents");
+	/**
+	 * Get the bounding box for text within the specified range.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param start_offset the offset of the first text character for which
+	 * bounding info is required
+	 * @param end_offset the offset of the last text character after the last
+	 * character for which boundary info is required
+	 * @param coord_type long int representing the AtkCoordType for the coordinates
+	 * @param rect a pointer to the AtkTextRectangle which is filled by this function
+	 *
+	 * @return a long int representation of 0 indicating that the method completed
+	 * successfully
+	 */
+	static long /*int*/ atkText_get_range_extents (long /*int*/ atkObject, long /*int*/ start_offset,
+			long /*int*/ end_offset, long /*int*/ coord_type, long /*int*/ rect) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2092,15 +2926,31 @@ class AccessibleObject {
 				return 0;
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_range_extents != 0) {
 			ATK.call (iface.get_range_extents, atkObject, start_offset, end_offset, coord_type, rect);
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkText_get_run_attributes (long /*int*/ atkObject, long /*int*/ offset, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_get_run_attributes");
+	/**
+	 * Creates an AtkAttributeSet which consists of the attributes explicitly
+	 * set at the position offset in the text.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset the offset at which to get the attributes
+	 * @param start_offset the address to put the start offset of the range
+	 * @param end_offset the address to put the end offset of the range
+	 *
+	 * @return a pointer to the AtkAttributeSet created
+	 */
+	static long /*int*/ atkText_get_run_attributes (long /*int*/ atkObject, long /*int*/ offset,
+			long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2113,8 +2963,8 @@ class AccessibleObject {
 					AccessibleAttributeListener listener = listeners.get(i);
 					listener.getTextAttributes(event);
 				}
-				OS.memmove (start_offset, new int []{event.start}, 4);
-				OS.memmove (end_offset, new int []{event.end}, 4);
+				C.memmove (start_offset, new int []{event.start}, 4);
+				C.memmove (end_offset, new int []{event.end}, 4);
 				TextStyle style = event.textStyle;
 				long /*int*/ result = 0;
 				AtkAttribute attr = new AtkAttribute();
@@ -2191,7 +3041,7 @@ class AccessibleObject {
 					if (color != null && !color.isDisposed()) {
 						long /*int*/ attrPtr = OS.g_malloc(AtkAttribute.sizeof);
 						attr.name = OS.g_strdup (ATK.atk_text_attribute_get_name(ATK.ATK_TEXT_ATTR_FG_COLOR));
-						if (OS.GTK3) {
+						if (GTK.GTK3) {
 							attr.value = getStringPtr ((color.handleRGBA.red * 255) + "," + (color.handleRGBA.green * 255) + "," + (color.handleRGBA.blue * 255)); //$NON-NLS-1$ //$NON-NLS-2$
 						} else {
 							attr.value = getStringPtr ((color.handle.red & 0xFFFF) + "," + (color.handle.blue & 0xFFFF) + "," + (color.handle.blue & 0xFFFF)); //$NON-NLS-1$ //$NON-NLS-2$
@@ -2203,7 +3053,7 @@ class AccessibleObject {
 					if (color != null && !color.isDisposed()) {
 						long /*int*/ attrPtr = OS.g_malloc(AtkAttribute.sizeof);
 						attr.name = OS.g_strdup (ATK.atk_text_attribute_get_name(ATK.ATK_TEXT_ATTR_BG_COLOR));
-						if (OS.GTK3) {
+						if (GTK.GTK3) {
 							attr.value = getStringPtr ((color.handleRGBA.red * 255) + "," + (color.handleRGBA.green * 255) + "," + (color.handleRGBA.blue * 255)); //$NON-NLS-1$ //$NON-NLS-2$
 						} else {
 							attr.value = getStringPtr ((color.handle.red & 0xFFFF) + "," + (color.handle.blue & 0xFFFF) + "," + (color.handle.blue & 0xFFFF)); //$NON-NLS-1$ //$NON-NLS-2$
@@ -2226,15 +3076,31 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_run_attributes != 0) {
-			parentResult = ATK.call (iface.get_run_attributes, atkObject, offset, start_offset, end_offset);
+			parentResult = OS.call (iface.get_run_attributes, atkObject, offset, start_offset, end_offset);
 		}
 		return parentResult;
 	}
 
-	static long /*int*/ atkText_get_offset_at_point (long /*int*/ atkObject, long /*int*/ x, long /*int*/ y, long /*int*/ coords) {
-		if (DEBUG) print ("-->atkText_get_offset_at_point");
+	/**
+	 * Gets the offset of the character located at coordinates x and y.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param x screen x-position of the character
+	 * @param y screen y-position of the character
+	 * @param coords long int representing the AtkCoordType for the coordinates
+	 *
+	 * @return the offset to the character which is located at the specified
+	 * x and y coordinates
+	 */
+	static long /*int*/ atkText_get_offset_at_point (long /*int*/ atkObject, long /*int*/ x,
+			long /*int*/ y, long /*int*/ coords) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2258,15 +3124,28 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_offset_at_point != 0) {
-			parentResult = ATK.call (iface.get_offset_at_point, atkObject, x, y, coords);
+			parentResult = OS.call (iface.get_offset_at_point, atkObject, x, y, coords);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Adds a selection bounded by the specified offsets.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param start_offset the start position of the selected region
+	 * @param end_offset the offset of the first character after the selected region
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkText_add_selection (long /*int*/ atkObject, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_add_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2284,15 +3163,27 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.add_selection != 0) {
 			parentResult = ATK.call (iface.add_selection, atkObject, start_offset, end_offset);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Removes the specified selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param selection_num the selection number.
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkText_remove_selection (long /*int*/ atkObject, long /*int*/ selection_num) {
-		if (DEBUG) print ("-->atkText_remove_selection");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2309,15 +3200,27 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.remove_selection != 0) {
 			parentResult = ATK.call (iface.remove_selection, atkObject, selection_num);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Sets the caret (cursor) position to the specified offset.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset the position
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkText_set_caret_offset (long /*int*/ atkObject, long /*int*/ offset) {
-		if (DEBUG) print ("-->atkText_set_caret_offset");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2333,15 +3236,30 @@ class AccessibleObject {
 				return ACC.OK.equals(event.result) ? 1 : 0;
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.set_caret_offset != 0) {
 			return ATK.call (iface.set_caret_offset, atkObject, offset);
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkText_set_selection (long /*int*/ atkObject, long /*int*/ selection_num, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_set_selection");
+	/**
+	 * Changes the start and end offset of the specified selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param selection_num the selection number
+	 * @param start_offset the new start position of the selection
+	 * @param end_offset the new end position of the selection
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
+	static long /*int*/ atkText_set_selection (long /*int*/ atkObject, long /*int*/ selection_num,
+			long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2360,18 +3278,29 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.set_selection != 0) {
-			parentResult = ATK.call (iface.set_selection, atkObject, selection_num, start_offset, end_offset);
+			parentResult = OS.call (iface.set_selection, atkObject, selection_num, start_offset, end_offset);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the offset position of the caret (cursor).
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return a long int representation of the offset position of the caret (cursor)
+	 */
 	static long /*int*/ atkText_get_caret_offset (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkText_get_caret_offset");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_caret_offset != 0) {
 			parentResult = ATK.call (iface.get_caret_offset, atkObject);
 		}
@@ -2403,8 +3332,26 @@ class AccessibleObject {
 		return parentResult;
 	}
 
-	static long /*int*/ atkText_get_bounded_ranges (long /*int*/ atkObject, long /*int*/ rect, long /*int*/ coord_type, long /*int*/ x_clip_type, long /*int*/ y_clip_type) {
-		if (DEBUG) print ("-->atkText_get_bounded_ranges");
+	/**
+	 * Get the ranges of text in the specified bounding box.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param rect the AtkTextRectangle giving the dimensions of the bounding box
+	 * @param coord_type long int representing the AtkCoordType for the coordinates
+	 * @param x_clip_type a long int representing the AtkTextClipType of the
+	 * horizontal clip
+	 * @param y_clip_type a long int representing the AtkTextClipType of the
+	 * vertical clip
+	 *
+	 * @return a pointer to the array of AtkTextRanges
+	 */
+	static long /*int*/ atkText_get_bounded_ranges (long /*int*/ atkObject, long /*int*/ rect,
+			long /*int*/ coord_type, long /*int*/ x_clip_type, long /*int*/ y_clip_type) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2424,7 +3371,7 @@ class AccessibleObject {
 				}
 				int [] ranges = event.ranges;
 				int size = ranges == null ? 1 : ranges.length / 2;
-				long /*int*/ result = OS.malloc(size * AtkTextRange.sizeof);
+				long /*int*/ result = C.malloc(size * AtkTextRange.sizeof);
 				AtkTextRange range = new AtkTextRange();
 				for (int j = 0, end = (ranges != null ? ranges.length / 2 : 1); j < end; j++) {
 					if (ranges != null) {
@@ -2457,15 +3404,27 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_bounded_ranges != 0) {
 			parentResult = ATK.call (iface.get_bounded_ranges, atkObject);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the specified text.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset position
+	 *
+	 * @return a long int representing the character at offset
+	 */
 	static long /*int*/ atkText_get_character_at_offset (long /*int*/ atkObject, long /*int*/ offset) {
-		if (DEBUG) print ("-->atkText_get_character_at_offset");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2486,15 +3445,26 @@ class AccessibleObject {
 			String text = object.getText ();
 			if (text != null && text.length() > offset) return text.charAt ((int)/*64*/offset);
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_character_at_offset != 0) {
 			return ATK.call (iface.get_character_at_offset, atkObject, offset);
 		}
 		return 0;
 	}
 
+	/**
+	 * Gets the character count.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return the number of characters
+	 */
 	static long /*int*/ atkText_get_character_count (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkText_get_character_count");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2511,15 +3481,26 @@ class AccessibleObject {
 			String text = object.getText ();
 			if (text != null) return text.length ();
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_character_count != 0) {
 			return ATK.call (iface.get_character_count, atkObject);
 		}
 		return 0;
 	}
 
+	/**
+	 * Gets the number of selected regions.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return the number of selected regions, or -1 if a failure occurred
+	 */
 	static long /*int*/ atkText_get_n_selections (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->atkText_get_n_selections");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2546,28 +3527,43 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_n_selections != 0) {
 			parentResult = ATK.call (iface.get_n_selections, atkObject);
 		}
 		return parentResult;
 	}
 
-	static long /*int*/ atkText_get_selection (long /*int*/ atkObject, long /*int*/ selection_num, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_get_selection");
+	/**
+	 * Gets the text from the specified selection.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param selection_num the selection number
+	 * @param start_offset passes back the start position of the selected region
+	 * @param end_offset passes back the end position of the selected region
+	 *
+	 * @return a pointer to the newly allocated string containing the selected text
+	 */
+	static long /*int*/ atkText_get_selection (long /*int*/ atkObject, long /*int*/ selection_num,
+			long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		long /*int*/ parentResult = 0;
-		OS.memmove (start_offset, new int[] {0}, 4);
-		OS.memmove (end_offset, new int[] {0}, 4);
-		AtkTextIface iface = getTextIface (atkObject);
+		C.memmove (start_offset, new int[] {0}, 4);
+		C.memmove (end_offset, new int[] {0}, 4);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_selection != 0) {
-			parentResult = ATK.call (iface.get_selection, atkObject, selection_num, start_offset, end_offset);
+			parentResult = OS.call (iface.get_selection, atkObject, selection_num, start_offset, end_offset);
 		}
 		if (object != null) {
 			int[] parentStart = new int [1];
 			int[] parentEnd = new int [1];
-			OS.memmove (parentStart, start_offset, 4);
-			OS.memmove (parentEnd, end_offset, 4);
+			C.memmove (parentStart, start_offset, 4);
+			C.memmove (parentEnd, end_offset, 4);
 			Accessible accessible = object.accessible;
 			List<AccessibleTextExtendedListener> listeners = accessible.accessibleTextExtendedListeners;
 			int length = size(listeners);
@@ -2582,8 +3578,8 @@ class AccessibleObject {
 				}
 				parentStart [0] = event.start;
 				parentEnd [0] = event.end;
-				OS.memmove (start_offset, parentStart, 4);
-				OS.memmove (end_offset, parentEnd, 4);
+				C.memmove (start_offset, parentStart, 4);
+				C.memmove (end_offset, parentEnd, 4);
 				event.count = event.index = 0;
 				event.type = ACC.TEXT_BOUNDARY_ALL;
 				for (int i = 0; i < length; i++) {
@@ -2605,8 +3601,8 @@ class AccessibleObject {
 						AccessibleTextListener listener = listeners2.get(i);
 						listener.getSelectionRange (event);
 					}
-					OS.memmove (start_offset, new int[] {event.offset}, 4);
-					OS.memmove (end_offset, new int[] {event.offset + event.length}, 4);
+					C.memmove (start_offset, new int[] {event.offset}, 4);
+					C.memmove (end_offset, new int[] {event.offset + event.length}, 4);
 					if (parentResult != 0) OS.g_free(parentResult);
 					String text = object.getText();
 					if (text != null && text.length () > event.offset && text.length() >= event.offset + event.length) {
@@ -2622,8 +3618,22 @@ class AccessibleObject {
 		return parentResult;
 	}
 
+	/**
+	 * Gets the specified text.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param start_offset start position
+	 * @param end_offset end position, or -1 for the end of the string
+	 *
+	 * @return a pointer to the newly allocated string containing the text
+	 * from start_offset up to (but not including) end_offset
+	 */
 	static long /*int*/ atkText_get_text (long /*int*/ atkObject, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_get_text: " + atkObject + " " + start_offset + "," + end_offset);
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2652,15 +3662,32 @@ class AccessibleObject {
 				return getStringPtr (text);
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_text != 0) {
 			return ATK.call (iface.get_text, atkObject, start_offset, end_offset);
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkText_get_text_after_offset (long /*int*/ atkObject, long /*int*/ offset_value, long /*int*/ boundary_type, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_get_text_after_offset");
+	/**
+	 * Gets the specified text.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset position
+	 * @param boundary_type the AtkTextBoundary
+	 * @param start_offset the start offset of the returned string
+	 * @param end_offset the end_offset of the first character after the returned string
+	 *
+	 * @return a pointer to the newly allocated string containing
+	 * the text after offset bounded by the specified boundary_type
+	 */
+	static long /*int*/ atkText_get_text_after_offset (long /*int*/ atkObject, long /*int*/ offset_value,
+			long /*int*/ boundary_type, long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2732,8 +3759,8 @@ class AccessibleObject {
 						}
 						break;
 				}
-				OS.memmove (start_offset, new int[] {event.start}, 4);
-				OS.memmove (end_offset, new int[] {event.end}, 4);
+				C.memmove (start_offset, new int[] {event.start}, 4);
+				C.memmove (end_offset, new int[] {event.end}, 4);
 				return getStringPtr (event.result);
 			}
 			int offset = (int)/*64*/offset_value;
@@ -2894,21 +3921,38 @@ class AccessibleObject {
 						break;
 					}
 				}
-				OS.memmove (start_offset, new int[] {startBounds}, 4);
-				OS.memmove (end_offset, new int[] {endBounds}, 4);
+				C.memmove (start_offset, new int[] {startBounds}, 4);
+				C.memmove (end_offset, new int[] {endBounds}, 4);
 				text = text.substring (startBounds, endBounds);
 				return getStringPtr (text);
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_text_after_offset != 0) {
 			return ATK.call (iface.get_text_after_offset, atkObject, offset_value, boundary_type, start_offset, end_offset);
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkText_get_text_at_offset (long /*int*/ atkObject, long /*int*/ offset_value, long /*int*/ boundary_type, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_get_text_at_offset: " + offset_value + " start: " + start_offset + " end: " + end_offset);
+	/**
+	 * Gets the specified text.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset position
+	 * @param boundary_type the AtkTextBoundary
+	 * @param start_offset the start offset of the returned string
+	 * @param end_offset the end_offset of the first character after the returned string
+	 *
+	 * @return a pointer to the newly allocated string containing the
+	 * text at offset bounded by the specified boundary_type
+	 */
+	static long /*int*/ atkText_get_text_at_offset (long /*int*/ atkObject, long /*int*/ offset_value,
+			long /*int*/ boundary_type, long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -2980,8 +4024,8 @@ class AccessibleObject {
 						}
 						break;
 				}
-				OS.memmove (start_offset, new int[] {event.start}, 4);
-				OS.memmove (end_offset, new int[] {event.end}, 4);
+				C.memmove (start_offset, new int[] {event.start}, 4);
+				C.memmove (end_offset, new int[] {event.end}, 4);
 				return getStringPtr (event.result);
 			}
 			int offset = (int)/*64*/offset_value;
@@ -3085,21 +4129,38 @@ class AccessibleObject {
 						endBounds = nextIndexOfChar (text, "\n", lineEnd1 + 1);
 					}
 				}
-				OS.memmove (start_offset, new int[] {startBounds}, 4);
-				OS.memmove (end_offset, new int[] {endBounds}, 4);
+				C.memmove (start_offset, new int[] {startBounds}, 4);
+				C.memmove (end_offset, new int[] {endBounds}, 4);
 				text = text.substring (startBounds, endBounds);
 				return getStringPtr (text);
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_text_at_offset != 0) {
 			return ATK.call (iface.get_text_at_offset, atkObject, offset_value, boundary_type, start_offset, end_offset);
 		}
 		return 0;
 	}
 
-	static long /*int*/ atkText_get_text_before_offset (long /*int*/ atkObject, long /*int*/ offset_value, long /*int*/ boundary_type, long /*int*/ start_offset, long /*int*/ end_offset) {
-		if (DEBUG) print ("-->atkText_get_text_before_offset");
+	/**
+	 * Gets the specified text.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param offset position
+	 * @param boundary_type the AtkTextBoundary
+	 * @param start_offset the start offset of the returned string
+	 * @param end_offset the end_offset of the first character after the returned string
+	 *
+	 * @return a pointer to the newly allocated string containing
+	 * the text before offset bounded by the specified boundary_type
+	 */
+	static long /*int*/ atkText_get_text_before_offset (long /*int*/ atkObject, long /*int*/ offset_value,
+			long /*int*/ boundary_type, long /*int*/ start_offset, long /*int*/ end_offset) {
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -3125,8 +4186,8 @@ class AccessibleObject {
 					AccessibleTextExtendedListener listener = listeners.get(i);
 					listener.getText(event);
 				}
-				OS.memmove (start_offset, new int[] {event.start}, 4);
-				OS.memmove (end_offset, new int[] {event.end}, 4);
+				C.memmove (start_offset, new int[] {event.start}, 4);
+				C.memmove (end_offset, new int[] {event.end}, 4);
 				switch ((int)/*64*/boundary_type) {
 					case ATK.ATK_TEXT_BOUNDARY_WORD_START:
 					case ATK.ATK_TEXT_BOUNDARY_SENTENCE_START:
@@ -3281,13 +4342,13 @@ class AccessibleObject {
 						break;
 					}
 				}
-				OS.memmove (start_offset, new int[] {startBounds}, 4);
-				OS.memmove (end_offset, new int[] {endBounds}, 4);
+				C.memmove (start_offset, new int[] {startBounds}, 4);
+				C.memmove (end_offset, new int[] {endBounds}, 4);
 				text = text.substring (startBounds, endBounds);
 				return getStringPtr (text);
 			}
 		}
-		AtkTextIface iface = getTextIface (atkObject);
+		AtkTextIface iface = getParentTextIface (atkObject);
 		if (iface != null && iface.get_text_before_offset != 0) {
 			return ATK.call (iface.get_text_before_offset, atkObject, offset_value, boundary_type, start_offset, end_offset);
 		}
@@ -3315,24 +4376,48 @@ class AccessibleObject {
 	static Number getGValue (long /*int*/ value) {
 		long /*int*/ type = OS.G_VALUE_TYPE(value);
 		if (type == 0) return null;
-		if (type == OS.G_TYPE_DOUBLE()) return new Double(OS.g_value_get_double(value));
-		if (type == OS.G_TYPE_FLOAT()) return new Float(OS.g_value_get_float(value));
-		if (type == OS.G_TYPE_INT64()) return new Long(OS.g_value_get_int64(value));
+		if (type == OS.G_TYPE_DOUBLE()) return Double.valueOf(OS.g_value_get_double(value));
+		if (type == OS.G_TYPE_FLOAT()) return Float.valueOf(OS.g_value_get_float(value));
+		if (type == OS.G_TYPE_INT64()) return Long.valueOf(OS.g_value_get_int64(value));
 		return Integer.valueOf(OS.g_value_get_int(value));
 	}
 
-	static AtkValueIface getValueIface (long /*int*/ atkObject) {
-		if (ATK.g_type_is_a (OS.g_type_parent (OS.G_OBJECT_TYPE (atkObject)), ATK.ATK_TYPE_VALUE())) {
+	/**
+	 * Fills a Java AtkValueIface struct with that of the parent class.
+	 * This is a Java implementation of what is referred to in GObject as "chaining up".
+	 * See: https://developer.gnome.org/gobject/stable/howto-gobject-chainup.html
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AtkValueIface Java object representing the interface struct of atkObject's
+	 * parent
+	 */
+	static AtkValueIface getParentValueIface (long /*int*/ atkObject) {
+		long /*int*/ type = GTK.GTK3 ? OS.swt_fixed_accessible_get_type() : OS.G_OBJECT_TYPE (atkObject);
+		if (OS.g_type_is_a (OS.g_type_parent (type), ATK.ATK_TYPE_VALUE())) {
 			AtkValueIface iface = new AtkValueIface ();
-			ATK.memmove (iface, ATK.g_type_interface_peek_parent (ATK.ATK_VALUE_GET_IFACE (atkObject)));
+			ATK.memmove (iface, OS.g_type_interface_peek_parent (ATK.ATK_VALUE_GET_IFACE (atkObject)));
 			return iface;
 		}
 		return null;
 	}
+
+	/**
+	 * Gets the value of this atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param value a pointer to a GValue that represents the current value
+	 *
+	 * @return 0, this is a void function -- the value is stored in the parameter
+	 */
 	static long /*int*/ atkValue_get_current_value (long /*int*/ atkObject, long /*int*/ value) {
-		if (DEBUG) print ("-->atkValue_get_current_value");
 		AccessibleObject object = getAccessibleObject (atkObject);
-		AtkValueIface iface = getValueIface (atkObject);
+		AtkValueIface iface = getParentValueIface (atkObject);
 		if (iface != null && iface.get_current_value != 0) {
 			ATK.call (iface.get_current_value, atkObject, value);
 		}
@@ -3353,10 +4438,23 @@ class AccessibleObject {
 		return 0;
 	}
 
+	/**
+	 * Gets the maximum value of this atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param value a pointer to a GValue that represents the current maximum
+	 * value
+	 *
+	 * @return 0, this is a void function -- the value is stored in the parameter
+	 */
 	static long /*int*/ atkValue_get_maximum_value (long /*int*/ atkObject, long /*int*/ value) {
-		if (DEBUG) print ("-->atkValue_get_maximum_value");
 		AccessibleObject object = getAccessibleObject (atkObject);
-		AtkValueIface iface = getValueIface (atkObject);
+		AtkValueIface iface = getParentValueIface (atkObject);
 		if (iface != null && iface.get_maximum_value != 0) {
 			ATK.call (iface.get_maximum_value, atkObject, value);
 		}
@@ -3377,10 +4475,23 @@ class AccessibleObject {
 		return 0;
 	}
 
+	/**
+	 * Gets the minimum value of this atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param value a pointer to a GValue that represents the current minimum
+	 * value
+	 *
+	 * @return 0, this is a void function -- the value is stored in the parameter
+	 */
 	static long /*int*/ atkValue_get_minimum_value (long /*int*/ atkObject, long /*int*/ value) {
-		if (DEBUG) print ("-->atkValue_get_minimum_value");
 		AccessibleObject object = getAccessibleObject (atkObject);
-		AtkValueIface iface = getValueIface (atkObject);
+		AtkValueIface iface = getParentValueIface (atkObject);
 		if (iface != null && iface.get_minimum_value != 0) {
 			ATK.call (iface.get_minimum_value, atkObject, value);
 		}
@@ -3401,8 +4512,20 @@ class AccessibleObject {
 		return 0;
 	}
 
+	/**
+	 * Sets the value of this atkObject.
+	 *
+	 * This is the implementation of an ATK function which
+	 * queries the Accessible listeners at the Java level. On GTK3 the ATK
+	 * interfaces are implemented in os_custom.c and access this method via
+	 * JNI.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 * @param value a pointer to the new GValue to be set
+	 *
+	 * @return a long int representation of 1 for success, 0 otherwise
+	 */
 	static long /*int*/ atkValue_set_current_value (long /*int*/ atkObject, long /*int*/ value) {
-		if (DEBUG) print ("-->atkValue_set_current_value");
 		AccessibleObject object = getAccessibleObject (atkObject);
 		if (object != null) {
 			Accessible accessible = object.accessible;
@@ -3419,13 +4542,21 @@ class AccessibleObject {
 			}
 		}
 		long /*int*/ parentResult = 0;
-		AtkValueIface iface = getValueIface (atkObject);
+		AtkValueIface iface = getParentValueIface (atkObject);
 		if (iface != null && iface.set_current_value != 0) {
 			parentResult = ATK.call (iface.set_current_value, atkObject, value);
 		}
 		return parentResult;
 	}
 
+	/**
+	 * Gets the AccessibleObject associated with the AtkObject handle
+	 * from the Java map of AccessibleObjects.
+	 *
+	 * @param atkObject a pointer to the current AtkObject
+	 *
+	 * @return an AccessibleObject associated with the provided AtkObject pointer
+	 */
 	static AccessibleObject getAccessibleObject (long /*int*/ atkObject) {
 		AccessibleObject object = AccessibleObjects.get (new LONG (atkObject));
 		if (object == null) return null;
@@ -3457,11 +4588,11 @@ class AccessibleObject {
 		int length = size(listeners);
 		if (length > 0) {
 			String parentText = "";	//$NON-NLS-1$
-			AtkTextIface iface = getTextIface (handle);
+			AtkTextIface iface = getParentTextIface (atkHandle);
 			if (iface != null && iface.get_character_count != 0) {
-				long /*int*/ characterCount = ATK.call (iface.get_character_count, handle);
+				long /*int*/ characterCount = ATK.call (iface.get_character_count, atkHandle);
 				if (characterCount > 0 && iface.get_text != 0) {
-					long /*int*/ parentResult = ATK.call (iface.get_text, handle, 0, characterCount);
+					long /*int*/ parentResult = ATK.call (iface.get_text, atkHandle, 0, characterCount);
 					if (parentResult != 0) {
 						parentText = getString (parentResult);
 						OS.g_free(parentResult);
@@ -3481,12 +4612,18 @@ class AccessibleObject {
 	}
 
 	static long /*int*/ gObjectClass_finalize (long /*int*/ atkObject) {
-		if (DEBUG) print ("-->gObjectClass_finalize: " + atkObject);
-		long /*int*/ superType = ATK.g_type_class_peek_parent (ATK.G_OBJECT_GET_CLASS (atkObject));
-		long /*int*/ gObjectClass = ATK.G_OBJECT_CLASS (superType);
-		GObjectClass objectClassStruct = new GObjectClass ();
-		ATK.memmove (objectClassStruct, gObjectClass);
-		ATK.call (objectClassStruct.finalize, atkObject);
+		/*
+		 * GObject destruction is handled in os_custom.c in GTK3.
+		 * Both GTK3 and GTK2 need to remove the AccessibleObject from
+		 * the map of AccessibleObjects, though.
+		 */
+		if (!GTK.GTK3) {
+			long /*int*/ superType = OS.g_type_class_peek_parent (OS.G_OBJECT_GET_CLASS (atkObject));
+			long /*int*/ gObjectClass = OS.G_OBJECT_CLASS (superType);
+			GObjectClass objectClassStruct = new GObjectClass ();
+			OS.memmove (objectClassStruct, gObjectClass);
+			ATK.call (objectClassStruct.finalize, atkObject);
+		}
 		AccessibleObject object = AccessibleObjects.get (new LONG (atkObject));
 		if (object != null) {
 			AccessibleObjects.remove (new LONG (atkObject));
@@ -3516,15 +4653,15 @@ class AccessibleObject {
 	}
 
 	static void windowPoint (AccessibleObject object, int [] x, int [] y) {
-		long /*int*/ widget = OS.gtk_accessible_get_widget(object.handle);
+		long /*int*/ widget = GTK.gtk_accessible_get_widget(object.atkHandle);
 		while (widget == 0 && object.parent != null) {
 			object = object.parent;
-			widget = OS.gtk_accessible_get_widget(object.handle);
+			widget = GTK.gtk_accessible_get_widget(object.atkHandle);
 		}
 		if (widget == 0) return;
-		long /*int*/ topLevel = ATK.gtk_widget_get_toplevel (widget);
-		long /*int*/ window = OS.gtk_widget_get_window (topLevel);
-		OS.gdk_window_get_origin (window, x, y);
+		long /*int*/ topLevel = GTK.gtk_widget_get_toplevel (widget);
+		long /*int*/ window = GTK.gtk_widget_get_window (topLevel);
+		GDK.gdk_window_get_origin (window, x, y);
 	}
 
 	static int nextIndexOfChar (String string, String searchChars, int startIndex) {
@@ -3582,23 +4719,25 @@ class AccessibleObject {
 			 * circumstances the target doesn't have an accessibleObject, that's
 			 * the best way we know to avoid throwing an NPE.
 			 */
-			OS.atk_object_add_relationship(handle, toATKRelation(type), targetAccessibleObject.handle);
+			ATK.atk_object_add_relationship(atkHandle, toATKRelation(type), targetAccessibleObject.atkHandle);
 		}
 	}
 
 	void release () {
-		if (DEBUG) print("AccessibleObject.release: " + handle);
 		accessible = null;
+		/*
+		 * GObject destruction is implemented in os_custom.c for GTK3:
+		 * only unref lightweight widgets and children.
+		 */
 		if (children != null) {
 			for (int i = 0; i < children.length; i++) {
 				AccessibleObject child = children [i];
-				if (child != null) OS.g_object_unref(child.handle);
+				if (child != null) OS.g_object_unref(child.atkHandle);
 			}
 			children = null;
 		}
-		// TODO remove from children from parent?
 		if (isLightweight) {
-			OS.g_object_unref(handle);
+			OS.g_object_unref(atkHandle);
 		}
 	}
 
@@ -3613,21 +4752,21 @@ class AccessibleObject {
 			 * circumstances the target doesn't have an accessibleObject, that's
 			 * the best way we know to avoid throwing an NPE.
 			 */
-			OS.atk_object_remove_relationship (handle, toATKRelation(type), targetAccessibleObject.handle);
+			ATK.atk_object_remove_relationship (atkHandle, toATKRelation(type), targetAccessibleObject.atkHandle);
 		}
 	}
 
 	void selectionChanged () {
-		OS.g_signal_emit_by_name (handle, ATK.selection_changed);
+		OS.g_signal_emit_by_name (atkHandle, ATK.selection_changed);
 	}
 
 	void sendEvent(int event, Object eventData) {
 		switch (event) {
 			case ACC.EVENT_SELECTION_CHANGED:
-				OS.g_signal_emit_by_name (handle, ATK.selection_changed);
+				OS.g_signal_emit_by_name (atkHandle, ATK.selection_changed);
 				break;
 			case ACC.EVENT_TEXT_SELECTION_CHANGED:
-				OS.g_signal_emit_by_name (handle, ATK.text_selection_changed);
+				OS.g_signal_emit_by_name (atkHandle, ATK.text_selection_changed);
 				break;
 			case ACC.EVENT_STATE_CHANGED: {
 				if (!(eventData instanceof int[])) break;
@@ -3661,7 +4800,7 @@ class AccessibleObject {
 					case ACC.STATE_SUPPORTS_AUTOCOMPLETION: atkState = ATK.ATK_STATE_SUPPORTS_AUTOCOMPLETION; break;
 				}
 				if (atkState == -1) break;
-				ATK.atk_object_notify_state_change(handle, atkState, value != 0);
+				ATK.atk_object_notify_state_change(atkHandle, atkState, value != 0);
 				break;
 			}
 			case ACC.EVENT_LOCATION_CHANGED: {
@@ -3680,26 +4819,26 @@ class AccessibleObject {
 					rect.width = e.width;
 					rect.height = e.height;
 				}
-				OS.g_signal_emit_by_name (handle, ATK.bounds_changed, rect);
+				OS.g_signal_emit_by_name (atkHandle, ATK.bounds_changed, rect);
 				break;
 			}
 			case ACC.EVENT_NAME_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_name);
+				OS.g_object_notify(atkHandle, ATK.accessible_name);
 				break;
 			case ACC.EVENT_DESCRIPTION_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_description);
+				OS.g_object_notify(atkHandle, ATK.accessible_description);
 				break;
 			case ACC.EVENT_VALUE_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_value);
+				OS.g_object_notify(atkHandle, ATK.accessible_value);
 				break;
 			case ACC.EVENT_DOCUMENT_LOAD_COMPLETE:
-				OS.g_signal_emit_by_name (handle, ATK.load_complete);
+				OS.g_signal_emit_by_name (atkHandle, ATK.load_complete);
 				break;
 			case ACC.EVENT_DOCUMENT_LOAD_STOPPED:
-				OS.g_signal_emit_by_name (handle, ATK.load_stopped);
+				OS.g_signal_emit_by_name (atkHandle, ATK.load_stopped);
 				break;
 			case ACC.EVENT_DOCUMENT_RELOAD:
-				OS.g_signal_emit_by_name (handle, ATK.reload);
+				OS.g_signal_emit_by_name (atkHandle, ATK.reload);
 				break;
 			case ACC.EVENT_PAGE_CHANGED:
 				break;
@@ -3708,39 +4847,39 @@ class AccessibleObject {
 			case ACC.EVENT_ACTION_CHANGED:
 				break;
 			case ACC.EVENT_HYPERLINK_END_INDEX_CHANGED:
-				OS.g_object_notify(handle, ATK.end_index);
+				OS.g_object_notify(atkHandle, ATK.end_index);
 				break;
 			case ACC.EVENT_HYPERLINK_ANCHOR_COUNT_CHANGED:
-				OS.g_object_notify(handle, ATK.number_of_anchors);
+				OS.g_object_notify(atkHandle, ATK.number_of_anchors);
 				break;
 			case ACC.EVENT_HYPERLINK_SELECTED_LINK_CHANGED:
-				OS.g_object_notify(handle, ATK.selected_link);
+				OS.g_object_notify(atkHandle, ATK.selected_link);
 				break;
 			case ACC.EVENT_HYPERLINK_START_INDEX_CHANGED:
-				OS.g_object_notify(handle, ATK.start_index);
+				OS.g_object_notify(atkHandle, ATK.start_index);
 				break;
 			case ACC.EVENT_HYPERLINK_ACTIVATED:
-				OS.g_signal_emit_by_name (handle, ATK.link_activated);
+				OS.g_signal_emit_by_name (atkHandle, ATK.link_activated);
 				break;
 			case ACC.EVENT_HYPERTEXT_LINK_SELECTED:
 				if (!(eventData instanceof Integer)) break;
 				int index =  ((Integer)eventData).intValue();
-				OS.g_signal_emit_by_name (handle, ATK.link_selected, index);
+				OS.g_signal_emit_by_name (atkHandle, ATK.link_selected, index);
 				break;
 			case ACC.EVENT_HYPERTEXT_LINK_COUNT_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_hypertext_nlinks);
+				OS.g_object_notify(atkHandle, ATK.accessible_hypertext_nlinks);
 				break;
 			case ACC.EVENT_ATTRIBUTE_CHANGED:
-				OS.g_signal_emit_by_name (handle, ATK.attributes_changed);
+				OS.g_signal_emit_by_name (atkHandle, ATK.attributes_changed);
 				break;
 			case ACC.EVENT_TABLE_CAPTION_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_table_caption_object);
+				OS.g_object_notify(atkHandle, ATK.accessible_table_caption_object);
 				break;
 			case ACC.EVENT_TABLE_COLUMN_DESCRIPTION_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_table_column_description);
+				OS.g_object_notify(atkHandle, ATK.accessible_table_column_description);
 				break;
 			case ACC.EVENT_TABLE_COLUMN_HEADER_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_table_column_header);
+				OS.g_object_notify(atkHandle, ATK.accessible_table_column_header);
 				break;
 			case ACC.EVENT_TABLE_CHANGED: {
 				if (!(eventData instanceof int[])) break;
@@ -3752,27 +4891,27 @@ class AccessibleObject {
 				int columnCount = array[4];
 				switch (type) {
 					case ACC.DELETE:
-						if (rowCount > 0) OS.g_signal_emit_by_name (handle, ATK.row_deleted, rowStart, rowCount);
-						if (columnCount > 0) OS.g_signal_emit_by_name (handle, ATK.column_deleted, columnStart, columnCount);
+						if (rowCount > 0) OS.g_signal_emit_by_name (atkHandle, ATK.row_deleted, rowStart, rowCount);
+						if (columnCount > 0) OS.g_signal_emit_by_name (atkHandle, ATK.column_deleted, columnStart, columnCount);
 						break;
 					case ACC.INSERT:
-						if (rowCount > 0) OS.g_signal_emit_by_name (handle, ATK.row_inserted, rowStart, rowCount);
-						if (columnCount > 0) OS.g_signal_emit_by_name (handle, ATK.column_inserted, columnStart, columnCount);
+						if (rowCount > 0) OS.g_signal_emit_by_name (atkHandle, ATK.row_inserted, rowStart, rowCount);
+						if (columnCount > 0) OS.g_signal_emit_by_name (atkHandle, ATK.column_inserted, columnStart, columnCount);
 						break;
 				}
 				break;
 			}
 			case ACC.EVENT_TABLE_ROW_DESCRIPTION_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_table_row_description);
+				OS.g_object_notify(atkHandle, ATK.accessible_table_row_description);
 				break;
 			case ACC.EVENT_TABLE_ROW_HEADER_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_table_row_header);
+				OS.g_object_notify(atkHandle, ATK.accessible_table_row_header);
 				break;
 			case ACC.EVENT_TABLE_SUMMARY_CHANGED:
-				OS.g_object_notify(handle, ATK.accessible_table_summary);
+				OS.g_object_notify(atkHandle, ATK.accessible_table_summary);
 				break;
 			case ACC.EVENT_TEXT_ATTRIBUTE_CHANGED:
-				OS.g_signal_emit_by_name (handle, ATK.text_attributes_changed);
+				OS.g_signal_emit_by_name (atkHandle, ATK.text_attributes_changed);
 				break;
 			case ACC.EVENT_TEXT_CARET_MOVED:
 			case ACC.EVENT_TEXT_COLUMN_CHANGED: {
@@ -3797,7 +4936,7 @@ class AccessibleObject {
 					}
 				}
 				offset = e.offset;
-				OS.g_signal_emit_by_name (handle, ATK.text_caret_moved, offset);
+				OS.g_signal_emit_by_name (atkHandle, ATK.text_caret_moved, offset);
 				break;
 			}
 			case ACC.EVENT_TEXT_CHANGED: {
@@ -3808,10 +4947,10 @@ class AccessibleObject {
 				int end = ((Integer)data[2]).intValue();
 				switch (type) {
 					case ACC.DELETE:
-						OS.g_signal_emit_by_name (handle, ATK.text_changed_delete, start, end -start);
+						OS.g_signal_emit_by_name (atkHandle, ATK.text_changed_delete, start, end -start);
 						break;
 					case ACC.INSERT:
-						OS.g_signal_emit_by_name (handle, ATK.text_changed_insert, start, end -start);
+						OS.g_signal_emit_by_name (atkHandle, ATK.text_changed_insert, start, end -start);
 						break;
 				}
 				break;
@@ -3831,25 +4970,25 @@ class AccessibleObject {
 		updateChildren ();
 		AccessibleObject accObject = getChildByID (childID);
 		if (accObject != null) {
-			OS.g_signal_emit_by_name (accObject.handle, ATK.focus_event, 1, 0);
-			ATK.atk_object_notify_state_change(accObject.handle, ATK.ATK_STATE_FOCUSED, true);
+			OS.g_signal_emit_by_name (accObject.atkHandle, ATK.focus_event, 1, 0);
+			ATK.atk_object_notify_state_change(accObject.atkHandle, ATK.ATK_STATE_FOCUSED, true);
 		}
 	}
 
 	void textCaretMoved(int index) {
-		OS.g_signal_emit_by_name (handle, ATK.text_caret_moved, index);
+		OS.g_signal_emit_by_name (atkHandle, ATK.text_caret_moved, index);
 	}
 
 	void textChanged(int type, int startIndex, int length) {
 		if (type == ACC.TEXT_DELETE) {
-			OS.g_signal_emit_by_name (handle, ATK.text_changed_delete, startIndex, length);
+			OS.g_signal_emit_by_name (atkHandle, ATK.text_changed_delete, startIndex, length);
 		} else {
-			OS.g_signal_emit_by_name (handle, ATK.text_changed_insert, startIndex, length);
+			OS.g_signal_emit_by_name (atkHandle, ATK.text_changed_insert, startIndex, length);
 		}
 	}
 
 	void textSelectionChanged() {
-		OS.g_signal_emit_by_name (handle, ATK.text_selection_changed);
+		OS.g_signal_emit_by_name (atkHandle, ATK.text_selection_changed);
 	}
 
 	void updateChildren () {
@@ -3868,6 +5007,7 @@ class AccessibleObject {
 		for (int i = 0; i < count; i++) {
 			Object child = children [i];
 			AccessibleObject object = null;
+			// Widgets where the children are Integers: CTable, BarChart, and CTabFolder
 			if (child instanceof Integer) {
 				int id = ((Integer)child).intValue();
 				object = oldChildren != null && i < oldChildren.length ? oldChildren [i] : null;
@@ -3880,17 +5020,23 @@ class AccessibleObject {
 					}
 					if (event.accessible != null) {
 						object = event.accessible.getAccessibleObject();
-						if (object != null)	OS.g_object_ref(object.handle);
+						if (object != null)	OS.g_object_ref(object.atkHandle);
 					} else {
-						object = AccessibleFactory.createChildAccessible (accessible, id);
+						if (GTK.GTK3) {
+							long /*int*/ type = OS.G_OBJECT_TYPE (accessible.getControlHandle());
+							long /*int*/ widget = accessible.getControlHandle();
+							object = new AccessibleObject(type, widget, accessible, true);
+						} else {
+							object = AccessibleFactory.createChildAccessible (accessible, id);
+						}
 					}
 					object.id = id;
 				} else {
-					OS.g_object_ref(object.handle);
+					OS.g_object_ref(object.atkHandle);
 				}
 			} else if (child instanceof Accessible) {
 				object = ((Accessible)child).getAccessibleObject();
-				if (object != null)	OS.g_object_ref(object.handle);
+				if (object != null)	OS.g_object_ref(object.atkHandle);
 			}
 			if (object != null) {
 				object.index = i;
@@ -3901,7 +5047,7 @@ class AccessibleObject {
 		if (oldChildren != null) {
 			for (int i = 0; i < oldChildren.length; i++) {
 				AccessibleObject object = oldChildren [i];
-				if (object != null) OS.g_object_unref(object.handle);
+				if (object != null) OS.g_object_unref(object.atkHandle);
 			}
 		}
 		this.children = newChildren;

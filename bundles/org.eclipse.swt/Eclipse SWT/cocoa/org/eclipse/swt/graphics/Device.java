@@ -321,9 +321,9 @@ public int getDepth () {
 }
 
 /**
- * Returns a point whose x coordinate is the horizontal
+ * Returns a point whose x coordinate is the logical horizontal
  * dots per inch of the display, and whose y coordinate
- * is the vertical dots per inch of the display.
+ * is the logical vertical dots per inch of the display.
  *
  * @return the horizontal and vertical DPI
  *
@@ -789,7 +789,7 @@ public void setWarnings (boolean warnings) {
  */
 protected int getDeviceZoom () {
 	NSScreen mainScreen = NSScreen.mainScreen();
-	int scaleFactor = (int) mainScreen.backingScaleFactor();
+	int scaleFactor = mainScreen != null ? (int) mainScreen.backingScaleFactor() : 1;
 	return scaleFactor * 100;
 }
 

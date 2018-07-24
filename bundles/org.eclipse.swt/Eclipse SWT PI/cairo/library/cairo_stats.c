@@ -15,7 +15,7 @@
  *
  * IBM
  * -  Binding to permit interfacing between Cairo and SWT
- * -  Copyright (C) 2005, 2017 IBM Corp.  All Rights Reserved.
+ * -  Copyright (C) 2005, 2018 IBM Corp.  All Rights Reserved.
  *
  * ***** END LICENSE BLOCK ***** */
 
@@ -96,6 +96,8 @@ char * Cairo_nativeFunctionNames[] = {
 	"_1cairo_1push_1group",
 	"_1cairo_1rectangle",
 	"_1cairo_1reference",
+	"_1cairo_1region_1contains_1point",
+	"_1cairo_1region_1copy",
 	"_1cairo_1region_1get_1rectangle",
 	"_1cairo_1region_1num_1rectangles",
 	"_1cairo_1reset_1clip",
@@ -127,10 +129,12 @@ char * Cairo_nativeFunctionNames[] = {
 	"_1cairo_1surface_1finish",
 	"_1cairo_1surface_1flush",
 	"_1cairo_1surface_1get_1content",
+	"_1cairo_1surface_1get_1device_1scale",
 	"_1cairo_1surface_1get_1type",
 	"_1cairo_1surface_1get_1user_1data",
 	"_1cairo_1surface_1mark_1dirty",
 	"_1cairo_1surface_1reference",
+	"_1cairo_1surface_1set_1device_1scale",
 	"_1cairo_1transform",
 	"_1cairo_1translate",
 	"_1cairo_1user_1to_1device_1distance",
@@ -140,6 +144,7 @@ char * Cairo_nativeFunctionNames[] = {
 	"cairo_1path_1data_1t_1sizeof",
 	"cairo_1path_1t_1sizeof",
 	"cairo_1version",
+	"cairo_1version_1string",
 #ifndef JNI64
 	"memmove__Lorg_eclipse_swt_internal_cairo_cairo_1path_1data_1t_2II",
 #else

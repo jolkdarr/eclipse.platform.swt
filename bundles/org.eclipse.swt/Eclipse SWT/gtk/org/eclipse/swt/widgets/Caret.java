@@ -99,9 +99,9 @@ void createWidget (int index) {
 boolean drawCaret () {
 	if (parent == null) return false;
 	if (parent.isDisposed ()) return false;
-	if (OS.GTK_VERSION < OS.VERSION (3, 22, 0)) {
+	if (GTK.GTK_VERSION < OS.VERSION (3, 22, 0)) {
 		long /*int*/ window = parent.paintWindow ();
-		long /*int*/ cairo = OS.gdk_cairo_create(window);
+		long /*int*/ cairo = GDK.gdk_cairo_create(window);
 		if (cairo == 0) error(SWT.ERROR_NO_HANDLES);
 		Cairo.cairo_set_source_rgba(cairo, 1.0, 1.0, 1.0, 1.0);
 		Cairo.cairo_set_operator(cairo, Cairo.CAIRO_OPERATOR_DIFFERENCE);
@@ -132,7 +132,7 @@ boolean drawCaret () {
 		Cairo.cairo_destroy(cairo);
 		return true;
 	} else {
-		OS.gtk_widget_queue_draw(parent.handle);
+		GTK.gtk_widget_queue_draw(parent.handle);
 		return true;
 	}
 }

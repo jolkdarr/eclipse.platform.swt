@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,10 +11,13 @@
 package org.eclipse.swt.tests.junit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.function.BooleanSupplier;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeListener;
@@ -55,7 +58,7 @@ public void tearDown() {
 		assertEquals(disposedIntentionally, widget.isDisposed());
 	}
 	if (!disposedIntentionally) {
-		assertEquals(false, shell.isDisposed());
+		assertFalse(shell.isDisposed());
 	}
 	shell.dispose();
 	if (widget != null) {
@@ -94,7 +97,7 @@ public void test_getDisplay() {
 }
 @Test
 public void test_isDisposed() {
-	assertEquals(false, widget.isDisposed());
+	assertFalse(widget.isDisposed());
 }
 @Test
 public void test_notifyListenersILorg_eclipse_swt_widgets_Event() {
@@ -207,6 +210,21 @@ protected String getClassName() {
     return clazz;
 }
 
+protected void processEvents(int timeoutMs, BooleanSupplier condition) throws InterruptedException {
+	if (condition == null) {
+		condition = () -> false;
+	}
+	long targetTimestamp = System.currentTimeMillis() + timeoutMs;
+	while (!condition.getAsBoolean()) {
+		if (!shell.getDisplay().readAndDispatch()) {
+			if (System.currentTimeMillis() < targetTimestamp) {
+				Thread.sleep(50);
+			} else {
+				return;
+			}
+		}
+	}
+}
 
 
 }

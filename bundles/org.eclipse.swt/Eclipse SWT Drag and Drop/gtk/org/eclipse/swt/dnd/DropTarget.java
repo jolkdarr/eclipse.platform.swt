@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -338,10 +338,10 @@ void drag_data_received ( long /*int*/ widget, long /*int*/ context, int x, int 
 	// Get data in a Java format
 	Object object = null;
 	TransferData transferData = new TransferData();
-	int length = OS.gtk_selection_data_get_length(selection_data);
-	int format = OS.gtk_selection_data_get_format(selection_data);
-	long /*int*/ data = OS.gtk_selection_data_get_data(selection_data);
-	long /*int*/ type = OS.gtk_selection_data_get_data_type(selection_data);
+	int length = GTK.gtk_selection_data_get_length(selection_data);
+	int format = GTK.gtk_selection_data_get_format(selection_data);
+	long /*int*/ data = GTK.gtk_selection_data_get_data(selection_data);
+	long /*int*/ type = GTK.gtk_selection_data_get_data_type(selection_data);
 	if (data != 0) {
 		transferData.type = type;
 		transferData.length = length;
@@ -371,7 +371,7 @@ void drag_data_received ( long /*int*/ widget, long /*int*/ context, int x, int 
 	OS.g_signal_stop_emission_by_name(widget, OS.drag_data_received);
 
 	//notify source of action taken
-	OS.gtk_drag_finish(context, selectedOperation != DND.DROP_NONE, selectedOperation== DND.DROP_MOVE, time);
+	GTK.gtk_drag_finish(context, selectedOperation != DND.DROP_NONE, selectedOperation== DND.DROP_MOVE, time);
 	return;
 }
 
@@ -408,7 +408,7 @@ boolean drag_drop(long /*int*/ widget, long /*int*/ context, int x, int y, int t
 		return false;
 	}
 	// ask drag source for dropped data
-	OS.gtk_drag_get_data(widget, context, selectedDataType.type, time);
+	GTK.gtk_drag_get_data(widget, context, selectedDataType.type, time);
 	return true;
 }
 
@@ -441,7 +441,7 @@ boolean drag_motion ( long /*int*/ widget, long /*int*/ context, int x, int y, i
 	DNDEvent event = new DNDEvent();
 	if (!setEventData(context, x, y, time, event)) {
 		keyOperation = -1;
-		OS.gdk_drag_status(context, 0, time);
+		GDK.gdk_drag_status(context, 0, time);
 		return false;
 	}
 
@@ -482,16 +482,16 @@ boolean drag_motion ( long /*int*/ widget, long /*int*/ context, int x, int y, i
 
 	switch (selectedOperation) {
 		case DND.DROP_NONE:
-			OS.gdk_drag_status(context, 0, time);
+			GDK.gdk_drag_status(context, 0, time);
 			break;
 		case DND.DROP_COPY:
-			OS.gdk_drag_status(context, OS.GDK_ACTION_COPY, time);
+			GDK.gdk_drag_status(context, GDK.GDK_ACTION_COPY, time);
 			break;
 		case DND.DROP_MOVE:
-			OS.gdk_drag_status(context, OS.GDK_ACTION_MOVE, time);
+			GDK.gdk_drag_status(context, GDK.GDK_ACTION_MOVE, time);
 			break;
 		case DND.DROP_LINK:
-			OS.gdk_drag_status(context, OS.GDK_ACTION_LINK, time);
+			GDK.gdk_drag_status(context, GDK.GDK_ACTION_LINK, time);
 			break;
 	}
 
@@ -564,16 +564,15 @@ public DropTargetEffect getDropTargetEffect() {
 
 int getOperationFromKeyState() {
 	int[] state = new int[1];
-	if (OS.GTK3) {
-		long /*int*/ root = OS.gdk_get_default_root_window ();
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager (OS.gdk_window_get_display (root));
-		long /*int*/ pointer = OS.gdk_device_manager_get_client_pointer (device_manager);
-		OS.gdk_window_get_device_position(root, pointer, null, null, state);
+	if (GTK.GTK3) {
+		long /*int*/ root = GDK.gdk_get_default_root_window ();
+		long /*int*/ pointer = GDK.gdk_get_pointer (GDK.gdk_window_get_display (root));
+		GDK.gdk_window_get_device_position(root, pointer, null, null, state);
 	} else {
-		OS.gdk_window_get_pointer(0, null, null, state);
+		GDK.gdk_window_get_pointer(0, null, null, state);
 	}
-	boolean ctrl = (state[0] & OS.GDK_CONTROL_MASK) != 0;
-	boolean shift = (state[0] & OS.GDK_SHIFT_MASK) != 0;
+	boolean ctrl = (state[0] & GDK.GDK_CONTROL_MASK) != 0;
+	boolean shift = (state[0] & GDK.GDK_SHIFT_MASK) != 0;
 	if (ctrl && shift) return DND.DROP_LINK;
 	if (ctrl)return DND.DROP_COPY;
 	if (shift)return DND.DROP_MOVE;
@@ -596,7 +595,7 @@ void onDispose(){
 	OS.g_signal_handler_disconnect(control.handle, drag_data_received_handler);
 	OS.g_signal_handler_disconnect(control.handle, drag_drop_handler);
 	if (transferAgents.length != 0)
-		OS.gtk_drag_dest_unset(control.handle);
+		GTK.gtk_drag_dest_unset(control.handle);
 	transferAgents = null;
 	if (controlListener != null)
 		control.removeListener(SWT.Dispose, controlListener);
@@ -608,21 +607,21 @@ void onDispose(){
 int opToOsOp(int operation){
 	int osOperation = 0;
 	if ((operation & DND.DROP_COPY) == DND.DROP_COPY)
-		osOperation |= OS.GDK_ACTION_COPY;
+		osOperation |= GDK.GDK_ACTION_COPY;
 	if ((operation & DND.DROP_MOVE) == DND.DROP_MOVE)
-		osOperation |= OS.GDK_ACTION_MOVE;
+		osOperation |= GDK.GDK_ACTION_MOVE;
 	if ((operation & DND.DROP_LINK) == DND.DROP_LINK)
-		osOperation |= OS.GDK_ACTION_LINK;
+		osOperation |= GDK.GDK_ACTION_LINK;
 	return osOperation;
 }
 
 int osOpToOp(int osOperation){
 	int operation = DND.DROP_NONE;
-	if ((osOperation & OS.GDK_ACTION_COPY) == OS.GDK_ACTION_COPY)
+	if ((osOperation & GDK.GDK_ACTION_COPY) == GDK.GDK_ACTION_COPY)
 		operation |= DND.DROP_COPY;
-	if ((osOperation & OS.GDK_ACTION_MOVE) == OS.GDK_ACTION_MOVE)
+	if ((osOperation & GDK.GDK_ACTION_MOVE) == GDK.GDK_ACTION_MOVE)
 		operation |= DND.DROP_MOVE;
-	if ((osOperation & OS.GDK_ACTION_LINK) == OS.GDK_ACTION_LINK)
+	if ((osOperation & GDK.GDK_ACTION_LINK) == GDK.GDK_ACTION_LINK)
 		operation |= DND.DROP_LINK;
 	return operation;
 }
@@ -672,7 +671,7 @@ public void setTransfer(Transfer... transferAgents){
 	if (transferAgents == null) DND.error(SWT.ERROR_NULL_ARGUMENT);
 
 	if (this.transferAgents.length != 0) {
-		OS.gtk_drag_dest_unset(control.handle);
+		GTK.gtk_drag_dest_unset(control.handle);
 	}
 	this.transferAgents = transferAgents;
 
@@ -686,7 +685,7 @@ public void setTransfer(Transfer... transferAgents){
 				GtkTargetEntry entry = new GtkTargetEntry();
 				byte[] buffer = Converter.wcsToMbcs(typeNames[j], true);
 				entry.target = OS.g_malloc(buffer.length);
-				OS.memmove(entry.target, buffer, buffer.length);
+				C.memmove(entry.target, buffer, buffer.length);
 				entry.info = typeIds[j];
 				GtkTargetEntry[] newTargets = new GtkTargetEntry[targets.length + 1];
 				System.arraycopy(targets, 0, newTargets, 0, targets.length);
@@ -704,13 +703,13 @@ public void setTransfer(Transfer... transferAgents){
 	int actions = opToOsOp(getStyle());
 	if (control instanceof Combo) {
 		if ((control.getStyle() & SWT.READ_ONLY) == 0) {
-			long /*int*/ entryHandle = OS.gtk_bin_get_child (control.handle);
+			long /*int*/ entryHandle = GTK.gtk_bin_get_child (control.handle);
 			if (entryHandle != 0) {
-				OS.gtk_drag_dest_unset(entryHandle);
+				GTK.gtk_drag_dest_unset(entryHandle);
 			}
 		}
 	}
-	OS.gtk_drag_dest_set(control.handle, 0, pTargets, targets.length, actions);
+	GTK.gtk_drag_dest_set(control.handle, 0, pTargets, targets.length, actions);
 
 	for (int i = 0; i < targets.length; i++) {
 		OS.g_free(targets[i].target);
@@ -734,9 +733,9 @@ boolean setEventData(long /*int*/ context, int x, int y, int time, DNDEvent even
 	if (context == 0) return false;
 	long /*int*/ targets = 0;
 	int actions = 0;
-	if (OS.GTK3) {
-		targets = OS.gdk_drag_context_list_targets(context);
-		actions = OS.gdk_drag_context_get_actions(context);
+	if (GTK.GTK3) {
+		targets = GDK.gdk_drag_context_list_targets(context);
+		actions = GDK.gdk_drag_context_get_actions(context);
 	} else {
 		GdkDragContext dragContext = new GdkDragContext();
 		OS.memmove(dragContext, context, GdkDragContext.sizeof);
@@ -780,9 +779,9 @@ boolean setEventData(long /*int*/ context, int x, int y, int time, DNDEvent even
 		targets = OS.g_list_next (targets);
 	}
 	if (dataTypes.length == 0) return false;
-	long /*int*/ window = OS.gtk_widget_get_window (control.handle);
+	long /*int*/ window = GTK.gtk_widget_get_window (control.handle);
 	int [] origin_x = new int[1], origin_y = new int[1];
-	OS.gdk_window_get_origin(window, origin_x, origin_y);
+	GDK.gdk_window_get_origin(window, origin_x, origin_y);
 	Point coordinates = DPIUtil.autoScaleDown(new Point(origin_x[0] + x, origin_y[0] + y));
 
 	event.widget = this;
@@ -816,5 +815,4 @@ void updateDragOverHover(long delay, DNDEvent event) {
 	dragOverEvent.operations = event.operations;
 	dragOverEvent.time = event.time;
 }
-
 }

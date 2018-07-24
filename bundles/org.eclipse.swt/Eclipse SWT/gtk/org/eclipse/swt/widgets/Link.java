@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -148,8 +148,8 @@ void createHandle(int index) {
 	state |= HANDLE | THEME_BACKGROUND;
 	handle = OS.g_object_new (display.gtk_fixed_get_type (), 0);
 	if (handle == 0) error (SWT.ERROR_NO_HANDLES);
-	OS.gtk_widget_set_has_window (handle, true);
-	OS.gtk_widget_set_can_focus (handle, true);
+	GTK.gtk_widget_set_has_window (handle, true);
+	GTK.gtk_widget_set_can_focus (handle, true);
 	layout = new TextLayout (display);
 	disabledColor = new Color (display, LINK_DISABLED_FOREGROUND);
 	offsets = new Point [0];
@@ -330,7 +330,7 @@ long /*int*/ gtk_button_press_event (long /*int*/ widget, long /*int*/ event) {
 	if (result != 0) return result;
 	GdkEventButton gdkEvent = new GdkEventButton ();
 	OS.memmove (gdkEvent, event, GdkEventButton.sizeof);
-	if (gdkEvent.button == 1 && gdkEvent.type == OS.GDK_BUTTON_PRESS) {
+	if (gdkEvent.button == 1 && gdkEvent.type == GDK.GDK_BUTTON_PRESS) {
 		if (focusIndex != -1) setFocus ();
 		int x = (int) gdkEvent.x;
 		int y = (int) gdkEvent.y;
@@ -391,15 +391,15 @@ long /*int*/ gtk_button_release_event (long /*int*/ widget, long /*int*/ event) 
 
 @Override
 long /*int*/ gtk_draw (long /*int*/ widget, long /*int*/ cairo) {
-	if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-		long /*int*/ context = OS.gtk_widget_get_style_context(widget);
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+		long /*int*/ context = GTK.gtk_widget_get_style_context(widget);
 		GtkAllocation allocation = new GtkAllocation();
-		OS.gtk_widget_get_allocation (widget, allocation);
+		GTK.gtk_widget_get_allocation (widget, allocation);
 		int width = (state & ZERO_WIDTH) != 0 ? 0 : allocation.width;
 		int height = (state & ZERO_HEIGHT) != 0 ? 0 : allocation.height;
 		// We specify a 0 value for x & y as we want the whole widget to be
 		// colored, not some portion of it.
-		OS.gtk_render_background(context, cairo, 0, 0, width, height);
+		GTK.gtk_render_background(context, cairo, 0, 0, width, height);
 	}
 	return super.gtk_draw(widget, cairo);
 }
@@ -410,7 +410,7 @@ long /*int*/ gtk_event_after (long /*int*/ widget, long /*int*/ gdkEvent) {
 	GdkEvent event = new GdkEvent ();
 	OS.memmove (event, gdkEvent, GdkEvent.sizeof);
 	switch (event.type) {
-		case OS.GDK_FOCUS_CHANGE:
+		case GDK.GDK_FOCUS_CHANGE:
 			redraw ();
 			break;
 	}
@@ -425,20 +425,20 @@ long /*int*/ gtk_key_press_event (long /*int*/ widget, long /*int*/ eventPtr) {
 	GdkEventKey gdkEvent = new GdkEventKey ();
 	OS.memmove (gdkEvent, eventPtr, GdkEventKey.sizeof);
 	switch (gdkEvent.keyval) {
-		case OS.GDK_Return:
-		case OS.GDK_KP_Enter:
-		case OS.GDK_space:
+		case GDK.GDK_Return:
+		case GDK.GDK_KP_Enter:
+		case GDK.GDK_space:
 			Event event = new Event ();
 			event.text = ids [focusIndex];
 			sendSelectionEvent (SWT.Selection, event, true);
 			break;
-		case OS.GDK_Tab:
+		case GDK.GDK_Tab:
 			if (focusIndex < offsets.length - 1) {
 				focusIndex++;
 				redraw ();
 			}
 			break;
-		case OS.GDK_ISO_Left_Tab:
+		case GDK.GDK_ISO_Left_Tab:
 			if (focusIndex > 0) {
 				focusIndex--;
 				redraw ();
@@ -457,7 +457,7 @@ long /*int*/ gtk_motion_notify_event (long /*int*/ widget, long /*int*/ event) {
 	int x = (int) gdkEvent.x;
 	int y = (int) gdkEvent.y;
 	if ((style & SWT.MIRRORED) != 0) x = getClientWidth () - x;
-	if ((gdkEvent.state & OS.GDK_BUTTON1_MASK) != 0) {
+	if ((gdkEvent.state & GDK.GDK_BUTTON1_MASK) != 0) {
 		int oldSelection = selection.y;
 		selection.y = DPIUtil.autoScaleUp(layout.getOffset (x, y, null));
 		if (selection.y != oldSelection) {
@@ -569,13 +569,22 @@ String parse (String string) {
 	offsets = new Point [length / 4];
 	ids = new String [length / 4];
 	mnemonics = new int [length / 4 + 1];
-	StringBuffer result = new StringBuffer ();
-	char [] buffer = new char [length];
-	string.getChars (0, string.length (), buffer, 0);
+	StringBuilder result = new StringBuilder ();
+	StringBuilder buffer = new StringBuilder(string);
 	int index = 0, state = 0, linkIndex = 0;
 	int start = 0, tagStart = 0, linkStart = 0, endtagStart = 0, refStart = 0;
 	while (index < length) {
-		char c = Character.toLowerCase (buffer [index]);
+		char c = Character.toLowerCase (buffer.charAt(index));
+
+		// escape < or > with \\< or \\>
+		if (c == '\\' && index + 1 < length) {
+			char c2 = Character.toLowerCase(buffer.charAt(index + 1));
+			if (c2 == '<' || c2 == '>') {
+				buffer.deleteCharAt(index);
+				length--;
+			}
+		}
+
 		switch (state) {
 			case 0:
 				if (c == '<') {
@@ -614,12 +623,12 @@ String parse (String string) {
 				break;
 			case 6:
 				if (c == '>') {
-					mnemonics [linkIndex] = parseMnemonics (buffer, start, tagStart, result);
+					mnemonics [linkIndex] = parseMnemonics (buffer.toString().toCharArray(), start, tagStart, result);
 					int offset = result.length ();
-					parseMnemonics (buffer, linkStart, endtagStart, result);
+					parseMnemonics (buffer.toString().toCharArray(), linkStart, endtagStart, result);
 					offsets [linkIndex] = new Point (offset, result.length () - 1);
 					if (ids [linkIndex] == null) {
-						ids [linkIndex] = new String (buffer, linkStart, endtagStart - linkStart);
+						ids [linkIndex] = new String (buffer.toString().toCharArray(), linkStart, endtagStart - linkStart);
 					}
 					linkIndex++;
 					start = tagStart = linkStart = endtagStart = refStart = index + 1;
@@ -650,7 +659,7 @@ String parse (String string) {
 				break;
 			case 12:
 				if (c == '"') {
-					ids[linkIndex] = new String (buffer, refStart, index - refStart);
+					ids[linkIndex] = new String (buffer.toString().toCharArray(), refStart, index - refStart);
 					state = 2;
 				}
 				break;
@@ -674,8 +683,8 @@ String parse (String string) {
 		index++;
 	}
 	if (start < length) {
-		int tmp = parseMnemonics (buffer, start, tagStart, result);
-		int mnemonic = parseMnemonics (buffer, Math.max (tagStart, linkStart), length, result);
+		int tmp = parseMnemonics (buffer.toString().toCharArray(), start, tagStart, result);
+		int mnemonic = parseMnemonics (buffer.toString().toCharArray(), Math.max (tagStart, linkStart), length, result);
 		if (mnemonic == -1) mnemonic = tmp;
 		mnemonics [linkIndex] = mnemonic;
 	} else {
@@ -695,7 +704,7 @@ String parse (String string) {
 	return result.toString ();
 }
 
-int parseMnemonics (char[] buffer, int start, int end, StringBuffer result) {
+int parseMnemonics (char[] buffer, int start, int end, StringBuilder result) {
 	int mnemonic = -1, index = start;
 	while (index < end) {
 		if (buffer [index] == '&') {
@@ -778,7 +787,9 @@ void setOrientation (boolean create) {
  * In the rare case of identical hyperlinks within the same string, the
  * HREF attribute can be used to distinguish between them.  The string may
  * include the mnemonic character and line delimiters. The only delimiter
- * the HREF attribute supports is the quotation mark (").
+ * the HREF attribute supports is the quotation mark ("). Text containing
+ * angle-bracket characters &lt or &gt may be escaped using \\, however
+ * this operation is a hint and varies from platform to platform.
  * </p>
  * <p>
  * Mnemonics are indicated by an '&amp;' that causes the next
@@ -850,10 +861,10 @@ void styleLinkParts() {
 int traversalCode (int key, GdkEventKey event) {
 	if (offsets.length == 0) return 0;
 	int bits = super.traversalCode (key, event);
-	if (key == OS.GDK_Tab && focusIndex < offsets.length - 1) {
+	if (key == GDK.GDK_Tab && focusIndex < offsets.length - 1) {
 		return bits & ~SWT.TRAVERSE_TAB_NEXT;
 	}
-	if (key == OS.GDK_ISO_Left_Tab && focusIndex > 0) {
+	if (key == GDK.GDK_ISO_Left_Tab && focusIndex > 0) {
 		return bits & ~SWT.TRAVERSE_TAB_PREVIOUS;
 	}
 	return bits;

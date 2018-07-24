@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -369,8 +369,8 @@ class GridLayoutTab extends Tab {
 	 * Generates code for the example layout.
 	 */
 	@Override
-	StringBuffer generateLayoutCode () {
-		StringBuffer code = new StringBuffer ();
+	StringBuilder generateLayoutCode () {
+		StringBuilder code = new StringBuilder ();
 		code.append ("\t\tGridLayout gridLayout = new GridLayout (");
 		if (gridLayout.numColumns != 1 || gridLayout.makeColumnsEqualWidth) {
 			code.append (gridLayout.numColumns + ", " + gridLayout.makeColumnsEqualWidth);
@@ -540,42 +540,42 @@ class GridLayoutTab extends Tab {
 				nameText.setText (oldItem.getText (NAME_COL));
 			}
 			try {
-				new Integer (widthText.getText ()).intValue ();
+				Integer.parseInt(widthText.getText ());
 			} catch (NumberFormatException e) {
 				widthText.setText (oldItem.getText (WIDTH_COL));
 			}
 			try {
-				new Integer (heightText.getText ()).intValue ();
+				Integer.parseInt(heightText.getText ());
 			} catch (NumberFormatException e) {
 				heightText.setText (oldItem.getText (HEIGHT_COL));
 			}
 			try {
-				new Integer (hSpan.getText ()).intValue ();
+				Integer.parseInt(hSpan.getText ());
 			} catch (NumberFormatException e) {
 				hSpan.setText (oldItem.getText (HSPAN_COL));
 			}
 			try {
-				new Integer (vSpan.getText ()).intValue ();
+				Integer.parseInt(vSpan.getText ());
 			} catch (NumberFormatException e) {
 				vSpan.setText (oldItem.getText (VSPAN_COL));
 			}
 			try {
-				new Integer (hIndent.getText ()).intValue ();
+				Integer.parseInt(hIndent.getText ());
 			} catch (NumberFormatException e) {
 				hIndent.setText (oldItem.getText (HINDENT_COL));
 			}
 			try {
-				new Integer (vIndent.getText ()).intValue ();
+				Integer.parseInt(vIndent.getText ());
 			} catch (NumberFormatException e) {
 				vIndent.setText (oldItem.getText (VINDENT_COL));
 			}
 			try {
-				new Integer (minWidthText.getText ()).intValue ();
+				Integer.parseInt(minWidthText.getText ());
 			} catch (NumberFormatException e) {
 				minWidthText.setText (oldItem.getText (MINWIDTH_COL));
 			}
 			try {
-				new Integer (minHeightText.getText ()).intValue ();
+				Integer.parseInt(minHeightText.getText ());
 			} catch (NumberFormatException e) {
 				minHeightText.setText (oldItem.getText (MINHEIGHT_COL));
 			}
@@ -620,8 +620,8 @@ class GridLayoutTab extends Tab {
 		for (int i = 0; i < children.length; i++) {
 			data = new GridData ();
 			/* Set widthHint and heightHint */
-			data.widthHint = new Integer (items [i].getText (WIDTH_COL)).intValue ();
-			data.heightHint = new Integer (items [i].getText (HEIGHT_COL)).intValue ();
+			data.widthHint = Integer.valueOf(items [i].getText (WIDTH_COL)).intValue ();
+			data.heightHint = Integer.valueOf(items [i].getText (HEIGHT_COL)).intValue ();
 			/* Set vertical alignment and horizontal alignment */
 			hAlign = items [i].getText (HALIGN_COL);
 			if (hAlign.equals ("CENTER")) {
@@ -644,13 +644,13 @@ class GridLayoutTab extends Tab {
 				data.verticalAlignment = SWT.CENTER;
 			}
 			/* Set spans and indents */
-			hSpan = new Integer (items [i].getText (HSPAN_COL)).intValue ();
+			hSpan = Integer.valueOf (items [i].getText (HSPAN_COL));
 			data.horizontalSpan = hSpan;
-			vSpan = new Integer (items [i].getText (VSPAN_COL)).intValue ();
+			vSpan = Integer.valueOf(items [i].getText (VSPAN_COL));
 			data.verticalSpan = vSpan;
-			hIndent = new Integer (items [i].getText (HINDENT_COL)).intValue ();
+			hIndent = Integer.valueOf(items [i].getText (HINDENT_COL));
 			data.horizontalIndent = hIndent;
-			vIndent = new Integer (items [i].getText (VINDENT_COL)).intValue ();
+			vIndent = Integer.valueOf(items [i].getText (VINDENT_COL));
 			data.verticalIndent = vIndent;
 			/* Set grabs */
 			hGrab = items [i].getText (HGRAB_COL);
@@ -658,8 +658,8 @@ class GridLayoutTab extends Tab {
 			vGrab = items [i].getText (VGRAB_COL);
 			data.grabExcessVerticalSpace = vGrab.equals ("true");
 			/* Set minimum width and height */
-			data.minimumWidth = new Integer (items [i].getText (MINWIDTH_COL)).intValue ();
-			data.minimumHeight = new Integer (items [i].getText (MINHEIGHT_COL)).intValue ();
+			data.minimumWidth = Integer.valueOf(items [i].getText (MINWIDTH_COL));
+			data.minimumHeight = Integer.valueOf(items [i].getText (MINHEIGHT_COL));
 			/* Set exclude boolean */
 			exclude = items [i].getText (EXCLUDE_COL);
 			data.exclude = exclude.equals ("true");

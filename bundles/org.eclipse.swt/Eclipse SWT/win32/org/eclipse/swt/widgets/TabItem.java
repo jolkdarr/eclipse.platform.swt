@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2013 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -120,7 +120,7 @@ void _setText (int index, String string) {
 	* The image overlaps the label.  The fix is to remove
 	* all '&' characters from the string.
 	*/
-	if (OS.COMCTL32_MAJOR >= 6 && image != null) {
+	if (image != null) {
 		if (string.indexOf ('&') != -1) {
 			int length = string.length ();
 			char[] text = new char [length];
@@ -310,9 +310,7 @@ public void setImage (Image image) {
 	* all '&' characters from the string and set the text
 	* whenever the image or text is changed.
 	*/
-	if (OS.COMCTL32_MAJOR >= 6) {
-		if (text.indexOf ('&') != -1) _setText (index, text);
-	}
+	if (text.indexOf ('&') != -1) _setText (index, text);
 	long /*int*/ hwnd = parent.handle;
 	TCITEM tcItem = new TCITEM ();
 	tcItem.mask = OS.TCIF_IMAGE;
@@ -366,7 +364,7 @@ public void setText (String string) {
 @Override
 boolean updateTextDirection(int textDirection) {
 	/* AUTO is handled by super */
-	if (super.updateTextDirection(textDirection) && OS.IsUnicode) {
+	if (super.updateTextDirection(textDirection)) {
 		int index = parent.indexOf (this);
 		if (index != -1) {
 			if ((textDirection & SWT.RIGHT_TO_LEFT) != 0) {
@@ -392,6 +390,11 @@ boolean updateTextDirection(int textDirection) {
  * The mnemonic indicator (character '&amp;') is not displayed in a tool tip.
  * To display a single '&amp;' in the tool tip, the character '&amp;' can be
  * escaped by doubling it in the string.
+ * </p>
+ * <p>
+ * NOTE: This operation is a hint and behavior is platform specific, on Windows
+ * for CJK-style mnemonics of the form " (&C)" at the end of the tooltip text
+ * are not shown in tooltip.
  * </p>
  *
  * @param string the new tool tip text (or null)

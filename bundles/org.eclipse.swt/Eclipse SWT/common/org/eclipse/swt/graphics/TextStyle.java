@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2010 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -225,7 +225,9 @@ public boolean equals(Object object) {
 	if (font != null) {
 		if (!font.equals(style.font)) return false;
 	} else if (style.font != null) return false;
-	if (metrics != null || style.metrics != null) return false;
+	if (metrics != null) {
+		if (!metrics.equals(style.metrics)) return false;
+	} else if (style.metrics != null) return false;
 	if (underline != style.underline) return false;
 	if (underlineStyle != style.underlineStyle) return false;
 	if (borderStyle != style.borderStyle) return false;
@@ -328,7 +330,7 @@ boolean isAdherentStrikeout(TextStyle style) {
  */
 @Override
 public String toString () {
-	StringBuffer buffer = new StringBuffer("TextStyle {"); //$NON-NLS-1$
+	StringBuilder buffer = new StringBuilder("TextStyle {"); //$NON-NLS-1$
 	int startLength = buffer.length();
 	if (font != null) {
 		if (buffer.length() > startLength) buffer.append(", "); //$NON-NLS-1$

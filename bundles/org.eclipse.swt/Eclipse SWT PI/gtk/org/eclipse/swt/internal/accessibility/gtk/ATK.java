@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others. All rights reserved.
+ * Copyright (c) 2000, 2018 IBM Corporation and others. All rights reserved.
  * The contents of this file are made available under the terms
  * of the GNU Lesser General Public License (LGPL) Version 2.1 that
  * accompanies this distribution (lgpl-v21.txt).  The LGPL is also
@@ -118,6 +118,14 @@ public class ATK extends OS {
 	public static final int ATK_TEXT_BOUNDARY_SENTENCE_END = 4;
 	public static final int ATK_TEXT_BOUNDARY_LINE_START = 5;
 	public static final int ATK_TEXT_BOUNDARY_LINE_END = 6;
+	/* TODO_a11y: use the ATK_TEXT_GRANULARITY_* constants once
+	 * Orca is updated to use the new API.
+	 */
+	public static final int ATK_TEXT_GRANULARITY_CHAR = 0;
+	public static final int ATK_TEXT_GRANULARITY_WORD = 1;
+	public static final int ATK_TEXT_GRANULARITY_SENTENCE = 2;
+	public static final int ATK_TEXT_GRANULARITY_LINE = 3;
+	public static final int ATK_TEXT_GRANULARITY_PARAGRAPH = 4;
 	public static final int ATK_TEXT_CLIP_NONE = 0;
 	public static final int ATK_TEXT_CLIP_MIN = 1;
 	public static final int ATK_TEXT_CLIP_MAX = 2;
@@ -328,6 +336,34 @@ public static final void atk_object_notify_state_change (long /*int*/ accessible
 	lock.lock();
 	try {
 		_atk_object_notify_state_change(accessible, state, value);
+	} finally {
+		lock.unlock();
+	}
+}
+/**
+ * @param object cast=(AtkObject *)
+ * @param relationship cast=(AtkRelationType)
+ * @param target cast=(AtkObject *)
+ */
+public static final native boolean _atk_object_add_relationship (long /*int*/ object, int relationship, long /*int*/ target);
+public static final boolean atk_object_add_relationship (long /*int*/ object, int relationship, long /*int*/ target) {
+	lock.lock();
+	try {
+		return _atk_object_add_relationship(object, relationship, target);
+	} finally {
+		lock.unlock();
+	}
+}
+/**
+ * @param object cast=(AtkObject *)
+ * @param relationship cast=(AtkRelationType)
+ * @param target cast=(AtkObject *)
+ */
+public static final native boolean _atk_object_remove_relationship (long /*int*/ object, int relationship, long /*int*/ target);
+public static final boolean atk_object_remove_relationship (long /*int*/ object, int relationship, long /*int*/ target) {
+	lock.lock();
+	try {
+		return _atk_object_remove_relationship(object, relationship, target);
 	} finally {
 		lock.unlock();
 	}

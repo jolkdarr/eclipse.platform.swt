@@ -40,7 +40,7 @@
 #include <gtk/gtkunixprint.h>
 #else
 #include <windows.h>
-#define NO_realpath // TODO [win32] use GetFullPathName instead; 
+//#define NO_realpath // TODO [win32] use GetFullPathName instead; 
 #define NO_RTLD_1GLOBAL
 #define NO_RTLD_1LAZY
 #define NO_RTLD_1NOW
@@ -65,9 +65,40 @@
 #define NO__1gtk_1print_1unix_1dialog_1set_1current_1page
 #define NO__1gtk_1print_1unix_1dialog_1set_1embed_1page_1setup
 #define NO__1gtk_1print_1unix_1dialog_1set_1manual_1capabilities
+
+// map realpath to a similar function in win32
+#define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
 #endif
 
+
 #define OS_LOAD_FUNCTION LOAD_FUNCTION
+
+// Hard-link code generated from GTK.java to LIB_GTK
+#define GTK_LOAD_FUNCTION(var, name) LOAD_FUNCTION_LIB(var, LIB_GTK, name)
+// Hard-link code generated from GTK.java to LIB_GDK
+#define GDK_LOAD_FUNCTION(var, name) LOAD_FUNCTION_LIB(var, LIB_GDK, name)
+
+#ifdef _WIN32
+#define LOAD_FUNCTION_LIB(var, libname, name) \
+		static int initialized = 0; \
+		static FARPROC var = NULL; \
+		if (!initialized) { \
+			HMODULE hm = LoadLibrary(libname); \
+			if (hm) var = GetProcAddress(hm, #name); \
+			initialized = 1; \
+		}
+#else
+#define LOAD_FUNCTION_LIB(var, libname, name) \
+		static int initialized = 0; \
+		static void *var = NULL; \
+		if (!initialized) { \
+			void* handle = dlopen(libname, LOAD_FLAGS); \
+			if (handle) var = dlsym(handle, #name); \
+			initialized = 1; \
+	                CHECK_DLERROR \
+		}
+#endif
+
 
 #ifdef GDK_WINDOWING_X11
 
@@ -94,7 +125,6 @@
 #define NO__1XCheckIfEvent
 #define NO__1XDefaultScreen
 #define NO__1XDefaultRootWindow
-#define NO__1XFlush
 #define NO__1XFree
 #define NO__1XGetWindowProperty
 #define NO__1XQueryPointer
@@ -205,6 +235,10 @@
 #define NO__1swt_1fixed_1resize
 #define NO__1swt_1fixed_1restack
 #define NO__1gtk_1widget_1input_1shape_1combine_1region
+
+#define NO_SwtFixedAccessible
+#define NO__1swt_1fixed_1accessible_1get_1type
+#define NO__1swt_1fixed_1accessible_1register_1accessible
 
 #define NO_GdkRGBA
 #define NO__1GDK_1TYPE_1RGBA

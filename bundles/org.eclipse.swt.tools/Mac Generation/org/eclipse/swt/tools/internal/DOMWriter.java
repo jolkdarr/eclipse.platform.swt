@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2016 IBM Corporation and others.
+ * Copyright (c) 2008, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -114,16 +114,15 @@ public class DOMWriter {
 						String nameB = b.getNodeName();
 						if ("arg".equals(nameA)) {
 							return 0;
-						} else {
-							int result = nameA.compareTo(nameB);
-							if (result == 0) {
-								Node idA = getIDAttribute(a);
-								Node idB = getIDAttribute(b);
-								if (idA == null || idB == null) return 0;
-								return idA.getNodeValue().compareTo(idB.getNodeValue());
-							}
-							return result;
+						} 
+						int result = nameA.compareTo(nameB);
+						if (result == 0) {
+							Node idA = getIDAttribute(a);
+							Node idB = getIDAttribute(b);
+							if (idA == null || idB == null) return 0;
+							return idA.getNodeValue().compareTo(idB.getNodeValue());
 						}
+						return result;
 					});
 					if (count > 0) println();
 					for (int i = 0; i < count; i++) {
@@ -156,7 +155,7 @@ public class DOMWriter {
 
 	String normalize(String s) {
 		if (s == null) return "";
-		StringBuffer str = new StringBuffer();
+		StringBuilder str = new StringBuilder();
 		for (int i = 0, length = s.length(); i < length; i++) {
 			char ch = s.charAt(i);
 			switch (ch) {

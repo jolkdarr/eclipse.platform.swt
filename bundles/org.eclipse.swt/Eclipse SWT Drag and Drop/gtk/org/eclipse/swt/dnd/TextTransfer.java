@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2012 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -72,12 +72,12 @@ public void javaToNative (Object object, TransferData transferData) {
 	}
 	String string = (String)object;
 	byte[] utf8 = Converter.wcsToMbcs (string, true);
-	if  (transferData.type ==  COMPOUND_TEXT_ID) {
+	if  (OS.isX11() && transferData.type ==  COMPOUND_TEXT_ID) {
 		long /*int*/[] encoding = new long /*int*/[1];
 		int[] format = new int[1];
 		long /*int*/[] ctext = new long /*int*/[1];
 		int[] length = new int[1];
-		boolean result = OS.gdk_x11_display_utf8_to_compound_text (OS.gdk_display_get_default(), utf8, encoding, format, ctext, length);
+		boolean result = GDK.gdk_x11_display_utf8_to_compound_text (GDK.gdk_display_get_default(), utf8, encoding, format, ctext, length);
 		if (!result) return;
 		transferData.type = encoding[0];
 		transferData.format = format[0];
@@ -88,7 +88,7 @@ public void javaToNative (Object object, TransferData transferData) {
 	if (transferData.type == UTF8_STRING_ID) {
 		long /*int*/ pValue = OS.g_malloc(utf8.length);
 		if (pValue ==  0) return;
-		OS.memmove(pValue, utf8, utf8.length);
+		C.memmove(pValue, utf8, utf8.length);
 		transferData.type = UTF8_STRING_ID;
 		transferData.format = 8;
 		transferData.length = utf8.length - 1;
@@ -96,11 +96,11 @@ public void javaToNative (Object object, TransferData transferData) {
 		transferData.result = 1;
 	}
 	if (transferData.type == STRING_ID) {
-		long /*int*/ string_target = OS.gdk_utf8_to_string_target(utf8);
+		long /*int*/ string_target = GDK.gdk_utf8_to_string_target(utf8);
 		if (string_target ==  0) return;
 		transferData.type = STRING_ID;
 		transferData.format = 8;
-		transferData.length = OS.strlen(string_target);
+		transferData.length = C.strlen(string_target);
 		transferData.pValue = string_target;
 		transferData.result = 1;
 	}
@@ -119,13 +119,13 @@ public void javaToNative (Object object, TransferData transferData) {
 public Object nativeToJava(TransferData transferData){
 	if (!isSupportedType(transferData) ||  transferData.pValue == 0) return null;
 	long /*int*/[] list = new long /*int*/[1];
-	int count = OS.gdk_text_property_to_utf8_list_for_display(OS.gdk_display_get_default(), transferData.type, transferData.format, transferData.pValue, transferData.length, list);
+	int count = GDK.gdk_text_property_to_utf8_list_for_display(GDK.gdk_display_get_default(), transferData.type, transferData.format, transferData.pValue, transferData.length, list);
 	if (count == 0) return null;
 	long /*int*/[] ptr = new long /*int*/[1];
-	OS.memmove(ptr, list[0], OS.PTR_SIZEOF);
-	int length = OS.strlen(ptr[0]);
+	C.memmove(ptr, list[0], C.PTR_SIZEOF);
+	int length = C.strlen(ptr[0]);
 	byte[] utf8 = new byte[length];
-	OS.memmove(utf8, ptr[0], length);
+	C.memmove(utf8, ptr[0], length);
 	OS.g_strfreev(list[0]);
 	// convert utf8 byte array to a unicode string
 	char [] unicode = Converter.mbcsToWcs (utf8);
@@ -136,12 +136,18 @@ public Object nativeToJava(TransferData transferData){
 
 @Override
 protected int[] getTypeIds() {
-	return new int[] {UTF8_STRING_ID, COMPOUND_TEXT_ID, STRING_ID};
+	if (OS.isX11()) {
+		return new int[] {UTF8_STRING_ID, COMPOUND_TEXT_ID, STRING_ID};
+	}
+	return new int[] {UTF8_STRING_ID, STRING_ID};
 }
 
 @Override
 protected String[] getTypeNames() {
-	return new String[] {UTF8_STRING, COMPOUND_TEXT, STRING};
+	if (OS.isX11()) {
+		return new String[] {UTF8_STRING, COMPOUND_TEXT, STRING};
+	}
+	return new String[] {UTF8_STRING, STRING};
 }
 
 boolean checkText(Object object) {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2015 IBM Corporation and others.
+ * Copyright (c) 2004, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -87,8 +87,7 @@ void generateExcludes(JNIClass[] classes) {
 			excludes.add(exclude);
 		}
 	}
-	for (Iterator<String> iter = excludes.iterator(); iter.hasNext();) {
-		String exclude = iter.next();
+	for (String exclude : excludes) {
 		outputln(exclude);
 		for (int i = 0; i < classes.length; i++) {
 			JNIClass clazz = classes[i];
@@ -107,7 +106,7 @@ void generateHeaderFile(JNIClass clazz) {
 	generateSourceStart(clazz);
 	generatePrototypes(clazz);
 	generateBlankMacros(clazz);
-	generateSourceEnd(clazz);	
+	generateSourceEnd();	
 	outputln();
 }
 
@@ -118,7 +117,7 @@ void generateSourceFile(JNIClass clazz) {
 	generateGlobalVar(clazz);
 	outputln();
 	generateFunctions(clazz);
-	generateSourceEnd(clazz);
+	generateSourceEnd();
 	outputln();
 }
 
@@ -128,7 +127,7 @@ void generateSourceStart(JNIClass clazz) {
 	outputln(clazzName);
 }
 
-void generateSourceEnd(JNIClass clazz) {
+void generateSourceEnd() {
 	outputln("#endif");
 }
 

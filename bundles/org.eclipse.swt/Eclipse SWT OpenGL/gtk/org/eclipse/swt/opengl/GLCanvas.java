@@ -49,6 +49,7 @@ public class GLCanvas extends Canvas {
  */
 public GLCanvas (Composite parent, int style, GLData data) {
 	super (parent, style);
+	if (OS.IsWin32) SWT.error (SWT.ERROR_NOT_IMPLEMENTED);
 	if (data == null) SWT.error (SWT.ERROR_NULL_ARGUMENT);
 	int glxAttrib [] = new int [MAX_ATTRIBUTES];
 	int pos = 0;
@@ -104,10 +105,10 @@ public GLCanvas (Composite parent, int style, GLData data) {
 		glxAttrib [pos++] = data.samples;
 	}
 	glxAttrib [pos++] = 0;
-	OS.gtk_widget_realize (handle);
-	long /*int*/ window = OS.gtk_widget_get_window (handle);
+	GTK.gtk_widget_realize (handle);
+	long /*int*/ window = GTK.gtk_widget_get_window (handle);
 
-	long /*int*/ xDisplay = OS.gdk_x11_display_get_xdisplay(OS.gdk_window_get_display(window));
+	long /*int*/ xDisplay = GDK.gdk_x11_display_get_xdisplay(GDK.gdk_window_get_display(window));
 	long /*int*/ infoPtr = GLX.glXChooseVisual (xDisplay, OS.XDefaultScreen (xDisplay), glxAttrib);
 	if (infoPtr == 0) {
 		dispose ();
@@ -116,30 +117,30 @@ public GLCanvas (Composite parent, int style, GLData data) {
 	vinfo = new XVisualInfo ();
 	GLX.memmove (vinfo, infoPtr, XVisualInfo.sizeof);
 	OS.XFree (infoPtr);
-	long /*int*/ screen = OS.gdk_screen_get_default ();
-	long /*int*/ gdkvisual = OS.gdk_x11_screen_lookup_visual (screen, vinfo.visualid);
+	long /*int*/ screen = GDK.gdk_screen_get_default ();
+	long /*int*/ gdkvisual = GDK.gdk_x11_screen_lookup_visual (screen, vinfo.visualid);
 	long /*int*/ share = data.shareContext != null ? data.shareContext.context : 0;
 	context = GLX.glXCreateContext (xDisplay, vinfo, share, true);
 	if (context == 0) SWT.error (SWT.ERROR_NO_HANDLES);
 	GdkWindowAttr attrs = new GdkWindowAttr ();
 	attrs.width = 1;
 	attrs.height = 1;
-	attrs.event_mask = OS.GDK_KEY_PRESS_MASK | OS.GDK_KEY_RELEASE_MASK |
-		OS.GDK_FOCUS_CHANGE_MASK | OS.GDK_POINTER_MOTION_MASK |
-		OS.GDK_BUTTON_PRESS_MASK | OS.GDK_BUTTON_RELEASE_MASK |
-		OS.GDK_ENTER_NOTIFY_MASK | OS.GDK_LEAVE_NOTIFY_MASK |
-		OS.GDK_EXPOSURE_MASK | OS.GDK_POINTER_MOTION_HINT_MASK;
-	attrs.window_type = OS.GDK_WINDOW_CHILD;
+	attrs.event_mask = GDK.GDK_KEY_PRESS_MASK | GDK.GDK_KEY_RELEASE_MASK |
+		GDK.GDK_FOCUS_CHANGE_MASK | GDK.GDK_POINTER_MOTION_MASK |
+		GDK.GDK_BUTTON_PRESS_MASK | GDK.GDK_BUTTON_RELEASE_MASK |
+		GDK.GDK_ENTER_NOTIFY_MASK | GDK.GDK_LEAVE_NOTIFY_MASK |
+		GDK.GDK_EXPOSURE_MASK | GDK.GDK_POINTER_MOTION_HINT_MASK;
+	attrs.window_type = GDK.GDK_WINDOW_CHILD;
 	attrs.visual = gdkvisual;
-	glWindow = OS.gdk_window_new (window, attrs, OS.GDK_WA_VISUAL);
-	OS.gdk_window_set_user_data (glWindow, handle);
-	if ((style & SWT.NO_BACKGROUND) != 0) OS.gdk_window_set_back_pixmap (window, 0, false);
-	if (OS.GTK3) {
-		xWindow = OS.gdk_x11_window_get_xid (glWindow);
+	glWindow = GDK.gdk_window_new (window, attrs, GDK.GDK_WA_VISUAL);
+	GDK.gdk_window_set_user_data (glWindow, handle);
+	if ((style & SWT.NO_BACKGROUND) != 0) GDK.gdk_window_set_back_pixmap (window, 0, false);
+	if (GTK.GTK3) {
+		xWindow = GDK.gdk_x11_window_get_xid (glWindow);
 	} else {
-		xWindow = OS.gdk_x11_drawable_get_xid (glWindow);
+		xWindow = GDK.gdk_x11_drawable_get_xid (glWindow);
 	}
-	OS.gdk_window_show (glWindow);
+	GDK.gdk_window_show (glWindow);
 
 	Listener listener = event -> {
 		switch (event.type) {
@@ -156,11 +157,11 @@ public GLCanvas (Composite parent, int style, GLData data) {
 			break;
 		case SWT.Resize:
 			Rectangle clientArea = DPIUtil.autoScaleUp(getClientArea());
-			OS.gdk_window_move (glWindow, clientArea.x, clientArea.y);
-			OS.gdk_window_resize (glWindow, clientArea.width, clientArea.height);
+			GDK.gdk_window_move (glWindow, clientArea.x, clientArea.y);
+			GDK.gdk_window_resize (glWindow, clientArea.width, clientArea.height);
 			break;
 		case SWT.Dispose:
-			long /*int*/ window1 = OS.gtk_widget_get_window (handle);
+			long /*int*/ window1 = GTK.gtk_widget_get_window (handle);
 			long /*int*/ xDisplay1 = gdk_x11_display_get_xdisplay (window1);
 			if (context != 0) {
 				if (GLX.glXGetCurrentContext () == context) {
@@ -170,7 +171,7 @@ public GLCanvas (Composite parent, int style, GLData data) {
 				context = 0;
 			}
 			if (glWindow != 0) {
-				OS.gdk_window_destroy (glWindow);
+				GDK.gdk_window_destroy (glWindow);
 				glWindow = 0;
 			}
 			break;
@@ -192,7 +193,7 @@ public GLCanvas (Composite parent, int style, GLData data) {
  */
 public GLData getGLData () {
 	checkWidget ();
-	long /*int*/ window = OS.gtk_widget_get_window (handle);
+	long /*int*/ window = GTK.gtk_widget_get_window (handle);
 	long /*int*/ xDisplay = gdk_x11_display_get_xdisplay (window);
 	GLData data = new GLData ();
 	int [] value = new int [1];
@@ -255,7 +256,7 @@ public boolean isCurrent () {
 public void setCurrent () {
 	checkWidget ();
 	if (GLX.glXGetCurrentContext () == context) return;
-	long /*int*/ window = OS.gtk_widget_get_window (handle);
+	long /*int*/ window = GTK.gtk_widget_get_window (handle);
 	long /*int*/ xDisplay = gdk_x11_display_get_xdisplay (window);
 	GLX.glXMakeCurrent (xDisplay, xWindow, context);
 }
@@ -270,12 +271,12 @@ public void setCurrent () {
  */
 public void swapBuffers () {
 	checkWidget ();
-	long /*int*/ window = OS.gtk_widget_get_window (handle);
+	long /*int*/ window = GTK.gtk_widget_get_window (handle);
 	long /*int*/ xDisplay = gdk_x11_display_get_xdisplay (window);
 	GLX.glXSwapBuffers (xDisplay, xWindow);
 }
 
 private long /*int*/ gdk_x11_display_get_xdisplay(long /*int*/ window) {
-	return OS.gdk_x11_display_get_xdisplay(OS.gdk_window_get_display(window));
+	return GDK.gdk_x11_display_get_xdisplay(GDK.gdk_window_get_display(window));
 }
 }

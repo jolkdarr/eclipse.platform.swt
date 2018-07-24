@@ -10,10 +10,10 @@
  *******************************************************************************/
 package org.eclipse.swt.widgets;
 
-import org.eclipse.swt.internal.win32.*;
 import org.eclipse.swt.*;
 import org.eclipse.swt.events.*;
 import org.eclipse.swt.graphics.*;
+import org.eclipse.swt.internal.win32.*;
 
 /**
  * Instances of this class are selectable user interface
@@ -25,14 +25,14 @@ import org.eclipse.swt.graphics.*;
  * </p>
  * <dl>
  * <dt><b>Styles:</b></dt>
- * <dd>DATE, TIME, CALENDAR, SHORT, MEDIUM, LONG, DROP_DOWN</dd>
+ * <dd>DATE, TIME, CALENDAR, SHORT, MEDIUM, LONG, DROP_DOWN, CALENDAR_WEEKNUMBERS</dd>
  * <dt><b>Events:</b></dt>
  * <dd>DefaultSelection, Selection</dd>
  * </dl>
  * <p>
  * Note: Only one of the styles DATE, TIME, or CALENDAR may be specified,
  * and only one of the styles SHORT, MEDIUM, or LONG may be specified.
- * The DROP_DOWN style is a <em>HINT</em>, and it is only valid with the DATE style.
+ * The DROP_DOWN style is only valid with the DATE style.
  * </p><p>
  * IMPORTANT: This class is <em>not</em> intended to be subclassed.
  * </p>
@@ -81,17 +81,10 @@ public class DateTime extends Composite {
 		* code, other than SWT, could create a control with
 		* this class name, and fail unexpectedly.
 		*/
-		long /*int*/ hInstance = OS.GetModuleHandle (null);
-		long /*int*/ hHeap = OS.GetProcessHeap ();
-		lpWndClass.hInstance = hInstance;
+		lpWndClass.hInstance = OS.GetModuleHandle (null);
 		lpWndClass.style &= ~OS.CS_GLOBALCLASS;
 		lpWndClass.style |= OS.CS_DBLCLKS;
-		int byteCount = DateTimeClass.length () * TCHAR.sizeof;
-		long /*int*/ lpszClassName = OS.HeapAlloc (hHeap, OS.HEAP_ZERO_MEMORY, byteCount);
-		OS.MoveMemory (lpszClassName, DateTimeClass, byteCount);
-		lpWndClass.lpszClassName = lpszClassName;
 		OS.RegisterClass (lpWndClass);
-		OS.HeapFree (hHeap, 0, lpszClassName);
 	}
 	static {
 		WNDCLASS lpWndClass = new WNDCLASS ();
@@ -114,27 +107,11 @@ public class DateTime extends Composite {
 		* code, other than SWT, could create a control with
 		* this class name, and fail unexpectedly.
 		*/
-		long /*int*/ hInstance = OS.GetModuleHandle (null);
-		long /*int*/ hHeap = OS.GetProcessHeap ();
-		lpWndClass.hInstance = hInstance;
+		lpWndClass.hInstance = OS.GetModuleHandle (null);
 		lpWndClass.style &= ~OS.CS_GLOBALCLASS;
 		lpWndClass.style |= OS.CS_DBLCLKS;
-		int byteCount = CalendarClass.length () * TCHAR.sizeof;
-		long /*int*/ lpszClassName = OS.HeapAlloc (hHeap, OS.HEAP_ZERO_MEMORY, byteCount);
-		OS.MoveMemory (lpszClassName, CalendarClass, byteCount);
-		lpWndClass.lpszClassName = lpszClassName;
 		OS.RegisterClass (lpWndClass);
-		OS.HeapFree (hHeap, 0, lpszClassName);
 	}
-	static final int MARGIN = 4;
-	static final int MAX_DIGIT = 9;
-	static final int MAX_DAY = 31;
-	static final int MAX_12HOUR = 12;
-	static final int MAX_24HOUR = 24;
-	static final int MAX_MINUTE = 60;
-	static final int MONTH_DAY_YEAR = 0;
-	static final int DAY_MONTH_YEAR = 1;
-	static final int YEAR_MONTH_DAY = 2;
 	static final char SINGLE_QUOTE = '\''; //$NON-NLS-1$ short date format may include quoted text
 	static final char DAY_FORMAT_CONSTANT = 'd'; //$NON-NLS-1$ 1-4 lowercase 'd's represent day
 	static final char MONTH_FORMAT_CONSTANT = 'M'; //$NON-NLS-1$ 1-4 uppercase 'M's represent month
@@ -143,7 +120,6 @@ public class DateTime extends Composite {
 	static final char MINUTES_FORMAT_CONSTANT = 'm'; //$NON-NLS-1$ 1-2 lowercase 'm's represent minutes
 	static final char SECONDS_FORMAT_CONSTANT = 's'; //$NON-NLS-1$ 1-2 lowercase 's's represent seconds
 	static final char AMPM_FORMAT_CONSTANT = 't'; //$NON-NLS-1$ 1-2 lowercase 't's represent am/pm
-	static final int[] MONTH_NAMES = new int[] {OS.LOCALE_SMONTHNAME1, OS.LOCALE_SMONTHNAME2, OS.LOCALE_SMONTHNAME3, OS.LOCALE_SMONTHNAME4, OS.LOCALE_SMONTHNAME5, OS.LOCALE_SMONTHNAME6, OS.LOCALE_SMONTHNAME7, OS.LOCALE_SMONTHNAME8, OS.LOCALE_SMONTHNAME9, OS.LOCALE_SMONTHNAME10, OS.LOCALE_SMONTHNAME11, OS.LOCALE_SMONTHNAME12};
 
 
 /**
@@ -173,6 +149,7 @@ public class DateTime extends Composite {
  * @see SWT#DATE
  * @see SWT#TIME
  * @see SWT#CALENDAR
+ * @see SWT#CALENDAR_WEEKNUMBERS
  * @see SWT#SHORT
  * @see SWT#MEDIUM
  * @see SWT#LONG
@@ -257,58 +234,18 @@ protected void checkSubclass () {
 			width = rect.right;
 			height = rect.bottom;
 		} else {
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-				/* Vista and later: use DTM_GETIDEALSIZE. */
-				SIZE size = new SIZE ();
-				OS.SendMessage(handle, OS.DTM_GETIDEALSIZE, 0, size);
-				width = size.cx;
-				height = size.cy;
-			} else {
-				long /*int*/ newFont, oldFont = 0;
-				long /*int*/ hDC = OS.GetDC (handle);
-				newFont = OS.SendMessage (handle, OS.WM_GETFONT, 0, 0);
-				if (newFont != 0) oldFont = OS.SelectObject (hDC, newFont);
-				RECT rect = new RECT ();
-				if ((style & SWT.DATE) != 0) {
-					int dwFlags = 0;
-					TCHAR lpFormat = null;
-					if ((style & SWT.SHORT) != 0) {
-						lpFormat = new TCHAR (0, getCustomShortDateFormat(), true);
-					} else {
-						dwFlags = (style & SWT.MEDIUM) != 0 ? OS.DATE_SHORTDATE : OS.DATE_LONGDATE;
-					}
-					int size = OS.GetDateFormat(OS.LOCALE_USER_DEFAULT, dwFlags, null, lpFormat, null, 0);
-					if (size > 0) {
-						TCHAR buffer = new TCHAR (getCodePage (), size);
-						OS.GetDateFormat(OS.LOCALE_USER_DEFAULT, dwFlags, null, lpFormat, buffer, buffer.length ());
-						OS.DrawText (hDC, buffer, size, rect, OS.DT_CALCRECT | OS.DT_EDITCONTROL);
-					}
-				} else if ((style & SWT.TIME) != 0) {
-					int dwFlags = 0;
-					TCHAR lpFormat = null;
-					if ((style & SWT.SHORT) != 0) {
-						dwFlags = OS.TIME_NOSECONDS;
-						lpFormat = new TCHAR (0, getCustomShortTimeFormat(), true);
-					}
-					int size = OS.GetTimeFormat(OS.LOCALE_USER_DEFAULT, dwFlags, null, lpFormat, null, 0);
-					if (size > 0) {
-						TCHAR buffer = new TCHAR (getCodePage (), size);
-						OS.GetTimeFormat(OS.LOCALE_USER_DEFAULT, dwFlags, null, lpFormat, buffer, buffer.length ());
-						OS.DrawText (hDC, buffer, size, rect, OS.DT_CALCRECT | OS.DT_EDITCONTROL);
-					}
-				}
-				width = rect.right - rect.left;
-				height = rect.bottom - rect.top;
-				if (newFont != 0) OS.SelectObject (hDC, oldFont);
-				OS.ReleaseDC (handle, hDC);
-				int upDownWidth = OS.GetSystemMetrics (OS.SM_CXVSCROLL);
-				width += upDownWidth + MARGIN;
+			// customize the style of the drop-down calendar, to get the correct size
+			if ((style & SWT.CALENDAR_WEEKNUMBERS) != 0) {
+				// get current style and add week numbers to the calendar drop-down
+				int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
+				OS.SendMessage(handle, OS.DTM_SETMCSTYLE, 0, bits | OS.MCS_WEEKNUMBERS);
 			}
-			int upDownHeight = OS.GetSystemMetrics (OS.SM_CYVSCROLL);
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-				// TODO: Can maybe use DTM_GETDATETIMEPICKERINFO for this
-				upDownHeight += 7;
-			}
+			SIZE size = new SIZE ();
+			OS.SendMessage(handle, OS.DTM_GETIDEALSIZE, 0, size);
+			width = size.cx;
+			height = size.cy;
+			// TODO: Can maybe use DTM_GETDATETIMEPICKERINFO for this
+			int upDownHeight = OS.GetSystemMetrics (OS.SM_CYVSCROLL) + 7;
 			height = Math.max (height, upDownHeight);
 		}
 	}
@@ -771,6 +708,9 @@ public void setYear (int year) {
 @Override
 int widgetStyle () {
 	int bits = super.widgetStyle () | OS.WS_TABSTOP;
+	if ((style & SWT.CALENDAR_WEEKNUMBERS) != 0) {
+		bits |= OS.MCS_WEEKNUMBERS;
+	}
 	if ((style & SWT.CALENDAR) != 0) return bits | OS.MCS_NOTODAY;
 	/*
 	* Bug in Windows: When WS_CLIPCHILDREN is set in a

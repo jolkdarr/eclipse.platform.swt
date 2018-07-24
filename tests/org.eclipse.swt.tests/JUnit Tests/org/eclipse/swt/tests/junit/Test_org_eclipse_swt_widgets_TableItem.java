@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2015 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,7 @@
 package org.eclipse.swt.tests.junit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -469,17 +470,17 @@ public void test_setBackgroundLorg_eclipse_swt_graphics_Color() {
 
 @Test
 public void test_setCheckedZ() {
-	assertEquals(false, tableItem.getChecked());
+	assertFalse(tableItem.getChecked());
 
 	tableItem.setChecked(true);
-	assertEquals(false, tableItem.getChecked());
+	assertFalse(tableItem.getChecked());
  	Table t = new Table(shell, SWT.CHECK);
 	TableItem ti = new TableItem(t, SWT.NULL);
 	ti.setChecked(true);
 	assertTrue(ti.getChecked());
 
 	ti.setChecked(false);
-	assertEquals(false, ti.getChecked());
+	assertFalse(ti.getChecked());
 	t.dispose();
 }
 
@@ -624,11 +625,11 @@ public void test_setForegroundLorg_eclipse_swt_graphics_Color() {
 public void test_setGrayedZ() {
 	Table newTable = new Table(shell, SWT.CHECK);
 	TableItem tItem = new TableItem(newTable,0);
-	assertEquals(false, tItem.getGrayed());
+	assertFalse(tItem.getGrayed());
 	tItem.setGrayed(true);
 	assertTrue(tItem.getGrayed());
 	tItem.setGrayed(false);
-	assertEquals(false, tItem.getGrayed());
+	assertFalse(tItem.getGrayed());
 	newTable.dispose();
 }
 
@@ -838,6 +839,32 @@ public void test_setTextILjava_lang_String(){
 	catch (IllegalArgumentException e) {
 	}
 
+
+	/*
+ 	* Test the getText/setText API with a small table that
+ 	* will be extended by a column:
+ 	* First the table has only one column and one row (TableItem) with text.
+	* Then it is extended by one more column.
+	* After this the existing row gets one more text for the new column.
+ 	*/
+
+	makeCleanEnvironment();
+
+	//create first column and set row text
+	new TableColumn(table, SWT.NONE);
+	tableItem = new TableItem (table, SWT.NONE);
+	tableItem.setText(0, TestString);
+	assertEquals(TestString, tableItem.getText(0));
+
+	//create second column and set a second text in the same row
+	new TableColumn(table, SWT.NONE);
+	tableItem.setText(1, TestString);
+	assertEquals(TestString, tableItem.getText(1));
+
+	//create third column and set a third text in the same row
+	new TableColumn(table, SWT.NONE);
+	tableItem.setText(2, TestString);
+	assertEquals(TestString, tableItem.getText(2));
 
 }
 

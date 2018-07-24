@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -512,6 +512,11 @@ public void setToolTip (ToolTip toolTip) {
  * To display a single '&amp;' in the tool tip, the character '&amp;' can be
  * escaped by doubling it in the string.
  * </p>
+ * <p>
+ * NOTE: This operation is a hint and behavior is platform specific, on Windows
+ * for CJK-style mnemonics of the form " (&C)" at the end of the tooltip text
+ * are not shown in tooltip.
+ * </p>
  *
  * @param string the new tool tip text (or null)
  *
@@ -528,7 +533,7 @@ public void setToolTipText (String string) {
 	/*
 	* Note that the size of the szTip field is different in version 5.0 of shell32.dll.
 	*/
-	int length = OS.SHELL32_MAJOR < 5 ? 64 : 128;
+	int length = 128;
 	if (OS.IsUnicode) {
 		char [] szTip = ((NOTIFYICONDATAW) iconData).szTip;
 		length = Math.min (length - 1, buffer.length ());
@@ -573,22 +578,10 @@ public void setVisible (boolean visible) {
 	iconData.cbSize = NOTIFYICONDATA.sizeof;
 	iconData.uID = id;
 	iconData.hWnd = display.hwndMessage;
-	if (OS.SHELL32_MAJOR < 5) {
-		if (visible) {
-			iconData.uFlags = OS.NIF_MESSAGE;
-			iconData.uCallbackMessage = Display.SWT_TRAYICONMSG;
-			OS.Shell_NotifyIcon (OS.NIM_MODIFY, iconData);
-			setImage (image);
-			setToolTipText (toolTipText);
-		} else {
-			OS.Shell_NotifyIcon (OS.NIM_DELETE, iconData);
-		}
-	} else {
-		iconData.uFlags = OS.NIF_STATE;
-		iconData.dwState = visible ? 0 : OS.NIS_HIDDEN;
-		iconData.dwStateMask = OS.NIS_HIDDEN;
-		OS.Shell_NotifyIcon (OS.NIM_MODIFY, iconData);
-	}
+	iconData.uFlags = OS.NIF_STATE;
+	iconData.dwState = visible ? 0 : OS.NIS_HIDDEN;
+	iconData.dwStateMask = OS.NIS_HIDDEN;
+	OS.Shell_NotifyIcon (OS.NIM_MODIFY, iconData);
 	if (!visible) sendEvent (SWT.Hide);
 }
 

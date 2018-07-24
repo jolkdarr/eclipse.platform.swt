@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2012 IBM Corporation and others.
+ * Copyright (c) 2007, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -246,7 +246,7 @@ public boolean getWideCaret () {
 long /*int*/ gtk_button_press_event (long /*int*/ widget, long /*int*/ event) {
 	if (!isInlineEnabled ()) return 0;
 	long /*int*/ imHandle = imHandle ();
-	if (imHandle != 0) OS.gtk_im_context_reset (imHandle);
+	if (imHandle != 0) GTK.gtk_im_context_reset (imHandle);
 	return 0;
 }
 
@@ -258,10 +258,10 @@ long /*int*/ gtk_commit (long /*int*/ imcontext, long /*int*/ textPtr) {
 	styles = null;
 	caretOffset = commitCount = 0;
 	if (textPtr != 0 && inComposition) {
-		int length = OS.strlen (textPtr);
+		int length = C.strlen (textPtr);
 		if (length != 0) {
 			byte [] buffer = new byte [length];
-			OS.memmove (buffer, textPtr, length);
+			C.memmove (buffer, textPtr, length);
 			char [] chars = Converter.mbcsToWcs (buffer);
 			Event event = new Event();
 			event.detail = SWT.COMPOSITION_CHANGED;
@@ -290,13 +290,13 @@ long /*int*/ gtk_preedit_changed (long /*int*/ imcontext) {
 	long /*int*/ [] preeditString = new long /*int*/ [1];
 	long /*int*/ [] pangoAttrs = new long /*int*/ [1];
 	int [] cursorPos = new int [1];
-	OS.gtk_im_context_get_preedit_string (imHandle, preeditString, pangoAttrs, cursorPos);
+	GTK.gtk_im_context_get_preedit_string (imHandle, preeditString, pangoAttrs, cursorPos);
 	caretOffset = cursorPos [0];
 	char [] chars = null;
 	if (preeditString [0] != 0) {
-		int length = OS.strlen (preeditString [0]);
+		int length = C.strlen (preeditString [0]);
 		byte [] buffer = new byte [length];
-		OS.memmove (buffer, preeditString [0], length);
+		C.memmove (buffer, preeditString [0], length);
 		chars = Converter.mbcsToWcs (buffer);
 		if (pangoAttrs [0] != 0) {
 			int count = 0;
@@ -318,7 +318,7 @@ long /*int*/ gtk_preedit_changed (long /*int*/ imcontext) {
 				long /*int*/ attr = OS.pango_attr_iterator_get (iterator, OS.PANGO_ATTR_FOREGROUND);
 				if (attr != 0) {
 					OS.memmove (attrColor, attr, PangoAttrColor.sizeof);
-					if (OS.GTK3) {
+					if (GTK.GTK3) {
 						GdkRGBA rgba = new GdkRGBA ();
 						rgba.alpha = 1.0;
 						// Manual conversion since PangoAttrColor is a special case.
@@ -338,7 +338,7 @@ long /*int*/ gtk_preedit_changed (long /*int*/ imcontext) {
 				attr = OS.pango_attr_iterator_get (iterator, OS.PANGO_ATTR_BACKGROUND);
 				if (attr != 0) {
 					OS.memmove (attrColor, attr, PangoAttrColor.sizeof);
-					if (OS.GTK3) {
+					if (GTK.GTK3) {
 						GdkRGBA rgba = new GdkRGBA ();
 						rgba.alpha = 1.0;
 						// Manual conversion since PangoAttrColor is a special case.

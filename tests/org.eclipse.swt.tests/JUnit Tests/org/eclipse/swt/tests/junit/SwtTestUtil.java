@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -61,17 +61,20 @@ public class SwtTestUtil {
 	public static String[] reparentablePlatforms = new String[] {"win32", "gtk", "cocoa"};
 
 	public static final String testFontName;
+	// isWindows refers to windows platform, i.e. win32 windowing system; see also isWindowsOS
 	public final static boolean isWindows = SWT.getPlatform().startsWith("win32");
 	public final static boolean isCocoa = SWT.getPlatform().startsWith("cocoa");
 	public final static boolean isGTK = SWT.getPlatform().equals("gtk");
+	public final static boolean isWindowsOS = System.getProperty("os.name").startsWith("Windows");
 	public final static boolean isLinux = System.getProperty("os.name").equals("Linux");
 	public final static boolean isAIX = System.getProperty("os.name").equals("AIX");
-	public final static boolean isSolaris = System.getProperty("os.name").equals("Solaris") || System.getProperty("os.name").equals("SunOS");
-	public final static boolean isHPUX = System.getProperty("os.name").equals("HP-UX");
 
-	public final static boolean isRunningOnEclipseOrgHudsonGTK = isGTK
-			&& ("hudsonbuild".equalsIgnoreCase(System.getProperty("user.name"))
-			|| "genie.platform".equalsIgnoreCase(System.getProperty("user.name")));
+
+	/** Useful if you want some tests not to run on Jenkins with user "genie.platform" */
+	public final static boolean isRunningOnContinousIntegration = isGTK && ("genie.platform".equalsIgnoreCase(System.getProperty("user.name")));
+
+	public final static boolean isX11 = isGTK
+			&& "x11".equals(System.getProperty("org.eclipse.swt.internal.gdk.backend"));
 
 	static {
 		testFontName = "Helvetica";

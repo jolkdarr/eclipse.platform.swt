@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others. All rights reserved.
+ * Copyright (c) 2000, 2018 IBM Corporation and others. All rights reserved.
  * The contents of this file are made available under the terms
  * of the GNU Lesser General Public License (LGPL) Version 2.1 that
  * accompanies this distribution (lgpl-v21.txt).  The LGPL is also
@@ -17,56 +17,24 @@
 /* DO NOT EDIT - your changes will be lost. */
 
 #ifdef NATIVE_STATS
-extern int OS_nativeFunctionCount;
-extern int OS_nativeFunctionCallCount[];
-extern char* OS_nativeFunctionNames[];
-#define OS_NATIVE_ENTER(env, that, func) OS_nativeFunctionCallCount[func]++;
-#define OS_NATIVE_EXIT(env, that, func) 
+extern int GDK_nativeFunctionCount;
+extern int GDK_nativeFunctionCallCount[];
+extern char* GDK_nativeFunctionNames[];
+#define GDK_NATIVE_ENTER(env, that, func) GDK_nativeFunctionCallCount[func]++;
+#define GDK_NATIVE_EXIT(env, that, func) 
 #else
-#ifndef OS_NATIVE_ENTER
-#define OS_NATIVE_ENTER(env, that, func) 
+#ifndef GDK_NATIVE_ENTER
+#define GDK_NATIVE_ENTER(env, that, func) 
 #endif
-#ifndef OS_NATIVE_EXIT
-#define OS_NATIVE_EXIT(env, that, func) 
+#ifndef GDK_NATIVE_EXIT
+#define GDK_NATIVE_EXIT(env, that, func) 
 #endif
 #endif
 
 typedef enum {
-#ifndef JNI64
-	Call__IIII_FUNC,
-#else
-	Call__JJII_FUNC,
-#endif
-#ifndef JNI64
-	Call__IIIJ_FUNC,
-#else
-	Call__JJIJ_FUNC,
-#endif
 	GDK_1EVENT_1TYPE_FUNC,
 	GDK_1EVENT_1WINDOW_FUNC,
 	GDK_1IS_1X11_1DISPLAY_FUNC,
-	GDK_1WINDOWING_1WAYLAND_FUNC,
-	GDK_1WINDOWING_1X11_FUNC,
-	GInterfaceInfo_1sizeof_FUNC,
-	GPollFD_1sizeof_FUNC,
-	GTK_1ACCEL_1LABEL_1GET_1ACCEL_1STRING_FUNC,
-	GTK_1ACCEL_1LABEL_1SET_1ACCEL_1STRING_FUNC,
-	GTK_1ENTRY_1IM_1CONTEXT_FUNC,
-	GTK_1TEXTVIEW_1IM_1CONTEXT_FUNC,
-	GTK_1TYPE_1ACCESSIBLE_FUNC,
-	GTK_1WIDGET_1GET_1CLASS_FUNC,
-	GTK_1WIDGET_1REQUISITION_1HEIGHT_FUNC,
-	GTK_1WIDGET_1REQUISITION_1WIDTH_FUNC,
-	GTypeInfo_1sizeof_FUNC,
-	GTypeQuery_1sizeof_FUNC,
-	G_1OBJECT_1CLASS_1CONSTRUCTOR_FUNC,
-	G_1OBJECT_1CLASS_1SET_1CONSTRUCTOR_FUNC,
-	G_1TYPE_1BOOLEAN_FUNC,
-	G_1TYPE_1DOUBLE_FUNC,
-	G_1TYPE_1FLOAT_FUNC,
-	G_1TYPE_1INT_FUNC,
-	G_1TYPE_1INT64_FUNC,
-	G_1VALUE_1TYPE_FUNC,
 	GdkColor_1sizeof_FUNC,
 	GdkDragContext_1sizeof_FUNC,
 	GdkEventAny_1sizeof_FUNC,
@@ -76,7 +44,6 @@ typedef enum {
 	GdkEventFocus_1sizeof_FUNC,
 	GdkEventKey_1sizeof_FUNC,
 	GdkEventMotion_1sizeof_FUNC,
-	GdkEventProperty_1sizeof_FUNC,
 	GdkEventScroll_1sizeof_FUNC,
 	GdkEventWindowState_1sizeof_FUNC,
 	GdkEvent_1sizeof_FUNC,
@@ -85,312 +52,12 @@ typedef enum {
 	GdkRGBA_1sizeof_FUNC,
 	GdkRectangle_1sizeof_FUNC,
 	GdkWindowAttr_1sizeof_FUNC,
-	GtkAllocation_1sizeof_FUNC,
-	GtkBorder_1sizeof_FUNC,
-	GtkCellRendererPixbufClass_1sizeof_FUNC,
-	GtkCellRendererPixbuf_1sizeof_FUNC,
-	GtkCellRendererTextClass_1sizeof_FUNC,
-	GtkCellRendererText_1sizeof_FUNC,
-	GtkCellRendererToggleClass_1sizeof_FUNC,
-	GtkCellRendererToggle_1sizeof_FUNC,
-	GtkRequisition_1sizeof_FUNC,
-	GtkTargetEntry_1sizeof_FUNC,
-	GtkTextIter_1sizeof_FUNC,
-	GtkTreeIter_1sizeof_FUNC,
-	PangoAttrColor_1sizeof_FUNC,
-	PangoAttrInt_1sizeof_FUNC,
-	PangoAttribute_1sizeof_FUNC,
-	PangoItem_1sizeof_FUNC,
-	PangoLayoutLine_1sizeof_FUNC,
-	PangoLayoutRun_1sizeof_FUNC,
-	PangoLogAttr_1sizeof_FUNC,
-	PangoRectangle_1sizeof_FUNC,
-	RTLD_1GLOBAL_FUNC,
-	RTLD_1LAZY_FUNC,
-	RTLD_1NOW_FUNC,
-	XAnyEvent_1sizeof_FUNC,
-	XEvent_1sizeof_FUNC,
-	XExposeEvent_1sizeof_FUNC,
-	XFocusChangeEvent_1sizeof_FUNC,
-	X_1EVENT_1TYPE_FUNC,
-	X_1EVENT_1WINDOW_FUNC,
-	_1Call_FUNC,
-	_1FcConfigAppFontAddFile_FUNC,
 	_1GDK_1PIXMAP_1XID_FUNC,
 	_1GDK_1TYPE_1COLOR_FUNC,
 	_1GDK_1TYPE_1PIXBUF_FUNC,
 	_1GDK_1TYPE_1RGBA_FUNC,
-	_1GET_1FUNCTION_1POINTER_1gtk_1false_FUNC,
-	_1GString_1len_FUNC,
-	_1GString_1str_FUNC,
-	_1GTK_1ACCESSIBLE_FUNC,
-	_1GTK_1IS_1ACCEL_1LABEL_FUNC,
-	_1GTK_1IS_1BUTTON_FUNC,
-	_1GTK_1IS_1CELL_1RENDERER_1PIXBUF_FUNC,
-	_1GTK_1IS_1CELL_1RENDERER_1TEXT_FUNC,
-	_1GTK_1IS_1CELL_1RENDERER_1TOGGLE_FUNC,
-	_1GTK_1IS_1CONTAINER_FUNC,
-	_1GTK_1IS_1IMAGE_1MENU_1ITEM_FUNC,
-	_1GTK_1IS_1LABEL_FUNC,
-	_1GTK_1IS_1MENU_1ITEM_FUNC,
-	_1GTK_1IS_1PLUG_FUNC,
-	_1GTK_1IS_1SCROLLED_1WINDOW_FUNC,
-	_1GTK_1IS_1WINDOW_FUNC,
-	_1GTK_1STOCK_1CANCEL_FUNC,
-	_1GTK_1STOCK_1OK_FUNC,
-	_1GTK_1TYPE_1CELL_1RENDERER_1PIXBUF_FUNC,
-	_1GTK_1TYPE_1CELL_1RENDERER_1TEXT_FUNC,
-	_1GTK_1TYPE_1CELL_1RENDERER_1TOGGLE_FUNC,
-	_1GTK_1TYPE_1FIXED_FUNC,
-	_1GTK_1TYPE_1IM_1MULTICONTEXT_FUNC,
-	_1GTK_1TYPE_1MENU_FUNC,
-	_1GTK_1TYPE_1WIDGET_FUNC,
-	_1GTK_1WIDGET_1SET_1FLAGS_FUNC,
-	_1GTK_1WIDGET_1UNSET_1FLAGS_FUNC,
-	_1G_1OBJECT_1CLASS_FUNC,
-	_1G_1OBJECT_1GET_1CLASS_FUNC,
-	_1G_1OBJECT_1TYPE_FUNC,
-	_1G_1OBJECT_1TYPE_1NAME_FUNC,
-	_1G_1TYPE_1CHECK_1INSTANCE_1TYPE_FUNC,
-	_1G_1TYPE_1STRING_FUNC,
-	_1PANGO_1PIXELS_FUNC,
-	_1PANGO_1TYPE_1FONT_1DESCRIPTION_FUNC,
-	_1PANGO_1TYPE_1FONT_1FACE_FUNC,
-	_1PANGO_1TYPE_1FONT_1FAMILY_FUNC,
-	_1PANGO_1TYPE_1LAYOUT_FUNC,
-	_1XCheckIfEvent_FUNC,
-	_1XDefaultRootWindow_FUNC,
-	_1XDefaultScreen_FUNC,
-	_1XFlush_FUNC,
-	_1XFree_FUNC,
-	_1XGetWindowProperty_FUNC,
-	_1XKeysymToKeycode_FUNC,
-	_1XQueryPointer_FUNC,
-	_1XSetErrorHandler_FUNC,
-	_1XSetIOErrorHandler_FUNC,
-	_1XSetInputFocus_FUNC,
-	_1XSetTransientForHint_FUNC,
-	_1XSynchronize_FUNC,
-	_1XTestFakeKeyEvent_FUNC,
-	_1access_FUNC,
-	_1atk_1object_1add_1relationship_FUNC,
-	_1atk_1object_1remove_1relationship_FUNC,
-#ifndef JNI64
-	_1call__IIIII_FUNC,
-#else
-	_1call__JJJJJ_FUNC,
-#endif
-#ifndef JNI64
-	_1call__IIIIIII_FUNC,
-#else
-	_1call__JJJJJJJ_FUNC,
-#endif
-#ifndef JNI64
-	_1call__IIIIIIII_FUNC,
-#else
-	_1call__JJJJJJJJ_FUNC,
-#endif
-	_1call_1get_1size_FUNC,
-	_1dlopen_FUNC,
-	_1g_1app_1info_1create_1from_1commandline_FUNC,
-	_1g_1app_1info_1get_1all_FUNC,
-	_1g_1app_1info_1get_1default_1for_1type_FUNC,
-	_1g_1app_1info_1get_1executable_FUNC,
-	_1g_1app_1info_1get_1icon_FUNC,
-	_1g_1app_1info_1get_1name_FUNC,
-	_1g_1app_1info_1launch_FUNC,
-	_1g_1app_1info_1launch_1default_1for_1uri_FUNC,
-	_1g_1app_1info_1should_1show_FUNC,
-	_1g_1app_1info_1supports_1uris_FUNC,
-	_1g_1cclosure_1new_FUNC,
-	_1g_1closure_1ref_FUNC,
-	_1g_1closure_1sink_FUNC,
-	_1g_1closure_1unref_FUNC,
-	_1g_1content_1type_1equals_FUNC,
-	_1g_1content_1type_1is_1a_FUNC,
-	_1g_1error_1free_FUNC,
-	_1g_1error_1get_1message_FUNC,
-	_1g_1file_1get_1uri_FUNC,
-	_1g_1file_1info_1get_1content_1type_FUNC,
-	_1g_1file_1new_1for_1commandline_1arg_FUNC,
-	_1g_1file_1new_1for_1path_FUNC,
-	_1g_1file_1new_1for_1uri_FUNC,
-	_1g_1file_1query_1info_FUNC,
-	_1g_1file_1test_FUNC,
-	_1g_1filename_1display_1name_FUNC,
-	_1g_1filename_1from_1uri_FUNC,
-	_1g_1filename_1from_1utf8_FUNC,
-	_1g_1filename_1to_1uri_FUNC,
-	_1g_1filename_1to_1utf8_FUNC,
-	_1g_1free_FUNC,
-	_1g_1hash_1table_1get_1values_FUNC,
-	_1g_1icon_1new_1for_1string_FUNC,
-	_1g_1icon_1to_1string_FUNC,
-	_1g_1idle_1add_FUNC,
-	_1g_1list_1append_FUNC,
-	_1g_1list_1data_FUNC,
-	_1g_1list_1free_FUNC,
-	_1g_1list_1free_11_FUNC,
-	_1g_1list_1last_FUNC,
-	_1g_1list_1length_FUNC,
-	_1g_1list_1next_FUNC,
-	_1g_1list_1nth_FUNC,
-	_1g_1list_1nth_1data_FUNC,
-	_1g_1list_1prepend_FUNC,
-	_1g_1list_1previous_FUNC,
-	_1g_1list_1remove_1link_FUNC,
-	_1g_1list_1set_1next_FUNC,
-	_1g_1list_1set_1previous_FUNC,
-	_1g_1log_1default_1handler_FUNC,
-	_1g_1log_1remove_1handler_FUNC,
-	_1g_1log_1set_1handler_FUNC,
-	_1g_1main_1context_1acquire_FUNC,
-	_1g_1main_1context_1check_FUNC,
-	_1g_1main_1context_1default_FUNC,
-	_1g_1main_1context_1get_1poll_1func_FUNC,
-	_1g_1main_1context_1iteration_FUNC,
-	_1g_1main_1context_1prepare_FUNC,
-	_1g_1main_1context_1query_FUNC,
-	_1g_1main_1context_1release_FUNC,
-	_1g_1malloc_FUNC,
-	_1g_1object_1class_1find_1property_FUNC,
-#ifndef JNI64
-	_1g_1object_1get__I_3B_3II_FUNC,
-#else
-	_1g_1object_1get__J_3B_3IJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1get__I_3B_3JI_FUNC,
-#else
-	_1g_1object_1get__J_3B_3JJ_FUNC,
-#endif
-	_1g_1object_1get_1qdata_FUNC,
-	_1g_1object_1new_FUNC,
-	_1g_1object_1notify_FUNC,
-	_1g_1object_1ref_FUNC,
-	_1g_1object_1ref_1sink_FUNC,
-#ifndef JNI64
-	_1g_1object_1set__I_3BFI_FUNC,
-#else
-	_1g_1object_1set__J_3BFJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1set__I_3BII_FUNC,
-#else
-	_1g_1object_1set__J_3BIJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1set__I_3BJI_FUNC,
-#else
-	_1g_1object_1set__J_3BJJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkColor_2I_FUNC,
-#else
-	_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkColor_2J_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2I_FUNC,
-#else
-	_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2J_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1set__I_3BZI_FUNC,
-#else
-	_1g_1object_1set__J_3BZJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1object_1set__I_3B_3BI_FUNC,
-#else
-	_1g_1object_1set__J_3B_3BJ_FUNC,
-#endif
-	_1g_1object_1set_1qdata_FUNC,
-	_1g_1object_1unref_FUNC,
-	_1g_1quark_1from_1string_FUNC,
-	_1g_1set_1prgname_FUNC,
-	_1g_1signal_1add_1emission_1hook_FUNC,
-	_1g_1signal_1connect_FUNC,
-	_1g_1signal_1connect_1closure_FUNC,
-	_1g_1signal_1connect_1closure_1by_1id_FUNC,
-#ifndef JNI64
-	_1g_1signal_1emit_1by_1name__I_3B_FUNC,
-#else
-	_1g_1signal_1emit_1by_1name__J_3B_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1signal_1emit_1by_1name__I_3BI_FUNC,
-#else
-	_1g_1signal_1emit_1by_1name__J_3BJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1signal_1emit_1by_1name__I_3BII_FUNC,
-#else
-	_1g_1signal_1emit_1by_1name__J_3BJJ_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1signal_1emit_1by_1name__I_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2_FUNC,
-#else
-	_1g_1signal_1emit_1by_1name__J_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1signal_1emit_1by_1name__I_3B_3B_FUNC,
-#else
-	_1g_1signal_1emit_1by_1name__J_3B_3B_FUNC,
-#endif
-	_1g_1signal_1handler_1disconnect_FUNC,
-	_1g_1signal_1handler_1find_FUNC,
-	_1g_1signal_1handlers_1block_1matched_FUNC,
-	_1g_1signal_1handlers_1unblock_1matched_FUNC,
-	_1g_1signal_1lookup_FUNC,
-	_1g_1signal_1remove_1emission_1hook_FUNC,
-	_1g_1signal_1stop_1emission_1by_1name_FUNC,
-	_1g_1slist_1append_FUNC,
-	_1g_1slist_1data_FUNC,
-	_1g_1slist_1free_FUNC,
-	_1g_1slist_1length_FUNC,
-	_1g_1slist_1next_FUNC,
-	_1g_1source_1remove_FUNC,
-	_1g_1strfreev_FUNC,
-	_1g_1string_1free_FUNC,
-	_1g_1string_1new_1len_FUNC,
-	_1g_1strtod_FUNC,
-	_1g_1thread_1init_FUNC,
-	_1g_1thread_1supported_FUNC,
-	_1g_1timeout_1add_FUNC,
-	_1g_1type_1add_1interface_1static_FUNC,
-	_1g_1type_1class_1peek_FUNC,
-	_1g_1type_1class_1peek_1parent_FUNC,
-	_1g_1type_1class_1ref_FUNC,
-	_1g_1type_1class_1unref_FUNC,
-	_1g_1type_1from_1name_FUNC,
-	_1g_1type_1interface_1peek_1parent_FUNC,
-	_1g_1type_1is_1a_FUNC,
-	_1g_1type_1name_FUNC,
-	_1g_1type_1parent_FUNC,
-	_1g_1type_1query_FUNC,
-	_1g_1type_1register_1static_FUNC,
-	_1g_1utf16_1offset_1to_1pointer_FUNC,
-	_1g_1utf16_1offset_1to_1utf8_1offset_FUNC,
-	_1g_1utf16_1pointer_1to_1offset_FUNC,
-	_1g_1utf16_1strlen_FUNC,
-	_1g_1utf16_1to_1utf8_FUNC,
-	_1g_1utf8_1offset_1to_1utf16_1offset_FUNC,
-	_1g_1utf8_1pointer_1to_1offset_FUNC,
-	_1g_1utf8_1strlen_FUNC,
-#ifndef JNI64
-	_1g_1utf8_1to_1utf16__II_3I_3I_3I_FUNC,
-#else
-	_1g_1utf8_1to_1utf16__JJ_3J_3J_3J_FUNC,
-#endif
-#ifndef JNI64
-	_1g_1utf8_1to_1utf16___3BI_3I_3I_3I_FUNC,
-#else
-	_1g_1utf8_1to_1utf16___3BJ_3J_3J_3J_FUNC,
-#endif
-	_1g_1value_1peek_1pointer_FUNC,
 	_1gdk_1atom_1intern_FUNC,
 	_1gdk_1atom_1name_FUNC,
-	_1gdk_1beep_FUNC,
 	_1gdk_1bitmap_1create_1from_1data_FUNC,
 	_1gdk_1cairo_1create_FUNC,
 	_1gdk_1cairo_1get_1clip_1rectangle_FUNC,
@@ -419,8 +86,13 @@ typedef enum {
 	_1gdk_1device_1manager_1get_1client_1pointer_FUNC,
 	_1gdk_1device_1ungrab_FUNC,
 	_1gdk_1device_1warp_FUNC,
+	_1gdk_1display_1beep_FUNC,
 	_1gdk_1display_1get_1default_FUNC,
+	_1gdk_1display_1get_1default_1group_FUNC,
+	_1gdk_1display_1get_1default_1seat_FUNC,
 	_1gdk_1display_1get_1device_1manager_FUNC,
+	_1gdk_1display_1get_1monitor_FUNC,
+	_1gdk_1display_1get_1primary_1monitor_FUNC,
 	_1gdk_1display_1supports_1cursor_1color_FUNC,
 	_1gdk_1display_1warp_1pointer_FUNC,
 	_1gdk_1drag_1context_1get_1actions_FUNC,
@@ -441,7 +113,9 @@ typedef enum {
 	_1gdk_1event_1free_FUNC,
 	_1gdk_1event_1get_FUNC,
 	_1gdk_1event_1get_1coords_FUNC,
+	_1gdk_1event_1get_1event_1type_FUNC,
 	_1gdk_1event_1get_1scroll_1deltas_FUNC,
+	_1gdk_1event_1get_1seat_FUNC,
 	_1gdk_1event_1get_1state_FUNC,
 	_1gdk_1event_1get_1time_FUNC,
 	_1gdk_1event_1handler_1set_FUNC,
@@ -459,9 +133,11 @@ typedef enum {
 	_1gdk_1keyboard_1ungrab_FUNC,
 	_1gdk_1keymap_1get_1default_FUNC,
 	_1gdk_1keymap_1get_1entries_1for_1keyval_FUNC,
-	_1gdk_1keymap_1translate_1keyboard_1state_FUNC,
 	_1gdk_1keyval_1to_1lower_FUNC,
 	_1gdk_1keyval_1to_1unicode_FUNC,
+	_1gdk_1monitor_1get_1geometry_FUNC,
+	_1gdk_1monitor_1get_1scale_1factor_FUNC,
+	_1gdk_1monitor_1get_1width_1mm_FUNC,
 	_1gdk_1pango_1context_1get_FUNC,
 	_1gdk_1pango_1layout_1get_1clip_1region_FUNC,
 	_1gdk_1pixbuf_1copy_1area_FUNC,
@@ -517,10 +193,14 @@ typedef enum {
 	_1gdk_1screen_1height_FUNC,
 	_1gdk_1screen_1width_FUNC,
 	_1gdk_1screen_1width_1mm_FUNC,
+	_1gdk_1seat_1get_1pointer_FUNC,
+	_1gdk_1seat_1grab_FUNC,
+	_1gdk_1seat_1ungrab_FUNC,
 	_1gdk_1selection_1owner_1get_FUNC,
 	_1gdk_1selection_1owner_1set_FUNC,
 	_1gdk_1set_1program_1class_FUNC,
 	_1gdk_1test_1simulate_1button_FUNC,
+	_1gdk_1test_1simulate_1key_FUNC,
 	_1gdk_1text_1property_1to_1utf8_1list_1for_1display_FUNC,
 	_1gdk_1unicode_1to_1keyval_FUNC,
 	_1gdk_1utf8_1to_1string_1target_FUNC,
@@ -573,7 +253,8 @@ typedef enum {
 	_1gdk_1window_1shape_1combine_1region_FUNC,
 	_1gdk_1window_1show_FUNC,
 	_1gdk_1window_1show_1unraised_FUNC,
-	_1gdk_1x11_1atom_1to_1xatom_FUNC,
+	_1gdk_1x11_1display_1error_1trap_1pop_1ignored_FUNC,
+	_1gdk_1x11_1display_1error_1trap_1push_FUNC,
 	_1gdk_1x11_1display_1get_1xdisplay_FUNC,
 	_1gdk_1x11_1display_1utf8_1to_1compound_1text_FUNC,
 	_1gdk_1x11_1drawable_1get_1xid_FUNC,
@@ -583,9 +264,70 @@ typedef enum {
 	_1gdk_1x11_1visual_1get_1xvisual_FUNC,
 	_1gdk_1x11_1window_1get_1xid_FUNC,
 	_1gdk_1x11_1window_1lookup_1for_1display_FUNC,
-	_1glib_1major_1version_FUNC,
-	_1glib_1micro_1version_FUNC,
-	_1glib_1minor_1version_FUNC,
+	gdk_1threads_1leave_FUNC,
+} GDK_FUNCS;
+#ifdef NATIVE_STATS
+extern int GTK_nativeFunctionCount;
+extern int GTK_nativeFunctionCallCount[];
+extern char* GTK_nativeFunctionNames[];
+#define GTK_NATIVE_ENTER(env, that, func) GTK_nativeFunctionCallCount[func]++;
+#define GTK_NATIVE_EXIT(env, that, func) 
+#else
+#ifndef GTK_NATIVE_ENTER
+#define GTK_NATIVE_ENTER(env, that, func) 
+#endif
+#ifndef GTK_NATIVE_EXIT
+#define GTK_NATIVE_EXIT(env, that, func) 
+#endif
+#endif
+
+typedef enum {
+	GTK_1ACCEL_1LABEL_1GET_1ACCEL_1STRING_FUNC,
+	GTK_1ACCEL_1LABEL_1SET_1ACCEL_1STRING_FUNC,
+	GTK_1ENTRY_1IM_1CONTEXT_FUNC,
+	GTK_1TEXTVIEW_1IM_1CONTEXT_FUNC,
+	GTK_1TYPE_1ACCESSIBLE_FUNC,
+	GTK_1WIDGET_1GET_1CLASS_FUNC,
+	GTK_1WIDGET_1REQUISITION_1HEIGHT_FUNC,
+	GTK_1WIDGET_1REQUISITION_1WIDTH_FUNC,
+	GtkAllocation_1sizeof_FUNC,
+	GtkBorder_1sizeof_FUNC,
+	GtkCellRendererPixbufClass_1sizeof_FUNC,
+	GtkCellRendererPixbuf_1sizeof_FUNC,
+	GtkCellRendererTextClass_1sizeof_FUNC,
+	GtkCellRendererText_1sizeof_FUNC,
+	GtkCellRendererToggleClass_1sizeof_FUNC,
+	GtkCellRendererToggle_1sizeof_FUNC,
+	GtkRequisition_1sizeof_FUNC,
+	GtkTargetEntry_1sizeof_FUNC,
+	GtkTextIter_1sizeof_FUNC,
+	GtkTreeIter_1sizeof_FUNC,
+	_1GET_1FUNCTION_1POINTER_1gtk_1false_FUNC,
+	_1GTK_1ACCESSIBLE_FUNC,
+	_1GTK_1IS_1ACCEL_1LABEL_FUNC,
+	_1GTK_1IS_1BUTTON_FUNC,
+	_1GTK_1IS_1CELL_1RENDERER_1PIXBUF_FUNC,
+	_1GTK_1IS_1CELL_1RENDERER_1TEXT_FUNC,
+	_1GTK_1IS_1CELL_1RENDERER_1TOGGLE_FUNC,
+	_1GTK_1IS_1CONTAINER_FUNC,
+	_1GTK_1IS_1IMAGE_1MENU_1ITEM_FUNC,
+	_1GTK_1IS_1LABEL_FUNC,
+	_1GTK_1IS_1MENU_1ITEM_FUNC,
+	_1GTK_1IS_1PLUG_FUNC,
+	_1GTK_1IS_1SCROLLED_1WINDOW_FUNC,
+	_1GTK_1IS_1WINDOW_FUNC,
+	_1GTK_1STOCK_1CANCEL_FUNC,
+	_1GTK_1STOCK_1OK_FUNC,
+	_1GTK_1TYPE_1CELL_1RENDERER_1PIXBUF_FUNC,
+	_1GTK_1TYPE_1CELL_1RENDERER_1TEXT_FUNC,
+	_1GTK_1TYPE_1CELL_1RENDERER_1TOGGLE_FUNC,
+	_1GTK_1TYPE_1FIXED_FUNC,
+	_1GTK_1TYPE_1IM_1MULTICONTEXT_FUNC,
+	_1GTK_1TYPE_1MENU_FUNC,
+	_1GTK_1TYPE_1WIDGET_FUNC,
+	_1GTK_1TYPE_1WINDOW_FUNC,
+	_1GTK_1WIDGET_1SET_1FLAGS_FUNC,
+	_1GTK_1WIDGET_1UNSET_1FLAGS_FUNC,
 	_1gtk_1accel_1group_1new_FUNC,
 	_1gtk_1accel_1label_1new_FUNC,
 	_1gtk_1accel_1label_1set_1accel_FUNC,
@@ -617,6 +359,7 @@ typedef enum {
 	_1gtk_1box_1set_1spacing_FUNC,
 	_1gtk_1button_1clicked_FUNC,
 	_1gtk_1button_1new_FUNC,
+	_1gtk_1button_1set_1image_FUNC,
 	_1gtk_1calendar_1clear_1marks_FUNC,
 	_1gtk_1calendar_1get_1date_FUNC,
 	_1gtk_1calendar_1mark_1day_FUNC,
@@ -629,6 +372,7 @@ typedef enum {
 	_1gtk_1cell_1layout_1pack_1start_FUNC,
 	_1gtk_1cell_1layout_1set_1attributes_FUNC,
 	_1gtk_1cell_1renderer_1get_1fixed_1size_FUNC,
+	_1gtk_1cell_1renderer_1get_1padding_FUNC,
 	_1gtk_1cell_1renderer_1get_1preferred_1height_1for_1width_FUNC,
 	_1gtk_1cell_1renderer_1get_1preferred_1size_FUNC,
 	_1gtk_1cell_1renderer_1get_1size_FUNC,
@@ -662,6 +406,7 @@ typedef enum {
 	_1gtk_1color_1selection_1set_1has_1palette_FUNC,
 	_1gtk_1combo_1box_1get_1active_FUNC,
 	_1gtk_1combo_1box_1get_1model_FUNC,
+	_1gtk_1combo_1box_1get_1wrap_1width_FUNC,
 	_1gtk_1combo_1box_1popdown_FUNC,
 	_1gtk_1combo_1box_1popup_FUNC,
 	_1gtk_1combo_1box_1set_1active_FUNC,
@@ -677,6 +422,7 @@ typedef enum {
 	_1gtk_1container_1forall_FUNC,
 	_1gtk_1container_1get_1border_1width_FUNC,
 	_1gtk_1container_1get_1children_FUNC,
+	_1gtk_1container_1propagate_1draw_FUNC,
 	_1gtk_1container_1remove_FUNC,
 	_1gtk_1container_1set_1border_1width_FUNC,
 	_1gtk_1css_1provider_1get_1named_FUNC,
@@ -800,7 +546,9 @@ typedef enum {
 	_1gtk_1get_1current_1event_1state_FUNC,
 	_1gtk_1get_1default_1language_FUNC,
 	_1gtk_1get_1event_1widget_FUNC,
+	_1gtk_1grab_1add_FUNC,
 	_1gtk_1grab_1get_1current_FUNC,
+	_1gtk_1grab_1remove_FUNC,
 	_1gtk_1hbox_1new_FUNC,
 	_1gtk_1hscale_1new_FUNC,
 	_1gtk_1hscrollbar_1new_FUNC,
@@ -899,6 +647,7 @@ typedef enum {
 	_1gtk_1menu_1popdown_FUNC,
 	_1gtk_1menu_1popup_FUNC,
 	_1gtk_1menu_1popup_1at_1pointer_FUNC,
+	_1gtk_1menu_1popup_1at_1rect_FUNC,
 	_1gtk_1menu_1shell_1deactivate_FUNC,
 	_1gtk_1menu_1shell_1insert_FUNC,
 	_1gtk_1menu_1shell_1set_1take_1focus_FUNC,
@@ -1021,6 +770,7 @@ typedef enum {
 	_1gtk_1scrolled_1window_1add_1with_1viewport_FUNC,
 	_1gtk_1scrolled_1window_1get_1hadjustment_FUNC,
 	_1gtk_1scrolled_1window_1get_1hscrollbar_FUNC,
+	_1gtk_1scrolled_1window_1get_1overlay_1scrolling_FUNC,
 	_1gtk_1scrolled_1window_1get_1policy_FUNC,
 	_1gtk_1scrolled_1window_1get_1shadow_1type_FUNC,
 	_1gtk_1scrolled_1window_1get_1vadjustment_FUNC,
@@ -1320,6 +1070,7 @@ typedef enum {
 	_1gtk_1widget_1get_1allocation_FUNC,
 	_1gtk_1widget_1get_1can_1default_FUNC,
 	_1gtk_1widget_1get_1child_1visible_FUNC,
+	_1gtk_1widget_1get_1clip_FUNC,
 	_1gtk_1widget_1get_1default_1style_FUNC,
 	_1gtk_1widget_1get_1events_FUNC,
 	_1gtk_1widget_1get_1has_1window_FUNC,
@@ -1330,6 +1081,7 @@ typedef enum {
 	_1gtk_1widget_1get_1pango_1context_FUNC,
 	_1gtk_1widget_1get_1parent_FUNC,
 	_1gtk_1widget_1get_1parent_1window_FUNC,
+	_1gtk_1widget_1get_1preferred_1height_FUNC,
 	_1gtk_1widget_1get_1preferred_1height_1for_1width_FUNC,
 	_1gtk_1widget_1get_1preferred_1size_FUNC,
 	_1gtk_1widget_1get_1preferred_1width_1for_1height_FUNC,
@@ -1369,6 +1121,7 @@ typedef enum {
 	_1gtk_1widget_1set_1app_1paintable_FUNC,
 	_1gtk_1widget_1set_1can_1default_FUNC,
 	_1gtk_1widget_1set_1can_1focus_FUNC,
+	_1gtk_1widget_1set_1clip_FUNC,
 	_1gtk_1widget_1set_1default_1direction_FUNC,
 	_1gtk_1widget_1set_1direction_FUNC,
 	_1gtk_1widget_1set_1double_1buffered_FUNC,
@@ -1439,6 +1192,332 @@ typedef enum {
 	_1gtk_1window_1set_1type_1hint_FUNC,
 	_1gtk_1window_1unfullscreen_FUNC,
 	_1gtk_1window_1unmaximize_FUNC,
+} GTK_FUNCS;
+#ifdef NATIVE_STATS
+extern int OS_nativeFunctionCount;
+extern int OS_nativeFunctionCallCount[];
+extern char* OS_nativeFunctionNames[];
+#define OS_NATIVE_ENTER(env, that, func) OS_nativeFunctionCallCount[func]++;
+#define OS_NATIVE_EXIT(env, that, func) 
+#else
+#ifndef OS_NATIVE_ENTER
+#define OS_NATIVE_ENTER(env, that, func) 
+#endif
+#ifndef OS_NATIVE_EXIT
+#define OS_NATIVE_EXIT(env, that, func) 
+#endif
+#endif
+
+typedef enum {
+#ifndef JNI64
+	Call__IIII_FUNC,
+#else
+	Call__JJII_FUNC,
+#endif
+#ifndef JNI64
+	Call__IIIJ_FUNC,
+#else
+	Call__JJIJ_FUNC,
+#endif
+	GDK_1WINDOWING_1WAYLAND_FUNC,
+	GDK_1WINDOWING_1X11_FUNC,
+	GInterfaceInfo_1sizeof_FUNC,
+	GPollFD_1sizeof_FUNC,
+	GTypeInfo_1sizeof_FUNC,
+	GTypeQuery_1sizeof_FUNC,
+	G_1OBJECT_1CLASS_1CONSTRUCTOR_FUNC,
+	G_1OBJECT_1CLASS_1SET_1CONSTRUCTOR_FUNC,
+	G_1TYPE_1BOOLEAN_FUNC,
+	G_1TYPE_1DOUBLE_FUNC,
+	G_1TYPE_1FLOAT_FUNC,
+	G_1TYPE_1INT_FUNC,
+	G_1TYPE_1INT64_FUNC,
+	G_1VALUE_1TYPE_FUNC,
+	PangoAttrColor_1sizeof_FUNC,
+	PangoAttrInt_1sizeof_FUNC,
+	PangoAttribute_1sizeof_FUNC,
+	PangoItem_1sizeof_FUNC,
+	PangoLayoutLine_1sizeof_FUNC,
+	PangoLayoutRun_1sizeof_FUNC,
+	PangoLogAttr_1sizeof_FUNC,
+	PangoRectangle_1sizeof_FUNC,
+	RTLD_1GLOBAL_FUNC,
+	RTLD_1LAZY_FUNC,
+	RTLD_1NOW_FUNC,
+	XAnyEvent_1sizeof_FUNC,
+	XEvent_1sizeof_FUNC,
+	XExposeEvent_1sizeof_FUNC,
+	XFocusChangeEvent_1sizeof_FUNC,
+	X_1EVENT_1TYPE_FUNC,
+	X_1EVENT_1WINDOW_FUNC,
+	_1Call_FUNC,
+	_1FcConfigAppFontAddFile_FUNC,
+	_1GString_1len_FUNC,
+	_1GString_1str_FUNC,
+	_1G_1OBJECT_1CLASS_FUNC,
+	_1G_1OBJECT_1GET_1CLASS_FUNC,
+	_1G_1OBJECT_1TYPE_FUNC,
+	_1G_1OBJECT_1TYPE_1NAME_FUNC,
+	_1G_1TYPE_1CHECK_1INSTANCE_1TYPE_FUNC,
+	_1G_1TYPE_1STRING_FUNC,
+	_1PANGO_1PIXELS_FUNC,
+	_1PANGO_1TYPE_1FONT_1DESCRIPTION_FUNC,
+	_1PANGO_1TYPE_1FONT_1FACE_FUNC,
+	_1PANGO_1TYPE_1FONT_1FAMILY_FUNC,
+	_1PANGO_1TYPE_1LAYOUT_FUNC,
+	_1XCheckIfEvent_FUNC,
+	_1XDefaultRootWindow_FUNC,
+	_1XDefaultScreen_FUNC,
+	_1XFree_FUNC,
+	_1XQueryPointer_FUNC,
+	_1XSetErrorHandler_FUNC,
+	_1XSetIOErrorHandler_FUNC,
+	_1XSetInputFocus_FUNC,
+	_1XSetTransientForHint_FUNC,
+	_1XSynchronize_FUNC,
+	_1access_FUNC,
+	_1cachejvmptr_FUNC,
+#ifndef JNI64
+	_1call__IIIII_FUNC,
+#else
+	_1call__JJJJJ_FUNC,
+#endif
+#ifndef JNI64
+	_1call__IIIIIII_FUNC,
+#else
+	_1call__JJJJJJJ_FUNC,
+#endif
+#ifndef JNI64
+	_1call__IIIIIIII_FUNC,
+#else
+	_1call__JJJJJJJJ_FUNC,
+#endif
+	_1call_1get_1size_FUNC,
+	_1dlopen_FUNC,
+	_1g_1app_1info_1create_1from_1commandline_FUNC,
+	_1g_1app_1info_1get_1all_FUNC,
+	_1g_1app_1info_1get_1default_1for_1type_FUNC,
+	_1g_1app_1info_1get_1executable_FUNC,
+	_1g_1app_1info_1get_1icon_FUNC,
+	_1g_1app_1info_1get_1name_FUNC,
+	_1g_1app_1info_1launch_FUNC,
+	_1g_1app_1info_1launch_1default_1for_1uri_FUNC,
+	_1g_1app_1info_1should_1show_FUNC,
+	_1g_1app_1info_1supports_1uris_FUNC,
+	_1g_1bus_1own_1name_FUNC,
+	_1g_1bytes_1new_FUNC,
+	_1g_1bytes_1unref_FUNC,
+	_1g_1cclosure_1new_FUNC,
+	_1g_1closure_1ref_FUNC,
+	_1g_1closure_1sink_FUNC,
+	_1g_1closure_1unref_FUNC,
+	_1g_1content_1type_1equals_FUNC,
+	_1g_1content_1type_1is_1a_FUNC,
+	_1g_1dbus_1connection_1register_1object_FUNC,
+	_1g_1dbus_1method_1invocation_1return_1value_FUNC,
+	_1g_1dbus_1node_1info_1lookup_1interface_FUNC,
+	_1g_1dbus_1node_1info_1new_1for_1xml_FUNC,
+	_1g_1error_1free_FUNC,
+	_1g_1error_1get_1message_FUNC,
+	_1g_1file_1get_1uri_FUNC,
+	_1g_1file_1info_1get_1content_1type_FUNC,
+	_1g_1file_1new_1for_1commandline_1arg_FUNC,
+	_1g_1file_1new_1for_1path_FUNC,
+	_1g_1file_1new_1for_1uri_FUNC,
+	_1g_1file_1query_1info_FUNC,
+	_1g_1file_1test_FUNC,
+	_1g_1filename_1display_1name_FUNC,
+	_1g_1filename_1from_1uri_FUNC,
+	_1g_1filename_1from_1utf8_FUNC,
+	_1g_1filename_1to_1uri_FUNC,
+	_1g_1filename_1to_1utf8_FUNC,
+	_1g_1free_FUNC,
+	_1g_1hash_1table_1get_1values_FUNC,
+	_1g_1icon_1new_1for_1string_FUNC,
+	_1g_1icon_1to_1string_FUNC,
+	_1g_1idle_1add_FUNC,
+	_1g_1list_1append_FUNC,
+	_1g_1list_1data_FUNC,
+	_1g_1list_1free_FUNC,
+	_1g_1list_1free_11_FUNC,
+	_1g_1list_1last_FUNC,
+	_1g_1list_1length_FUNC,
+	_1g_1list_1next_FUNC,
+	_1g_1list_1nth_FUNC,
+	_1g_1list_1nth_1data_FUNC,
+	_1g_1list_1prepend_FUNC,
+	_1g_1list_1previous_FUNC,
+	_1g_1list_1remove_1link_FUNC,
+	_1g_1list_1set_1next_FUNC,
+	_1g_1list_1set_1previous_FUNC,
+	_1g_1log_1default_1handler_FUNC,
+	_1g_1log_1remove_1handler_FUNC,
+	_1g_1log_1set_1handler_FUNC,
+	_1g_1main_1context_1acquire_FUNC,
+	_1g_1main_1context_1check_FUNC,
+	_1g_1main_1context_1default_FUNC,
+	_1g_1main_1context_1get_1poll_1func_FUNC,
+	_1g_1main_1context_1iteration_FUNC,
+	_1g_1main_1context_1prepare_FUNC,
+	_1g_1main_1context_1query_FUNC,
+	_1g_1main_1context_1release_FUNC,
+	_1g_1malloc_FUNC,
+	_1g_1object_1class_1find_1property_FUNC,
+#ifndef JNI64
+	_1g_1object_1get__I_3B_3II_FUNC,
+#else
+	_1g_1object_1get__J_3B_3IJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1get__I_3B_3JI_FUNC,
+#else
+	_1g_1object_1get__J_3B_3JJ_FUNC,
+#endif
+	_1g_1object_1get_1qdata_FUNC,
+	_1g_1object_1new_FUNC,
+	_1g_1object_1notify_FUNC,
+	_1g_1object_1ref_FUNC,
+	_1g_1object_1ref_1sink_FUNC,
+#ifndef JNI64
+	_1g_1object_1set__I_3BFI_FUNC,
+#else
+	_1g_1object_1set__J_3BFJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1set__I_3BII_FUNC,
+#else
+	_1g_1object_1set__J_3BIJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1set__I_3BJI_FUNC,
+#else
+	_1g_1object_1set__J_3BJJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkColor_2I_FUNC,
+#else
+	_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkColor_2J_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1set__I_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2I_FUNC,
+#else
+	_1g_1object_1set__J_3BLorg_eclipse_swt_internal_gtk_GdkRGBA_2J_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1set__I_3BZI_FUNC,
+#else
+	_1g_1object_1set__J_3BZJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1object_1set__I_3B_3BI_FUNC,
+#else
+	_1g_1object_1set__J_3B_3BJ_FUNC,
+#endif
+	_1g_1object_1set_1qdata_FUNC,
+	_1g_1object_1unref_FUNC,
+	_1g_1quark_1from_1string_FUNC,
+	_1g_1set_1prgname_FUNC,
+	_1g_1signal_1add_1emission_1hook_FUNC,
+	_1g_1signal_1connect_FUNC,
+	_1g_1signal_1connect_1closure_FUNC,
+	_1g_1signal_1connect_1closure_1by_1id_FUNC,
+#ifndef JNI64
+	_1g_1signal_1emit_1by_1name__I_3B_FUNC,
+#else
+	_1g_1signal_1emit_1by_1name__J_3B_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1signal_1emit_1by_1name__I_3BI_FUNC,
+#else
+	_1g_1signal_1emit_1by_1name__J_3BJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1signal_1emit_1by_1name__I_3BII_FUNC,
+#else
+	_1g_1signal_1emit_1by_1name__J_3BJJ_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1signal_1emit_1by_1name__I_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2_FUNC,
+#else
+	_1g_1signal_1emit_1by_1name__J_3BLorg_eclipse_swt_internal_gtk_GdkRectangle_2_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1signal_1emit_1by_1name__I_3B_3B_FUNC,
+#else
+	_1g_1signal_1emit_1by_1name__J_3B_3B_FUNC,
+#endif
+	_1g_1signal_1handler_1disconnect_FUNC,
+	_1g_1signal_1handler_1find_FUNC,
+	_1g_1signal_1handlers_1block_1matched_FUNC,
+	_1g_1signal_1handlers_1unblock_1matched_FUNC,
+	_1g_1signal_1lookup_FUNC,
+	_1g_1signal_1remove_1emission_1hook_FUNC,
+	_1g_1signal_1stop_1emission_1by_1name_FUNC,
+	_1g_1slist_1append_FUNC,
+	_1g_1slist_1data_FUNC,
+	_1g_1slist_1free_FUNC,
+	_1g_1slist_1length_FUNC,
+	_1g_1slist_1next_FUNC,
+	_1g_1source_1remove_FUNC,
+	_1g_1strfreev_FUNC,
+	_1g_1string_1free_FUNC,
+	_1g_1string_1new_1len_FUNC,
+	_1g_1strtod_FUNC,
+	_1g_1thread_1init_FUNC,
+	_1g_1thread_1supported_FUNC,
+	_1g_1timeout_1add_FUNC,
+	_1g_1type_1add_1interface_1static_FUNC,
+	_1g_1type_1class_1peek_FUNC,
+	_1g_1type_1class_1peek_1parent_FUNC,
+	_1g_1type_1class_1ref_FUNC,
+	_1g_1type_1class_1unref_FUNC,
+	_1g_1type_1from_1name_FUNC,
+	_1g_1type_1interface_1peek_1parent_FUNC,
+	_1g_1type_1is_1a_FUNC,
+	_1g_1type_1name_FUNC,
+	_1g_1type_1parent_FUNC,
+	_1g_1type_1query_FUNC,
+	_1g_1type_1register_1static_FUNC,
+	_1g_1utf16_1offset_1to_1pointer_FUNC,
+	_1g_1utf16_1offset_1to_1utf8_1offset_FUNC,
+	_1g_1utf16_1pointer_1to_1offset_FUNC,
+	_1g_1utf16_1strlen_FUNC,
+	_1g_1utf16_1to_1utf8_FUNC,
+	_1g_1utf8_1offset_1to_1utf16_1offset_FUNC,
+	_1g_1utf8_1pointer_1to_1offset_FUNC,
+	_1g_1utf8_1strlen_FUNC,
+#ifndef JNI64
+	_1g_1utf8_1to_1utf16__II_3I_3I_3I_FUNC,
+#else
+	_1g_1utf8_1to_1utf16__JJ_3J_3J_3J_FUNC,
+#endif
+#ifndef JNI64
+	_1g_1utf8_1to_1utf16___3BI_3I_3I_3I_FUNC,
+#else
+	_1g_1utf8_1to_1utf16___3BJ_3J_3J_3J_FUNC,
+#endif
+	_1g_1value_1peek_1pointer_FUNC,
+	_1g_1variant_1get_1boolean_FUNC,
+	_1g_1variant_1get_1byte_FUNC,
+	_1g_1variant_1get_1child_1value_FUNC,
+	_1g_1variant_1get_1double_FUNC,
+	_1g_1variant_1get_1int32_FUNC,
+	_1g_1variant_1get_1string_FUNC,
+	_1g_1variant_1get_1type_FUNC,
+	_1g_1variant_1get_1type_1string_FUNC,
+	_1g_1variant_1is_1of_1type_FUNC,
+	_1g_1variant_1n_1children_FUNC,
+	_1g_1variant_1new_1boolean_FUNC,
+	_1g_1variant_1new_1byte_FUNC,
+	_1g_1variant_1new_1double_FUNC,
+	_1g_1variant_1new_1int32_FUNC,
+	_1g_1variant_1new_1string_FUNC,
+	_1g_1variant_1new_1tuple_FUNC,
+	_1gdk_1keymap_1translate_1keyboard_1state_FUNC,
+	_1getpid_FUNC,
+	_1glib_1major_1version_FUNC,
+	_1glib_1micro_1version_FUNC,
+	_1glib_1minor_1version_FUNC,
 	_1pango_1attr_1background_1new_FUNC,
 	_1pango_1attr_1font_1desc_1new_FUNC,
 	_1pango_1attr_1foreground_1new_FUNC,
@@ -1534,6 +1613,8 @@ typedef enum {
 	_1pango_1tab_1array_1new_FUNC,
 	_1pango_1tab_1array_1set_1tab_FUNC,
 	_1swt_1debug_1on_1fatal_1warnings_FUNC,
+	_1swt_1fixed_1accessible_1get_1type_FUNC,
+	_1swt_1fixed_1accessible_1register_1accessible_FUNC,
 	_1swt_1fixed_1get_1type_FUNC,
 	_1swt_1fixed_1move_FUNC,
 	_1swt_1fixed_1resize_FUNC,
@@ -1551,7 +1632,6 @@ typedef enum {
 	g_1value_1set_1int_FUNC,
 	g_1value_1set_1int64_FUNC,
 	g_1value_1unset_FUNC,
-	gdk_1threads_1leave_FUNC,
 	imContextLast_FUNC,
 	imContextNewProc_1CALLBACK_FUNC,
 	localeconv_1decimal_1point_FUNC,
@@ -1584,6 +1664,11 @@ typedef enum {
 	memmove__ILorg_eclipse_swt_internal_gtk_GdkEventExpose_2I_FUNC,
 #else
 	memmove__JLorg_eclipse_swt_internal_gtk_GdkEventExpose_2J_FUNC,
+#endif
+#ifndef JNI64
+	memmove__ILorg_eclipse_swt_internal_gtk_GdkEventKey_2I_FUNC,
+#else
+	memmove__JLorg_eclipse_swt_internal_gtk_GdkEventKey_2J_FUNC,
 #endif
 #ifndef JNI64
 	memmove__ILorg_eclipse_swt_internal_gtk_GdkEventMotion_2I_FUNC,
@@ -1679,11 +1764,6 @@ typedef enum {
 	memmove__Lorg_eclipse_swt_internal_gtk_GdkEventMotion_2II_FUNC,
 #else
 	memmove__Lorg_eclipse_swt_internal_gtk_GdkEventMotion_2JJ_FUNC,
-#endif
-#ifndef JNI64
-	memmove__Lorg_eclipse_swt_internal_gtk_GdkEventProperty_2I_FUNC,
-#else
-	memmove__Lorg_eclipse_swt_internal_gtk_GdkEventProperty_2J_FUNC,
 #endif
 #ifndef JNI64
 	memmove__Lorg_eclipse_swt_internal_gtk_GdkEventScroll_2II_FUNC,

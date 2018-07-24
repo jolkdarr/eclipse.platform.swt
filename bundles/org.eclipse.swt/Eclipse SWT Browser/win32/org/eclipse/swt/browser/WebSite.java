@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -164,7 +164,7 @@ protected void createCOMInterfaces () {
 			GUID guid = new GUID ();
 			COM.MoveMemory (guid, args[0], GUID.sizeof);
 			if (COM.IsEqualGUID (guid, COM.IIDIDispatch)) {
-				COM.MoveMemory (args[1], new long /*int*/[] {iDispatch.getAddress ()}, OS.PTR_SIZEOF);
+				OS.MoveMemory (args[1], new long /*int*/[] {iDispatch.getAddress ()}, C.PTR_SIZEOF);
 				AddRef ();
 				return COM.S_OK;
 			}
@@ -232,31 +232,31 @@ protected int QueryInterface(long /*int*/ riid, long /*int*/ ppvObject) {
 	GUID guid = new GUID();
 	COM.MoveMemory(guid, riid, GUID.sizeof);
 	if (COM.IsEqualGUID(guid, COM.IIDIDocHostUIHandler)) {
-		COM.MoveMemory(ppvObject, new long /*int*/[] {iDocHostUIHandler.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iDocHostUIHandler.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
 	if (COM.IsEqualGUID(guid, COM.IIDIDocHostShowUI)) {
-		COM.MoveMemory(ppvObject, new long /*int*/[] {iDocHostShowUI.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iDocHostShowUI.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
 	if (COM.IsEqualGUID(guid, COM.IIDIServiceProvider)) {
-		COM.MoveMemory(ppvObject, new long /*int*/[] {iServiceProvider.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iServiceProvider.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
     if (COM.IsEqualGUID(guid, COM.IIDIInternetSecurityManager)) {
-        COM.MoveMemory(ppvObject, new long /*int*/[] {iInternetSecurityManager.getAddress()}, OS.PTR_SIZEOF);
+        OS.MoveMemory(ppvObject, new long /*int*/[] {iInternetSecurityManager.getAddress()}, C.PTR_SIZEOF);
         AddRef();
         return COM.S_OK;
     }
 	if (COM.IsEqualGUID(guid, COM.IIDIOleCommandTarget)) {
-		COM.MoveMemory(ppvObject, new long /*int*/[] {iOleCommandTarget.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iOleCommandTarget.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
-	COM.MoveMemory(ppvObject, new long /*int*/[] {0}, OS.PTR_SIZEOF);
+	OS.MoveMemory(ppvObject, new long /*int*/[] {0}, C.PTR_SIZEOF);
 	return COM.E_NOINTERFACE;
 }
 
@@ -436,45 +436,38 @@ int TranslateAccelerator(long /*int*/ lpMsg, long /*int*/ pguidCmdGroup, int nCm
 	switch (msg.message) {
 		case OS.WM_KEYDOWN:
 		case OS.WM_KEYUP: {
-			if (!OS.IsWinCE) {
-				boolean isAccent = false;
-				switch ((int)/*64*/msg.wParam) {
-					case OS.VK_SHIFT:
-					case OS.VK_MENU:
-					case OS.VK_CONTROL:
-					case OS.VK_CAPITAL:
-					case OS.VK_NUMLOCK:
-					case OS.VK_SCROLL:
-						break;
-					default: {
-						/*
-						* Bug in Windows. The high bit in the result of MapVirtualKey() on
-						* Windows NT is bit 32 while the high bit on Windows 95 is bit 16.
-						* They should both be bit 32.  The fix is to test the right bit.
-						*/
-						int mapKey = OS.MapVirtualKey ((int)/*64*/msg.wParam, 2);
-						if (mapKey != 0) {
-							isAccent = (mapKey & (OS.IsWinNT ? 0x80000000 : 0x8000)) != 0;
-							if (!isAccent) {
-								for (int i=0; i<ACCENTS.length; i++) {
-									int value = OS.VkKeyScan (ACCENTS [i]);
-									if (value != -1 && (value & 0xFF) == msg.wParam) {
-										int state = value >> 8;
-										if ((OS.GetKeyState (OS.VK_SHIFT) < 0) == ((state & 0x1) != 0) &&
-											(OS.GetKeyState (OS.VK_CONTROL) < 0) == ((state & 0x2) != 0) &&
-											(OS.GetKeyState (OS.VK_MENU) < 0) == ((state & 0x4) != 0)) {
-												if ((state & 0x7) != 0) isAccent = true;
-												break;
-										}
+			boolean isAccent = false;
+			switch ((int)/*64*/msg.wParam) {
+				case OS.VK_SHIFT:
+				case OS.VK_MENU:
+				case OS.VK_CONTROL:
+				case OS.VK_CAPITAL:
+				case OS.VK_NUMLOCK:
+				case OS.VK_SCROLL:
+					break;
+				default: {
+					int mapKey = OS.MapVirtualKey ((int)/*64*/msg.wParam, 2);
+					if (mapKey != 0) {
+						isAccent = (mapKey & 0x80000000) != 0;
+						if (!isAccent) {
+							for (int i=0; i<ACCENTS.length; i++) {
+								int value = OS.VkKeyScan (ACCENTS [i]);
+								if (value != -1 && (value & 0xFF) == msg.wParam) {
+									int state = value >> 8;
+									if ((OS.GetKeyState (OS.VK_SHIFT) < 0) == ((state & 0x1) != 0) &&
+										(OS.GetKeyState (OS.VK_CONTROL) < 0) == ((state & 0x2) != 0) &&
+										(OS.GetKeyState (OS.VK_MENU) < 0) == ((state & 0x4) != 0)) {
+											if ((state & 0x7) != 0) isAccent = true;
+											break;
 									}
 								}
 							}
 						}
-						break;
 					}
+					break;
 				}
-				if (isAccent) result = COM.S_OK;
 			}
+			if (isAccent) result = COM.S_OK;
 		}
 	}
 	return result;
@@ -533,16 +526,16 @@ int QueryService(long /*int*/ guidService, long /*int*/ riid, long /*int*/ ppvOb
 	GUID guid = new GUID();
 	COM.MoveMemory(guid, riid, GUID.sizeof);
 	if (COM.IsEqualGUID(guid, COM.IIDIInternetSecurityManager)) {
-		COM.MoveMemory(ppvObject, new long /*int*/[] {iInternetSecurityManager.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iInternetSecurityManager.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
 	if (COM.IsEqualGUID(guid, COM.IIDIAuthenticate)) {
-		COM.MoveMemory(ppvObject, new long /*int*/[] {iAuthenticate.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iAuthenticate.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
-	COM.MoveMemory(ppvObject, new long /*int*/[] {0}, OS.PTR_SIZEOF);
+	OS.MoveMemory(ppvObject, new long /*int*/[] {0}, C.PTR_SIZEOF);
 	return COM.E_NOINTERFACE;
 }
 
@@ -569,7 +562,7 @@ int MapUrlToZone(long /*int*/ pwszUrl, long /*int*/ pdwZone, int dwFlags) {
 	* been disposed.  To detect this case check for ie.auto != null.
 	*/
 	if (ie.auto != null && ie.isAboutBlank && !ie.untrustedText) {
-		COM.MoveMemory(pdwZone, new int[] {IE.URLZONE_INTRANET}, 4);
+		OS.MoveMemory(pdwZone, new int[] {IE.URLZONE_INTRANET}, 4);
 		return COM.S_OK;
 	}
 	return IE.INET_E_DEFAULT_ACTION;
@@ -589,7 +582,7 @@ int ProcessUrlAction(long /*int*/ pwszUrl, int dwAction, long /*int*/ pPolicy, i
 	if (dwAction == IE.URLACTION_FEATURE_ZONE_ELEVATION) {
 	    IE ie = (IE)((Browser)getParent().getParent()).webBrowser;
 	    if (ie.auto != null && ie._getUrl().startsWith(IE.ABOUT_BLANK) && !ie.untrustedText) {
-			if (cbPolicy >= 4) COM.MoveMemory(pPolicy, new int[] {IE.URLPOLICY_ALLOW}, 4);
+			if (cbPolicy >= 4) OS.MoveMemory(pPolicy, new int[] {IE.URLPOLICY_ALLOW}, 4);
 			return COM.S_OK;
 	    }
 	}
@@ -622,7 +615,7 @@ int ProcessUrlAction(long /*int*/ pwszUrl, int dwAction, long /*int*/ pPolicy, i
 	}
 
 	if (policy == IE.INET_E_DEFAULT_ACTION) return IE.INET_E_DEFAULT_ACTION;
-	if (cbPolicy >= 4) COM.MoveMemory(pPolicy, new int[] {policy}, 4);
+	if (cbPolicy >= 4) OS.MoveMemory(pPolicy, new int[] {policy}, 4);
 	return policy == IE.URLPOLICY_ALLOW ? COM.S_OK : COM.S_FALSE;
 }
 
@@ -719,11 +712,11 @@ int Authenticate (long /*int*/ hwnd, long /*int*/ szUsername, long /*int*/ szPas
 		if (event.user != null && event.password != null) {
 			TCHAR user = new TCHAR (0, event.user, true);
 			int size = user.length () * TCHAR.sizeof;
-			long /*int*/ userPtr = COM.CoTaskMemAlloc (size);
+			long /*int*/ userPtr = OS.CoTaskMemAlloc (size);
 			OS.MoveMemory (userPtr, user, size);
 			TCHAR password = new TCHAR (0, event.password, true);
 			size = password.length () * TCHAR.sizeof;
-			long /*int*/ passwordPtr = COM.CoTaskMemAlloc (size);
+			long /*int*/ passwordPtr = OS.CoTaskMemAlloc (size);
 			OS.MoveMemory (passwordPtr, password, size);
 			C.memmove (hwnd, new long /*int*/[] {0}, C.PTR_SIZEOF);
 			C.memmove (szUsername, new long /*int*/[] {userPtr}, C.PTR_SIZEOF);
@@ -776,7 +769,7 @@ int Invoke (int dispIdMember, long /*int*/ riid, int lcid, int dwFlags, long /*i
 	Map<Integer, BrowserFunction> functions = ie.functions;
 	if (functions == null) {
 		if (pVarResult != 0) {
-			COM.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
+			OS.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
 		}
 		return COM.S_OK;
 	}
@@ -785,7 +778,7 @@ int Invoke (int dispIdMember, long /*int*/ riid, int lcid, int dwFlags, long /*i
 	COM.MoveMemory (dispParams, pDispParams, DISPPARAMS.sizeof);
 	if (dispParams.cArgs != 3) {
 		if (pVarResult != 0) {
-			COM.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
+			OS.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
 		}
 		return COM.S_OK;
 	}
@@ -795,7 +788,7 @@ int Invoke (int dispIdMember, long /*int*/ riid, int lcid, int dwFlags, long /*i
 	if (variant.getType () != COM.VT_I4) {
 		variant.dispose ();
 		if (pVarResult != 0) {
-			COM.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
+			OS.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
 		}
 		return COM.S_OK;
 	}
@@ -803,7 +796,7 @@ int Invoke (int dispIdMember, long /*int*/ riid, int lcid, int dwFlags, long /*i
 	variant.dispose ();
 	if (index <= 0) {
 		if (pVarResult != 0) {
-			COM.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
+			OS.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
 		}
 		return COM.S_OK;
 	}
@@ -814,7 +807,7 @@ int Invoke (int dispIdMember, long /*int*/ riid, int lcid, int dwFlags, long /*i
 	if (type != COM.VT_BSTR) {
 		variant.dispose ();
 		if (pVarResult != 0) {
-			COM.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
+			OS.MoveMemory (pVarResult, new long /*int*/[] {0}, C.PTR_SIZEOF);
 		}
 		return COM.S_OK;
 	}

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -310,17 +310,17 @@ void drag(Event dragEvent) {
 	int actions = opToOsOp(getStyle());
 	Image image = event.image;
 	long /*int*/ context;
-	if (OS.GTK_VERSION >= OS.VERSION(3, 10, 0)) {
-		context = OS.gtk_drag_begin_with_coordinates(control.handle, targetList, actions, 1, 0, -1, -1);
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 10, 0)) {
+		context = GTK.gtk_drag_begin_with_coordinates(control.handle, targetList, actions, 1, 0, -1, -1);
 	} else {
-		context = OS.gtk_drag_begin(control.handle, targetList, actions, 1, 0);
+		context = GTK.gtk_drag_begin(control.handle, targetList, actions, 1, 0);
 	}
 	if (context != 0 && image != null) {
-		if (OS.GTK3) {
-			OS.gtk_drag_set_icon_surface(context, image.surface);
+		if (GTK.GTK3) {
+			GTK.gtk_drag_set_icon_surface(context, image.surface);
 		} else {
 			long /*int*/ pixbuf = ImageList.createPixbuf(image);
-			OS.gtk_drag_set_icon_pixbuf(context, pixbuf, 0, 0);
+			GTK.gtk_drag_set_icon_pixbuf(context, pixbuf, 0, 0);
 			OS.g_object_unref(pixbuf);
 		}
 	}
@@ -332,7 +332,7 @@ void dragBegin(long /*int*/ widget, long /*int*/ context) {
 	 * When we recieve the signal from GTK of DragBegin, we will
 	 * notify SWT that a drag has occurred.
 	 */
-	if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0) && this.control instanceof Text) {
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0) && this.control instanceof Text) {
 		DNDEvent event = new DNDEvent();
 		Display display = Display.getCurrent();
 		Point loc = display.getCursorLocation();
@@ -345,7 +345,7 @@ void dragBegin(long /*int*/ widget, long /*int*/ context) {
 		if (targetList == 0) return;
 		Image image = event.image;
 		if (context != 0 && image != null) {
-			OS.gtk_drag_set_icon_surface(context, image.surface);
+			GTK.gtk_drag_set_icon_surface(context, image.surface);
 		}
 	}
 }
@@ -360,16 +360,15 @@ void dragEnd(long /*int*/ widget, long /*int*/ context){
 	 * NOTE: We believe that it is never an error to ungrab when
 	 * a drag is finished.
 	 */
-	if (OS.GTK3) {
-		long /*int*/ display = OS.gdk_window_get_display(OS.gtk_widget_get_window(widget));
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager(display);
-		long /*int*/ pointer = OS.gdk_device_manager_get_client_pointer(device_manager);
-		long /*int*/ keyboard = OS.gdk_device_get_associated_device(pointer);
-		OS.gdk_device_ungrab(pointer, OS.GDK_CURRENT_TIME);
-		OS.gdk_device_ungrab(keyboard, OS.GDK_CURRENT_TIME);
+	if (GTK.GTK3) {
+		long /*int*/ display = GDK.gdk_window_get_display(GTK.gtk_widget_get_window(widget));
+		long /*int*/ pointer = GDK.gdk_get_pointer(display);
+		long /*int*/ keyboard = GDK.gdk_device_get_associated_device(pointer);
+		GDK.gdk_device_ungrab(pointer, GDK.GDK_CURRENT_TIME);
+		GDK.gdk_device_ungrab(keyboard, GDK.GDK_CURRENT_TIME);
 	} else {
-		OS.gdk_pointer_ungrab(OS.GDK_CURRENT_TIME);
-		OS.gdk_keyboard_ungrab(OS.GDK_CURRENT_TIME);
+		GDK.gdk_pointer_ungrab(GDK.GDK_CURRENT_TIME);
+		GDK.gdk_keyboard_ungrab(GDK.GDK_CURRENT_TIME);
 	}
 
 	int operation = DND.DROP_NONE;
@@ -382,10 +381,10 @@ void dragEnd(long /*int*/ widget, long /*int*/ context){
 		 * GTKGestures will handle file operations correctly without the
 		 * gdk_drag_context_get_dest_window() call. See Bug 503431.
 		 */
-		if (OS.GTK3) {
-			action = OS.gdk_drag_context_get_selected_action(context);
+		if (GTK.GTK3) {
+			action = GDK.gdk_drag_context_get_selected_action(context);
 			if (OS.isX11()) { // Wayland
-				dest_window = OS.gdk_drag_context_get_dest_window(context);
+				dest_window = GDK.gdk_drag_context_get_dest_window(context);
 			}
 		} else {
 			GdkDragContext gdkDragContext = new GdkDragContext ();
@@ -419,8 +418,8 @@ void dragEnd(long /*int*/ widget, long /*int*/ context){
 		if (this.control instanceof Table
 				|| this.control instanceof Tree
 				|| this.control instanceof List) {
-			long /*int*/ selection = OS.gtk_tree_view_get_selection (widget);
-			OS.gtk_tree_selection_set_select_function(selection,0,0,0);
+			long /*int*/ selection = GTK.gtk_tree_view_get_selection (widget);
+			GTK.gtk_tree_selection_set_select_function(selection,0,0,0);
 		}
 
 		/*
@@ -435,10 +434,10 @@ void dragEnd(long /*int*/ widget, long /*int*/ context){
 
 void dragGetData(long /*int*/ widget, long /*int*/ context, long /*int*/ selection_data,  int info, int time){
 	if (selection_data == 0) return;
-	int length = OS.gtk_selection_data_get_length(selection_data);
-	int format = OS.gtk_selection_data_get_format(selection_data);
-	long /*int*/ data = OS.gtk_selection_data_get_data(selection_data);
-	long /*int*/ target = OS.gtk_selection_data_get_target(selection_data);
+	int length = GTK.gtk_selection_data_get_length(selection_data);
+	int format = GTK.gtk_selection_data_get_format(selection_data);
+	long /*int*/ data = GTK.gtk_selection_data_get_data(selection_data);
+	long /*int*/ target = GTK.gtk_selection_data_get_target(selection_data);
 	if (target == 0) return;
 
 	TransferData transferData = new TransferData();
@@ -465,7 +464,7 @@ void dragGetData(long /*int*/ widget, long /*int*/ context, long /*int*/ selecti
 	if (transfer == null) return;
 	transfer.javaToNative(event.data, transferData);
 	if (transferData.result != 1) return;
-	OS.gtk_selection_data_set(selection_data, transferData.type, transferData.format, transferData.pValue, transferData.length);
+	GTK.gtk_selection_data_set(selection_data, transferData.type, transferData.format, transferData.pValue, transferData.length);
 	OS.g_free(transferData.pValue);
 	return;
 }
@@ -546,7 +545,7 @@ public Transfer[] getTransfer(){
 void onDispose() {
 	if (control == null) return;
 	if (targetList != 0) {
-		OS.gtk_target_list_unref(targetList);
+		GTK.gtk_target_list_unref(targetList);
 	}
 	targetList = 0;
 	if (controlListener != null) {
@@ -563,11 +562,11 @@ int opToOsOp(int operation){
 	int osOperation = 0;
 
 	if ((operation & DND.DROP_COPY) == DND.DROP_COPY)
-		osOperation |= OS.GDK_ACTION_COPY;
+		osOperation |= GDK.GDK_ACTION_COPY;
 	if ((operation & DND.DROP_MOVE) == DND.DROP_MOVE)
-		osOperation |= OS.GDK_ACTION_MOVE;
+		osOperation |= GDK.GDK_ACTION_MOVE;
 	if ((operation & DND.DROP_LINK) == DND.DROP_LINK)
-		osOperation |= OS.GDK_ACTION_LINK;
+		osOperation |= GDK.GDK_ACTION_LINK;
 
 	return osOperation;
 }
@@ -575,11 +574,11 @@ int opToOsOp(int operation){
 int osOpToOp(int osOperation){
 	int operation = DND.DROP_NONE;
 
-	if ((osOperation & OS.GDK_ACTION_COPY) == OS.GDK_ACTION_COPY)
+	if ((osOperation & GDK.GDK_ACTION_COPY) == GDK.GDK_ACTION_COPY)
 		operation |= DND.DROP_COPY;
-	if ((osOperation & OS.GDK_ACTION_MOVE) == OS.GDK_ACTION_MOVE)
+	if ((osOperation & GDK.GDK_ACTION_MOVE) == GDK.GDK_ACTION_MOVE)
 		operation |= DND.DROP_MOVE;
-	if ((osOperation & OS.GDK_ACTION_LINK) == OS.GDK_ACTION_LINK)
+	if ((osOperation & GDK.GDK_ACTION_LINK) == GDK.GDK_ACTION_LINK)
 		operation |= DND.DROP_LINK;
 
 	return operation;
@@ -632,7 +631,7 @@ public void setDragSourceEffect(DragSourceEffect effect) {
  */
 public void setTransfer(Transfer... transferAgents){
 	if (targetList != 0) {
-		OS.gtk_target_list_unref(targetList);
+		GTK.gtk_target_list_unref(targetList);
 		targetList = 0;
 	}
 	this.transferAgents = transferAgents;
@@ -648,7 +647,7 @@ public void setTransfer(Transfer... transferAgents){
 				GtkTargetEntry entry = new GtkTargetEntry();
 				byte[] buffer = Converter.wcsToMbcs(typeNames[j], true);
 				entry.target = OS.g_malloc(buffer.length);
-				OS.memmove(entry.target, buffer, buffer.length);
+				C.memmove(entry.target, buffer, buffer.length);
 				entry.info = typeIds[j];
 				GtkTargetEntry[] newTargets = new GtkTargetEntry[targets.length + 1];
 				System.arraycopy(targets, 0, newTargets, 0, targets.length);
@@ -662,7 +661,7 @@ public void setTransfer(Transfer... transferAgents){
 	for (int i = 0; i < targets.length; i++) {
 		OS.memmove(pTargets + i*GtkTargetEntry.sizeof, targets[i], GtkTargetEntry.sizeof);
 	}
-	targetList = OS.gtk_target_list_new(pTargets, targets.length);
+	targetList = GTK.gtk_target_list_new(pTargets, targets.length);
 
 	for (int i = 0; i < targets.length; i++) {
 		OS.g_free(targets[i].target);

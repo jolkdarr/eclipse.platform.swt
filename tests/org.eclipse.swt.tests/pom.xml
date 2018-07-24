@@ -14,17 +14,18 @@
   <parent>
     <artifactId>eclipse.platform.swt.localbuild</artifactId>
     <groupId>eclipse.platform.swt</groupId>
-    <version>4.8.0-SNAPSHOT</version>
+    <version>4.9.0-SNAPSHOT</version>
     <relativePath>../../local-build/local-build-parent/</relativePath>
   </parent>
   <groupId>org.eclipse.swt</groupId>
   <artifactId>org.eclipse.swt.tests</artifactId>
-  <version>3.106.100-SNAPSHOT</version>
+  <version>3.106.200-SNAPSHOT</version>
   <packaging>eclipse-test-plugin</packaging>
   <properties>
     <code.ignoredWarnings>${tests.ignoredWarnings}</code.ignoredWarnings>
     <tycho.testArgLine></tycho.testArgLine>
     <test>AllTests</test>
+    <surefire.version>2.21.0</surefire.version>
   </properties>
   <build>
     <plugins>
@@ -56,7 +57,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.20</version>
+        <version>${surefire.version}</version>
         <executions>
           <execution>
             <id>test</id>
@@ -65,6 +66,9 @@
             <configuration>
               <testClassesDirectory>${project.build.outputDirectory}</testClassesDirectory>
               <argLine>@{tycho.testArgLine} -Dorg.eclipse.swt.internal.gtk.disablePrinting ${os-jvm-flags}</argLine>
+              <systemPropertyVariables>
+                <user.home>${project.build.directory}</user.home> <!-- used as cache directory for SWT native libraries -->
+              </systemPropertyVariables>
             </configuration>
           </execution>
         </executions>
@@ -72,7 +76,7 @@
           <dependency>
             <groupId>org.apache.maven.surefire</groupId>
             <artifactId>surefire-junit47</artifactId>
-            <version>2.20</version>
+            <version>${surefire.version}</version>
           </dependency>
         </dependencies>
       </plugin>

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2012 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -50,6 +50,7 @@ public final class TextLayout extends Resource {
 	char[] segmentsChars;
 	int wrapWidth;
 	int orientation;
+	private double defaultTabWidth;
 
 	int[] lineOffsets;
 	NSRect[] lineBounds;
@@ -62,6 +63,7 @@ public final class TextLayout extends Resource {
 	static final int UNDERLINE_THICK = 1 << 16;
 	static final RGB LINK_FOREGROUND = new RGB (0, 51, 153);
 	int[] invalidOffsets;
+	private boolean ignoreSegments;
 	static final char LTR_MARK = '\u200E', RTL_MARK = '\u200F';
 
 	static class StyleItem {
@@ -132,7 +134,7 @@ float[] computePolyline(int left, int top, int right, int bottom) {
 
 void computeRuns() {
 	if (lineBounds != null) return;
-	String segmentsText = getSegmentsText();
+	String segmentsText = ignoreSegments ? text : getSegmentsText();
 	char[] chars = new char[segmentsText.length()];
 	segmentsText.getChars(0, chars.length, chars, 0);
 	NSString str = (NSString) new NSString().alloc();
@@ -184,7 +186,18 @@ void computeRuns() {
 	if (tabs != null && tabs.length > 0) {
 		int count = tabs.length;
 		if (count == 1) {
-			paragraph.setDefaultTabInterval(tabs[0]);
+			/**
+			 * defaultTabWidth holds the tabstop in points. There are two conditions
+			 * we need to consider if this value is 0 we need to use tabstop from
+			 * tabs[]. Also in case of user setting only one tabstop we need to use
+			 * the values from tab[] this can be determined by comparing tab[0] with
+			 * defaultTabWidth
+			 */
+			double tabWidth = defaultTabWidth;
+			if (defaultTabWidth == 0 || Math.ceil(defaultTabWidth) != tabs[0]) {
+				tabWidth = tabs[0];
+			}
+			paragraph.setDefaultTabInterval(tabWidth);
 		} else {
 			int i, pos = 0;
 			for (i = 0; i < count; i++) {
@@ -316,7 +329,7 @@ void computeRuns() {
 	int numberOfLines;
 	layoutManager.glyphRangeForTextContainer(textContainer);
 	long /*int*/ numberOfGlyphs = layoutManager.numberOfGlyphs(), index;
-	long /*int*/ rangePtr = OS.malloc(NSRange.sizeof);
+	long /*int*/ rangePtr = C.malloc(NSRange.sizeof);
 	NSRange lineRange = new NSRange();
 	for (numberOfLines = 0, index = 0; index < numberOfGlyphs; numberOfLines++){
 	    layoutManager.lineFragmentUsedRectForGlyphAtIndex(index, rangePtr, true);
@@ -339,7 +352,7 @@ void computeRuns() {
 		bounds[0] = new NSRect();
 		bounds[0].height = Math.max(layoutManager.defaultLineHeightForFont(nsFont), ascent + descent);
 	}
-	OS.free(rangePtr);
+	C.free(rangePtr);
 	offsets[numberOfLines] = (int)/*64*/textStorage.length();
 	this.lineOffsets = offsets;
 	this.lineBounds = bounds;
@@ -1032,11 +1045,11 @@ public FontMetrics getLineMetrics (int lineIndex) {
 			int descent = (int)layoutManager.defaultLineHeightForFont(font.handle) - ascent;
 			ascent = Math.max(ascent, this.ascent);
 			descent = Math.max(descent, this.descent);
-			return FontMetrics.cocoa_new(ascent, descent, 0, 0, ascent + descent);
+			return FontMetrics.cocoa_new(ascent, descent, 0.0, 0, ascent + descent);
 		}
 		Rectangle rect = getLineBounds(lineIndex);
 		int baseline = (int)layoutManager.typesetter().baselineOffsetInLayoutManager(layoutManager, getLineOffsets()[lineIndex]);
-		return FontMetrics.cocoa_new(rect.height - baseline, baseline, 0, 0, rect.height);
+		return FontMetrics.cocoa_new(rect.height - baseline, baseline, 0.0, 0, rect.height);
 	} finally {
 		if (pool != null) pool.release();
 	}
@@ -1588,6 +1601,10 @@ void initClasses () {
 	OS.class_addProtocol(cls, OS.protocol_NSTextAttachmentCell);
 	OS.class_addMethod(cls, OS.sel_cellSize, cellSizeProc, "@:");
 	OS.class_addMethod(cls, OS.sel_cellBaselineOffset, cellBaselineOffsetProc, "@:");
+	if (OS.VERSION_MMB >= OS.VERSION_MMB(10, 11, 0)) {
+		long /*int*/ attachmentProc = OS.CALLBACK_NSTextAttachmentCell_attachment(proc2);
+		OS.class_addMethod(cls, OS.sel_attachment, attachmentProc, "@:");
+	}
 	OS.objc_registerClassPair(cls);
 }
 
@@ -2216,16 +2233,18 @@ static long /*int*/ textLayoutProc(long /*int*/ id, long /*int*/ sel) {
 		size.width = metrics.width;
 		size.height = metrics.ascent + metrics.descent;
 		/* NOTE that this is freed in C */
-		long /*int*/ result = OS.malloc(NSSize.sizeof);
+		long /*int*/ result = C.malloc(NSSize.sizeof);
 		OS.memmove(result, size, NSSize.sizeof);
 		return result;
 	} else if (sel == OS.sel_cellBaselineOffset) {
 		NSPoint point = new NSPoint();
 		point.y = -metrics.descent;
 		/* NOTE that this is freed in C */
-		long /*int*/ result = OS.malloc(NSPoint.sizeof);
+		long /*int*/ result = C.malloc(NSPoint.sizeof);
 		OS.memmove(result, point, NSPoint.sizeof);
 		return result;
+	} else if (sel == OS.sel_attachment) {
+		return 0;
 	}
 	return 0;
 }
@@ -2271,5 +2290,53 @@ int untranslateOffset (int offset) {
 	}
 	return offset;
 }
+
+/**
+ * Sets Default Tab Width in terms if number of space characters.
+ *
+ * @param tabLength in number of characters
+ *
+ * @exception IllegalArgumentException <ul>
+ *    <li>ERROR_INVALID_ARGUMENT - if the tabLength is less than <code>0</code></li>
+ * </ul>
+ * @exception SWTException <ul>
+ *    <li>ERROR_GRAPHIC_DISPOSED - if the receiver has been disposed</li>
+ * </ul>
+ * 
+ * @noreference This method is not intended to be referenced by clients. 
+ * 
+ * DO NOT USE This might be removed in 4.8
+ * @since 3.107
+ */
+public void setDefaultTabWidth(int tabLength) {
+
+	if (tabLength < 0) SWT.error(SWT.ERROR_INVALID_ARGUMENT);
+
+	checkLayout();
+	String oldString = getText();
+	StringBuffer tabBuffer = new StringBuffer(tabLength);
+	for (int i = 0; i < tabLength; i++) {
+		tabBuffer.append(' ');
+	}
+	setText(tabBuffer.toString());
+	ignoreSegments = true;
+	this.defaultTabWidth = this.getTabWidth();
+	ignoreSegments = false;
+	setText (oldString);
+}
+
+double getTabWidth() {
+	NSAutoreleasePool pool = null;
+	if (!NSThread.isMainThread()) pool = (NSAutoreleasePool) new NSAutoreleasePool().alloc().init();
+	try {
+		computeRuns();
+		NSRect rect = layoutManager.usedRectForTextContainer(textContainer);
+		if (wrapWidth != -1) rect.width = wrapWidth;
+		return rect.width;
+	} finally {
+		if (pool != null) pool.release();
+	}
+}
+
 
 }

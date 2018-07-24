@@ -114,6 +114,27 @@ void addRelation (Control control) {
 }
 
 @Override
+Point computeNativeSize (long /*int*/ h, int wHint, int hHint, boolean changed) {
+	int width = wHint, height = hHint;
+	/*
+	 * Feature in GTK3: Labels with long text have an extremely large natural width.
+	 * As a result, such Labels created with SWT.WRAP end up being too big. The fix
+	 * is to use the minimum width instead of the natural width when SWT.WRAP is specified.
+	 * In all other cases, use the natural width. See bug 534768.
+	 */
+	boolean wrapGTK3 = GTK.GTK3 && labelHandle != 0 && (style & SWT.WRAP) != 0 && GTK.gtk_widget_get_visible (labelHandle);
+	if (wrapGTK3 && wHint == SWT.DEFAULT && hHint == SWT.DEFAULT) {
+		GtkRequisition naturalSize = new GtkRequisition ();
+		GtkRequisition minimumSize = new GtkRequisition ();
+		GTK.gtk_widget_get_preferred_size(h, minimumSize, naturalSize);
+		width = minimumSize.width;
+		height = naturalSize.height;
+		return new Point(width, height);
+	} else {
+		return super.computeNativeSize(h, wHint, hHint, changed);
+	}
+}
+@Override
 Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 	checkWidget ();
 	if (wHint != SWT.DEFAULT && wHint < 0) wHint = 0;
@@ -131,10 +152,10 @@ Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 	* The fix is to use pango layout directly instead of the label size request
 	* to calculate its preferred size.
 	*/
-	boolean fixWrap = labelHandle != 0 && (style & SWT.WRAP) != 0 && OS.gtk_widget_get_visible (labelHandle);
+	boolean fixWrap = labelHandle != 0 && (style & SWT.WRAP) != 0 && GTK.gtk_widget_get_visible (labelHandle);
 	if (fixWrap || frameHandle != 0) forceResize ();
 	if (fixWrap) {
-		long /*int*/ labelLayout = OS.gtk_label_get_layout (labelHandle);
+		long /*int*/ labelLayout = GTK.gtk_label_get_layout (labelHandle);
 		int pangoWidth = OS.pango_layout_get_width (labelLayout);
 		if (wHint != SWT.DEFAULT) {
 			OS.pango_layout_set_width (labelLayout, wHint * OS.PANGO_SCALE);
@@ -146,10 +167,10 @@ Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 		OS.pango_layout_set_width (labelLayout, pangoWidth);
 		if (frameHandle != 0) {
 			int [] labelWidth = new int [1], labelHeight = new int [1];
-			OS.gtk_widget_get_size_request (labelHandle, labelWidth, labelHeight);
-			OS.gtk_widget_set_size_request (labelHandle, 1, 1);
+			GTK.gtk_widget_get_size_request (labelHandle, labelWidth, labelHeight);
+			GTK.gtk_widget_set_size_request (labelHandle, 1, 1);
 			size = computeNativeSize (frameHandle, -1, -1, changed);
-			OS.gtk_widget_set_size_request (labelHandle, labelWidth [0], labelHeight [0]);
+			GTK.gtk_widget_set_size_request (labelHandle, labelWidth [0], labelHeight [0]);
 			size.x = size.x - 1;
 			size.y = size.y - 1;
 		} else {
@@ -160,10 +181,10 @@ Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 	} else {
 		if (frameHandle != 0) {
 			int [] reqWidth = new int [1], reqHeight = new int [1];
-			OS.gtk_widget_get_size_request (handle, reqWidth, reqHeight);
-			OS.gtk_widget_set_size_request (handle, wHint, hHint);
+			GTK.gtk_widget_get_size_request (handle, reqWidth, reqHeight);
+			GTK.gtk_widget_set_size_request (handle, wHint, hHint);
 			size = computeNativeSize (frameHandle, -1, -1, changed);
-			OS.gtk_widget_set_size_request (handle, reqWidth [0], reqHeight [0]);
+			GTK.gtk_widget_set_size_request (handle, reqWidth [0], reqHeight [0]);
 		} else {
 			size = computeNativeSize (handle, wHint, hHint, changed);
 		}
@@ -178,7 +199,7 @@ Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 	* muliple lines of text.
 	*/
 	if (hHint == SWT.DEFAULT && labelHandle != 0) {
-		long /*int*/ layout = OS.gtk_label_get_layout (labelHandle);
+		long /*int*/ layout = GTK.gtk_label_get_layout (labelHandle);
 		long /*int*/ context = OS.pango_layout_get_context (layout);
 		long /*int*/ lang = OS.pango_context_get_language (context);
 		long /*int*/ font = getFontDescription ();
@@ -187,7 +208,7 @@ Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 		int descent = OS.PANGO_PIXELS (OS.pango_font_metrics_get_descent (metrics));
 		OS.pango_font_metrics_unref (metrics);
 		int fontHeight = ascent + descent;
-		if (OS.GTK3) {
+		if (GTK.GTK3) {
 			int [] bufferBottom = new int [1];
 			int [] bufferTop = new int [1];
 			OS.g_object_get(labelHandle, OS.margin_bottom, bufferBottom, 0);
@@ -200,7 +221,7 @@ Point computeSizeInPixels (int wHint, int hHint, boolean changed) {
 		}
 		if (frameHandle != 0) {
 			fontHeight += 2 * getThickness (frameHandle).y;
-			fontHeight += 2 * OS.gtk_container_get_border_width (frameHandle);
+			fontHeight += 2 * GTK.gtk_container_get_border_width (frameHandle);
 		}
 		size.y = Math.max (size.y, fontHeight);
 	}
@@ -212,46 +233,52 @@ void createHandle (int index) {
 	state |= HANDLE | THEME_BACKGROUND;
 	fixedHandle = OS.g_object_new (display.gtk_fixed_get_type (), 0);
 	if (fixedHandle == 0) error (SWT.ERROR_NO_HANDLES);
-	OS.gtk_widget_set_has_window (fixedHandle, true);
+	GTK.gtk_widget_set_has_window (fixedHandle, true);
 	if ((style & SWT.SEPARATOR) != 0) {
 		if ((style & SWT.HORIZONTAL)!= 0) {
-			handle = gtk_separator_new (OS.GTK_ORIENTATION_HORIZONTAL);
+			handle = gtk_separator_new (GTK.GTK_ORIENTATION_HORIZONTAL);
+			if (handle != 0 && GTK.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
+				GTK.gtk_widget_set_valign(handle, GTK.GTK_ALIGN_CENTER);
+			}
 		} else {
-			handle = gtk_separator_new (OS.GTK_ORIENTATION_VERTICAL);
+			handle = gtk_separator_new (GTK.GTK_ORIENTATION_VERTICAL);
+			if (handle != 0 && GTK.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
+				GTK.gtk_widget_set_halign(handle, GTK.GTK_ALIGN_CENTER);
+			}
 		}
 		if (handle == 0) error (SWT.ERROR_NO_HANDLES);
 	} else {
-		handle = OS.gtk_event_box_new();
+		handle = GTK.gtk_event_box_new();
 		if (handle == 0) error (SWT.ERROR_NO_HANDLES);
-		boxHandle = gtk_box_new (OS.GTK_ORIENTATION_HORIZONTAL, false, 0);
+		boxHandle = gtk_box_new (GTK.GTK_ORIENTATION_HORIZONTAL, false, 0);
 		if (boxHandle == 0) error (SWT.ERROR_NO_HANDLES);
-		labelHandle = OS.gtk_label_new_with_mnemonic (null);
+		labelHandle = GTK.gtk_label_new_with_mnemonic (null);
 		if (labelHandle == 0) error (SWT.ERROR_NO_HANDLES);
-		imageHandle = OS.gtk_image_new ();
+		imageHandle = GTK.gtk_image_new ();
 		if (imageHandle == 0) error (SWT.ERROR_NO_HANDLES);
-		OS.gtk_container_add (handle, boxHandle);
-		OS.gtk_container_add (boxHandle, labelHandle);
-		OS.gtk_container_add (boxHandle, imageHandle);
-		OS.gtk_box_set_child_packing(boxHandle, labelHandle, true, true, 0, OS.GTK_PACK_START);
-		OS.gtk_box_set_child_packing(boxHandle, imageHandle, true, true, 0, OS.GTK_PACK_START);
+		GTK.gtk_container_add (handle, boxHandle);
+		GTK.gtk_container_add (boxHandle, labelHandle);
+		GTK.gtk_container_add (boxHandle, imageHandle);
+		GTK.gtk_box_set_child_packing(boxHandle, labelHandle, true, true, 0, GTK.GTK_PACK_START);
+		GTK.gtk_box_set_child_packing(boxHandle, imageHandle, true, true, 0, GTK.GTK_PACK_START);
 	}
 	if ((style & SWT.BORDER) != 0) {
-		frameHandle = OS.gtk_frame_new (null);
+		frameHandle = GTK.gtk_frame_new (null);
 		if (frameHandle == 0) error (SWT.ERROR_NO_HANDLES);
-		OS.gtk_container_add (fixedHandle, frameHandle);
-		OS.gtk_container_add (frameHandle, handle);
-		OS.gtk_frame_set_shadow_type (frameHandle, OS.GTK_SHADOW_ETCHED_IN);
+		GTK.gtk_container_add (fixedHandle, frameHandle);
+		GTK.gtk_container_add (frameHandle, handle);
+		GTK.gtk_frame_set_shadow_type (frameHandle, GTK.GTK_SHADOW_ETCHED_IN);
 	} else {
-		OS.gtk_container_add (fixedHandle, handle);
+		GTK.gtk_container_add (fixedHandle, handle);
 	}
 	if ((style & SWT.SEPARATOR) != 0) return;
 	if ((style & SWT.WRAP) != 0) {
-		OS.gtk_label_set_line_wrap (labelHandle, true);
-		OS.gtk_label_set_line_wrap_mode (labelHandle, OS.PANGO_WRAP_WORD_CHAR);
+		GTK.gtk_label_set_line_wrap (labelHandle, true);
+		GTK.gtk_label_set_line_wrap_mode (labelHandle, OS.PANGO_WRAP_WORD_CHAR);
 	}
 	// In GTK 3 font description is inherited from parent widget which is not how SWT has always worked,
 	// reset to default font to get the usual behavior
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		setFontDescription(defaultFont ().handle);
 	}
 	setAlignment ();
@@ -424,16 +451,16 @@ void releaseWidget () {
 
 @Override
 void resizeHandle (int width, int height) {
-	if (OS.GTK3) {
-		OS.swt_fixed_resize (OS.gtk_widget_get_parent (fixedHandle), fixedHandle, width, height);
+	if (GTK.GTK3) {
+		OS.swt_fixed_resize (GTK.gtk_widget_get_parent (fixedHandle), fixedHandle, width, height);
 		long /*int*/ child = frameHandle != 0 ? frameHandle : handle;
 		Point sizes = resizeCalculationsGTK3 (child, width, height);
 		width = sizes.x;
 		height = sizes.y;
-		OS.swt_fixed_resize (OS.gtk_widget_get_parent (child), child, width, height);
+		OS.swt_fixed_resize (GTK.gtk_widget_get_parent (child), child, width, height);
 	} else {
-		OS.gtk_widget_set_size_request (fixedHandle, width, height);
-		OS.gtk_widget_set_size_request (frameHandle != 0 ? frameHandle : handle, width, height);
+		GTK.gtk_widget_set_size_request (fixedHandle, width, height);
+		GTK.gtk_widget_set_size_request (frameHandle != 0 ? frameHandle : handle, width, height);
 	}
 }
 
@@ -461,52 +488,52 @@ public void setAlignment (int alignment) {
 
 void setAlignment () {
 	if ((style & SWT.LEFT) != 0) {
-		if (OS.GTK_VERSION >= OS.VERSION(3, 16, 0)) {
-			gtk_widget_set_align(labelHandle,OS.GTK_ALIGN_START, OS.GTK_ALIGN_START); //Aligns widget
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 16, 0)) {
+			gtk_widget_set_align(labelHandle,GTK.GTK_ALIGN_START, GTK.GTK_ALIGN_START); //Aligns widget
 			gtk_label_set_align (0.0f, 0.0f); //Aligns text inside the widget.
-			gtk_widget_set_align(imageHandle, OS.GTK_ALIGN_START, OS.GTK_ALIGN_CENTER);
+			gtk_widget_set_align(imageHandle, GTK.GTK_ALIGN_START, GTK.GTK_ALIGN_CENTER);
 		} else {
-			OS.gtk_misc_set_alignment (labelHandle, 0.0f, 0.0f);
-			OS.gtk_misc_set_alignment (imageHandle, 0.0f, 0.5f);
+			GTK.gtk_misc_set_alignment (labelHandle, 0.0f, 0.0f);
+			GTK.gtk_misc_set_alignment (imageHandle, 0.0f, 0.5f);
 		}
-		OS.gtk_label_set_justify (labelHandle, OS.GTK_JUSTIFY_LEFT);
+		GTK.gtk_label_set_justify (labelHandle, GTK.GTK_JUSTIFY_LEFT);
 		return;
 	}
 	if ((style & SWT.CENTER) != 0) {
-		if (OS.GTK_VERSION >= OS.VERSION(3, 16, 0)) {
-			gtk_widget_set_align(labelHandle,OS.GTK_ALIGN_CENTER, OS.GTK_ALIGN_START); //Aligns widget
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 16, 0)) {
+			gtk_widget_set_align(labelHandle,GTK.GTK_ALIGN_CENTER, GTK.GTK_ALIGN_START); //Aligns widget
 			gtk_label_set_align (0.5f, 0.0f); //Aligns text inside the widget.
-			gtk_widget_set_align(imageHandle, OS.GTK_ALIGN_CENTER, OS.GTK_ALIGN_CENTER);
+			gtk_widget_set_align(imageHandle, GTK.GTK_ALIGN_CENTER, GTK.GTK_ALIGN_CENTER);
 		} else {
-			OS.gtk_misc_set_alignment (labelHandle, 0.5f, 0.0f);
-			OS.gtk_misc_set_alignment (imageHandle, 0.5f, 0.5f);
+			GTK.gtk_misc_set_alignment (labelHandle, 0.5f, 0.0f);
+			GTK.gtk_misc_set_alignment (imageHandle, 0.5f, 0.5f);
 		}
 
-		OS.gtk_label_set_justify (labelHandle, OS.GTK_JUSTIFY_CENTER);
+		GTK.gtk_label_set_justify (labelHandle, GTK.GTK_JUSTIFY_CENTER);
 		return;
 	}
 	if ((style & SWT.RIGHT) != 0) {
-		if (OS.GTK_VERSION >= OS.VERSION(3, 16, 0)) {
-			gtk_widget_set_align(labelHandle,OS.GTK_ALIGN_END, OS.GTK_ALIGN_START); //Aligns widget.
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 16, 0)) {
+			gtk_widget_set_align(labelHandle,GTK.GTK_ALIGN_END, GTK.GTK_ALIGN_START); //Aligns widget.
 			gtk_label_set_align (1.0f, 0.0f); //Aligns text inside the widget.
-			gtk_widget_set_align(imageHandle, OS.GTK_ALIGN_END, OS.GTK_ALIGN_CENTER);
+			gtk_widget_set_align(imageHandle, GTK.GTK_ALIGN_END, GTK.GTK_ALIGN_CENTER);
 		} else  {
-			OS.gtk_misc_set_alignment (labelHandle, 1.0f, 0.0f);
-			OS.gtk_misc_set_alignment (imageHandle, 1.0f, 0.5f);
+			GTK.gtk_misc_set_alignment (labelHandle, 1.0f, 0.0f);
+			GTK.gtk_misc_set_alignment (imageHandle, 1.0f, 0.5f);
 		}
-		OS.gtk_label_set_justify (labelHandle, OS.GTK_JUSTIFY_RIGHT);
+		GTK.gtk_label_set_justify (labelHandle, GTK.GTK_JUSTIFY_RIGHT);
 		return;
 	}
 }
 
 private void gtk_label_set_align (float xalign, float yalign) {
-	OS.gtk_label_set_xalign (labelHandle, xalign);
-	OS.gtk_label_set_yalign (labelHandle, yalign);
+	GTK.gtk_label_set_xalign (labelHandle, xalign);
+	GTK.gtk_label_set_yalign (labelHandle, yalign);
 }
 
 @Override
 void setBackgroundGdkColor (GdkColor color) {
-	assert !OS.GTK3 : "GTK2 code was run by GTK3";
+	assert !GTK.GTK3 : "GTK2 code was run by GTK3";
 	super.setBackgroundGdkColor (color);
 	setBackgroundGdkColor(fixedHandle, color);
 	if (labelHandle != 0) setBackgroundGdkColor(labelHandle, color);
@@ -528,7 +555,7 @@ int setBounds (int x, int y, int width, int height, boolean move, boolean resize
 	* won't draw properly.
 	*/
 	boolean fixWrap = resize && labelHandle != 0 && (style & SWT.WRAP) != 0;
-	if (fixWrap) OS.gtk_widget_set_size_request (labelHandle, -1, -1);
+	if (fixWrap) GTK.gtk_widget_set_size_request (labelHandle, -1, -1);
 	int result = super.setBounds (x, y, width, height, move, resize);
 	/*
 	* Bug in GTK.  For some reason, when the label is
@@ -543,20 +570,20 @@ int setBounds (int x, int y, int width, int height, boolean move, boolean resize
 	*/
 	if (fixWrap) {
 		GtkAllocation allocation = new GtkAllocation();
-		OS.gtk_widget_get_allocation (handle, allocation);
+		GTK.gtk_widget_get_allocation (handle, allocation);
 		int labelWidth = allocation.width;
 		int labelHeight = allocation.height;
-		OS.gtk_widget_set_size_request (labelHandle, labelWidth, labelHeight);
+		GTK.gtk_widget_set_size_request (labelHandle, labelWidth, labelHeight);
 		/*
 		* Bug in GTK.  Setting the size request should invalidate the label's
 		* layout, but it does not.  The fix is to resize the label directly.
 		*/
 		GtkRequisition requisition = new GtkRequisition ();
 		gtk_widget_get_preferred_size (labelHandle, requisition);
-		OS.gtk_widget_get_allocation(labelHandle, allocation);
+		GTK.gtk_widget_get_allocation(labelHandle, allocation);
 		allocation.width = labelWidth;
 		allocation.height = labelHeight;
-		OS.gtk_widget_size_allocate (labelHandle, allocation);
+		GTK.gtk_widget_size_allocate (labelHandle, allocation);
 	}
 	return result;
 }
@@ -569,18 +596,18 @@ void setFontDescription (long /*int*/ font) {
 
 	// Bug 445801: Work around for computeSize not returning a different value after
 	// changing font, see https://bugzilla.gnome.org/show_bug.cgi?id=753116
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		// This updates the pango context and also clears the size request cache on the GTK side.
-		int originalDirection = (style & SWT.RIGHT_TO_LEFT) != 0 ? OS.GTK_TEXT_DIR_RTL : OS.GTK_TEXT_DIR_LTR;
-		int tempDirection = (style & SWT.RIGHT_TO_LEFT) != 0 ? OS.GTK_TEXT_DIR_LTR : OS.GTK_TEXT_DIR_RTL;
-		OS.gtk_widget_set_direction (labelHandle, tempDirection);
-		OS.gtk_widget_set_direction (labelHandle, originalDirection);
+		int originalDirection = (style & SWT.RIGHT_TO_LEFT) != 0 ? GTK.GTK_TEXT_DIR_RTL : GTK.GTK_TEXT_DIR_LTR;
+		int tempDirection = (style & SWT.RIGHT_TO_LEFT) != 0 ? GTK.GTK_TEXT_DIR_LTR : GTK.GTK_TEXT_DIR_RTL;
+		GTK.gtk_widget_set_direction (labelHandle, tempDirection);
+		GTK.gtk_widget_set_direction (labelHandle, originalDirection);
 	}
 }
 
 @Override
 void setForegroundGdkColor (GdkColor color) {
-	assert !OS.GTK3 : "GTK2 code was run by GTK3";
+	assert !GTK.GTK3 : "GTK2 code was run by GTK3";
 	super.setForegroundGdkColor(color);
 	setForegroundColor (fixedHandle, color);
 	if (labelHandle != 0) setForegroundColor (labelHandle, color);
@@ -589,7 +616,7 @@ void setForegroundGdkColor (GdkColor color) {
 
 @Override
 void setForegroundGdkRGBA (GdkRGBA rgba) {
-	assert OS.GTK3 : "GTK3 code was run by GTK2";
+	assert GTK.GTK3 : "GTK3 code was run by GTK2";
 	super.setForegroundGdkRGBA (rgba);
 	setForegroundGdkRGBA (fixedHandle, rgba);
 	if (labelHandle != 0) setForegroundGdkRGBA (labelHandle, rgba);
@@ -600,9 +627,9 @@ void setForegroundGdkRGBA (GdkRGBA rgba) {
 void setOrientation (boolean create) {
 	super.setOrientation (create);
 	if ((style & SWT.RIGHT_TO_LEFT) != 0 || !create) {
-		int dir = (style & SWT.RIGHT_TO_LEFT) != 0 ? OS.GTK_TEXT_DIR_RTL : OS.GTK_TEXT_DIR_LTR;
-		if (labelHandle != 0) OS.gtk_widget_set_direction (labelHandle, dir);
-		if (imageHandle != 0) OS.gtk_widget_set_direction (imageHandle, dir);
+		int dir = (style & SWT.RIGHT_TO_LEFT) != 0 ? GTK.GTK_TEXT_DIR_RTL : GTK.GTK_TEXT_DIR_LTR;
+		if (labelHandle != 0) GTK.gtk_widget_set_direction (labelHandle, dir);
+		if (imageHandle != 0) GTK.gtk_widget_set_direction (imageHandle, dir);
 	}
 }
 
@@ -634,12 +661,12 @@ public void setImage (Image image) {
 		int imageIndex = imageList.add (image);
 		long /*int*/ pixbuf = imageList.getPixbuf (imageIndex);
 		gtk_image_set_from_pixbuf (imageHandle, pixbuf);
-		OS.gtk_widget_hide (labelHandle);
-		OS.gtk_widget_show (imageHandle);
+		GTK.gtk_widget_hide (labelHandle);
+		GTK.gtk_widget_show (imageHandle);
 	} else {
 		gtk_image_set_from_pixbuf (imageHandle, 0);
-		OS.gtk_widget_show (labelHandle);
-		OS.gtk_widget_hide (imageHandle);
+		GTK.gtk_widget_show (labelHandle);
+		GTK.gtk_widget_hide (imageHandle);
 	}
 }
 
@@ -681,14 +708,14 @@ public void setText (String string) {
 	text = string;
 	char [] chars = fixMnemonic (string);
 	byte [] buffer = Converter.wcsToMbcs (chars, true);
-	OS.gtk_label_set_text_with_mnemonic (labelHandle, buffer);
-	OS.gtk_widget_hide (imageHandle);
-	OS.gtk_widget_show (labelHandle);
+	GTK.gtk_label_set_text_with_mnemonic (labelHandle, buffer);
+	GTK.gtk_widget_hide (imageHandle);
+	GTK.gtk_widget_show (labelHandle);
 }
 
 @Override
 void setWidgetBackground  () {
-	if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
 		GdkRGBA rgba = (state & BACKGROUND) != 0 ? getBackgroundGdkRGBA () : null;
 		super.setBackgroundGdkRGBA (handle, rgba);
 	} else {
@@ -699,22 +726,40 @@ void setWidgetBackground  () {
 @Override
 void showWidget () {
 	super.showWidget ();
-	if (frameHandle != 0) OS.gtk_widget_show (frameHandle);
-	if (labelHandle != 0) OS.gtk_widget_show (labelHandle);
-	if (boxHandle != 0) OS.gtk_widget_show (boxHandle);
+	if (frameHandle != 0) GTK.gtk_widget_show (frameHandle);
+	if (labelHandle != 0) GTK.gtk_widget_show (labelHandle);
+	if (boxHandle != 0) GTK.gtk_widget_show (boxHandle);
 }
 
 long /*int*/ gtk_separator_new (int orientation) {
 	long /*int*/ separator = 0;
-	if (OS.GTK3) {
-		separator = OS.gtk_separator_new (orientation);
+	if (GTK.GTK3) {
+		separator = GTK.gtk_separator_new (orientation);
 	} else {
-		if (orientation == OS.GTK_ORIENTATION_HORIZONTAL) {
-			separator = OS.gtk_hseparator_new ();
+		if (orientation == GTK.GTK_ORIENTATION_HORIZONTAL) {
+			separator = GTK.gtk_hseparator_new ();
 		} else {
-			separator = OS.gtk_vseparator_new ();
+			separator = GTK.gtk_vseparator_new ();
 		}
 	}
 	return separator;
+}
+
+@Override
+long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ user_data) {
+	/*
+	 * For Labels/Buttons, the first widget in the tree with a GdkWindow is SwtFixed.
+	 * Unfortunately this fails the check in !GTK_IS_CONTAINER check Widget.windowProc().
+	 * Instead lets override windowProc() here and check for paintHandle() compatibility.
+	 * Fixes bug 481485 without re-introducing bug 483791.
+	 */
+	switch ((int)/*64*/user_data) {
+		case DRAW: {
+			if (GTK.GTK_VERSION >= OS.VERSION(3, 9, 0) && paintHandle() == handle) {
+				return gtk_draw(handle, arg0);
+			}
+		}
+	}
+	return super.windowProc(handle, arg0, user_data);
 }
 }

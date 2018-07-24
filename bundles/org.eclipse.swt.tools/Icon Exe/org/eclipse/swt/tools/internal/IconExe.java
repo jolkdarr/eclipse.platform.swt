@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2015 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,10 +7,13 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Torbjörn Svensson (STMicroelectronics) - bug #461646 
  *******************************************************************************/
 package org.eclipse.swt.tools.internal;
 
 import java.io.*;
+
+import org.eclipse.swt.*;
 
 /**
  * Customize the icon of a Windows exe
@@ -241,7 +244,7 @@ void dumpResourceDirectory(RandomAccessFile raf, int imageResourceDirectoryOffse
 			if (rt_icon_root) {
 				if (DEBUG) System.out.println("iconcnt "+iconCnt+" |"+iconInfo.length);
 				iconInfo[iconCnt] = new IconResInfo();
-				iconInfo[iconCnt].data = parseIcon(raf, data.OffsetToData - delta, data.Size);
+				iconInfo[iconCnt].data = parseIcon(raf, data.OffsetToData - delta);
 				iconInfo[iconCnt].offset = data.OffsetToData - delta;
 				iconInfo[iconCnt].size = data.Size;	
 				iconCnt++;
@@ -255,7 +258,7 @@ void dumpResourceDirectory(RandomAccessFile raf, int imageResourceDirectoryOffse
  	}
 }
 
-static ImageData parseIcon(RandomAccessFile raf, int offset, int size) throws IOException {
+static ImageData parseIcon(RandomAccessFile raf, int offset) throws IOException {
 	raf.seek(offset);
 	BITMAPINFO bitmapInfo = new BITMAPINFO();
 	read(raf, bitmapInfo);
@@ -443,7 +446,7 @@ static void unloadShapeData(RandomAccessFile raf, ImageData icon) {
 		SWT.error(SWT.ERROR_IO, e);
 	}
 }
-static boolean readIconGroup(RandomAccessFile raf, int offset, int size) throws IOException {
+static boolean readIconGroup(RandomAccessFile raf, int offset) throws IOException {
 	raf.seek(offset);
 	NEWHEADER newHeader = new NEWHEADER();
 	read(raf, newHeader);
@@ -1009,14 +1012,13 @@ public int getPixel(RGB rgb) {
 		pixel |= (greenShift < 0 ? rgb.green << -greenShift : rgb.green >>> greenShift) & greenMask;
 		pixel |= (blueShift < 0 ? rgb.blue << -blueShift : rgb.blue >>> blueShift) & blueMask;
 		return pixel;
-	} else {
-		for (int i = 0; i < colors.length; i++) {
-			if (colors[i].equals(rgb)) return i;
-		}
-		/* The RGB did not exist in the palette */
-		SWT.error(SWT.ERROR_INVALID_ARGUMENT);
-		return 0;
+	} 
+	for (int i = 0; i < colors.length; i++) {
+		if (colors[i].equals(rgb)) return i;
 	}
+	/* The RGB did not exist in the palette */
+	SWT.error(SWT.ERROR_INVALID_ARGUMENT);
+	return 0;
 }
 
 /**
@@ -1039,12 +1041,11 @@ public RGB getRGB(int pixel) {
 		int b = pixel & blueMask;
 		b = (blueShift < 0) ? b >>> -blueShift : b << blueShift;
 		return new RGB(r, g, b);
-	} else {
-		if (pixel < 0 || pixel >= colors.length) {
-			SWT.error(SWT.ERROR_INVALID_ARGUMENT);
-		}
-		return colors[pixel];
+	} 
+	if (pixel < 0 || pixel >= colors.length) {
+		SWT.error(SWT.ERROR_INVALID_ARGUMENT);
 	}
+	return colors[pixel];
 }
 
 /**
@@ -1987,9 +1988,8 @@ public RGB[] getRGBs() {
 public ImageData getTransparencyMask() {
 	if (getTransparencyType() == SWT.TRANSPARENCY_MASK) {
 		return new ImageData(width, height, 1, bwPalette(), maskPad, maskData);
-	} else {
-		return colorMaskImage(transparentPixel);
 	}
+	return colorMaskImage(transparentPixel);
 }
 
 /**
@@ -2781,8 +2781,6 @@ int decompressRLE4Data(byte[] src, int numBytes, int stride, byte[] dest, int de
 					y++;
 					x = 0;
 					dp = y * stride;
-					if (dp >= de)
-						return -1;
 					break;
 				case 1: /* end of bitmap */
 					return 1;
@@ -2847,8 +2845,6 @@ int decompressRLE8Data(byte[] src, int numBytes, int stride, byte[] dest, int de
 					y++;
 					x = 0;
 					dp = y * stride;
-					if (dp >= de)
-						return -1;
 					break;
 				case 1: /* end of bitmap */
 					return 1;
@@ -3280,7 +3276,7 @@ static class SWT {
 		throw new RuntimeException("Error "+code);
 	}
 	public static void error(int code, Throwable t) {
-		throw new RuntimeException(t);
+		throw new RuntimeException("Error " + code, t);
 	}
 }
 }

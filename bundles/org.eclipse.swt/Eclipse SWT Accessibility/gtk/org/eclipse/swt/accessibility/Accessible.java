@@ -114,7 +114,13 @@ public class Accessible {
 	Accessible (Control control) {
 		super ();
 		this.control = control;
-		AccessibleFactory.registerAccessible (this);
+		if (GTK.GTK3) {
+			long /*int*/ type = OS.G_OBJECT_TYPE (getControlHandle());
+			accessibleObject = new AccessibleObject (type, getControlHandle(), this, false);
+			addRelations();
+		} else {
+			AccessibleFactory.registerAccessible (this);
+		}
 	}
 
 	/**
@@ -474,11 +480,23 @@ public class Accessible {
 
 	AccessibleObject getAccessibleObject () {
 		if (accessibleObject == null) {
-			if (parent == null) {
-				AccessibleFactory.createAccessible(this);
+			if (GTK.GTK3) {
+				long /*int*/ widget = this.getControlHandle();
+				long /*int*/ type = OS.G_OBJECT_TYPE (widget);
+				if (parent == null) {
+					accessibleObject = new AccessibleObject (type, widget, this, false);
+				} else {
+					accessibleObject = new AccessibleObject (type, 0, this, true);
+					accessibleObject.parent = parent.getAccessibleObject();
+				}
 			} else {
-				accessibleObject = AccessibleFactory.createChildAccessible(this, ACC.CHILDID_SELF);
-				accessibleObject.parent = parent.getAccessibleObject();
+				if (parent == null) {
+					AccessibleFactory.createAccessible(this);
+				} else {
+					accessibleObject = AccessibleFactory.createChildAccessible(this, ACC.CHILDID_SELF);
+					accessibleObject.parent = parent.getAccessibleObject();
+				}
+
 			}
 		}
 		return accessibleObject;
@@ -487,12 +505,12 @@ public class Accessible {
 	long /*int*/ getControlHandle () {
 		long /*int*/ result = control.handle;
 		if (control instanceof Label) {
-			long /*int*/ list = OS.gtk_container_get_children (result);
+			long /*int*/ list = GTK.gtk_container_get_children (result);
 			if (list != 0) {
 				long /*int*/ temp = list;
 				while (temp != 0) {
 					long /*int*/ widget = OS.g_list_data( temp);
-					if (OS.gtk_widget_get_visible (widget)) {
+					if (GTK.gtk_widget_get_visible (widget)) {
 						result = widget;
 						break;
 					}
@@ -517,7 +535,7 @@ public class Accessible {
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
 	public void internal_dispose_Accessible() {
-		AccessibleFactory.unregisterAccessible (Accessible.this);
+		if (!GTK.GTK3) AccessibleFactory.unregisterAccessible (Accessible.this);
 		release ();
 	}
 

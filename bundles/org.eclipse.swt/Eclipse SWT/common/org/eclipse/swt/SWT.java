@@ -841,6 +841,21 @@ public class SWT {
 	@Deprecated
 	public static final int Wakeup = PostExternalEventDispatch;
 
+	/**
+	 * The open URL event type (value is 54).
+	 *
+	 * <p>
+	 * This event is sent when SWT receives notification that a URL
+	 * should be opened.
+	 * </p>
+	 *
+	 * @see org.eclipse.swt.widgets.Display#addListener
+	 * @see org.eclipse.swt.widgets.Event
+	 *
+	 * @since 3.107
+	 */
+	public static final int OpenUrl = 54;
+
 	/* Event Details */
 
 	/**
@@ -2163,6 +2178,17 @@ public class SWT {
 	public static final int CALENDAR = 1 << 10;
 
 	/**
+	 * Style constant for displaying the week numbers.
+	 * <br>Note that this is a <em>HINT</em> and is supported on Windows & GTK platforms only.
+	 * <p><b>Used By:</b><ul>
+	 * <li><code>DateTime</code></li>
+	 * </ul></p>
+	 *
+	 * @since 3.108
+	 */
+	public static final int CALENDAR_WEEKNUMBERS = 1 << 14;
+
+	/**
 	 * Style constant for short date/time format (value is 1&lt;&lt;15).
 	 * <p>
 	 * A short date displays the month and year.
@@ -2337,6 +2363,15 @@ public class SWT {
 	 * @since 3.7
 	 */
 	public static final char SPACE = ' ';
+
+	/**
+	 * keyboard and/or mouse event mask indicating that the ALT_GR key
+	 * was pushed on the keyboard when the event was generated
+	 * (value is 1 &lt;&lt 15).
+	 *
+	 * @since 3.108
+	 */
+	public static final int ALT_GR = 1 << 15;
 
 	/**
 	 * keyboard and/or mouse event mask indicating that the ALT key
@@ -4579,7 +4614,7 @@ static {
 	* in the declaration to stop the compiler from inlining.
 	*/
 	BUTTON_MASK = BUTTON1 | BUTTON2 | BUTTON3 | BUTTON4 | BUTTON5;
-	MODIFIER_MASK = ALT | SHIFT | CTRL | COMMAND;
+	MODIFIER_MASK = ALT | SHIFT | CTRL | COMMAND | ALT_GR;
 
 	/*
 	* These values can be different on different platforms.

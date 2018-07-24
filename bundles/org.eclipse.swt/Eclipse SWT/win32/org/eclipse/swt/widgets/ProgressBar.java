@@ -63,17 +63,10 @@ public class ProgressBar extends Control {
 		* code, other than SWT, could create a control with
 		* this class name, and fail unexpectedly.
 		*/
-		long /*int*/ hInstance = OS.GetModuleHandle (null);
-		long /*int*/ hHeap = OS.GetProcessHeap ();
-		lpWndClass.hInstance = hInstance;
+		lpWndClass.hInstance = OS.GetModuleHandle (null);
 		lpWndClass.style &= ~OS.CS_GLOBALCLASS;
 		lpWndClass.style |= OS.CS_DBLCLKS;
-		int byteCount = ProgressBarClass.length () * TCHAR.sizeof;
-		long /*int*/ lpszClassName = OS.HeapAlloc (hHeap, OS.HEAP_ZERO_MEMORY, byteCount);
-		OS.MoveMemory (lpszClassName, ProgressBarClass, byteCount);
-		lpWndClass.lpszClassName = lpszClassName;
 		OS.RegisterClass (lpWndClass);
-		OS.HeapFree (hHeap, 0, lpszClassName);
 	}
 
 /**
@@ -213,13 +206,11 @@ public int getSelection () {
  */
 public int getState () {
 	checkWidget ();
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		int state = (int)/*64*/OS.SendMessage (handle, OS.PBM_GETSTATE, 0, 0);
-		switch (state) {
-			case OS.PBST_NORMAL: return SWT.NORMAL;
-			case OS.PBST_ERROR: return SWT.ERROR;
-			case OS.PBST_PAUSED: return SWT.PAUSED;
-		}
+	int state = (int)/*64*/OS.SendMessage (handle, OS.PBM_GETSTATE, 0, 0);
+	switch (state) {
+		case OS.PBST_NORMAL: return SWT.NORMAL;
+		case OS.PBST_ERROR: return SWT.ERROR;
+		case OS.PBST_PAUSED: return SWT.PAUSED;
 	}
 	return SWT.NORMAL;
 }
@@ -233,7 +224,7 @@ void releaseWidget () {
 void startTimer () {
 	if ((style & SWT.INDETERMINATE) != 0) {
 		int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
-		if (OS.COMCTL32_MAJOR < 6 || (bits & OS.PBS_MARQUEE) == 0) {
+		if ((bits & OS.PBS_MARQUEE) == 0) {
 			OS.SetTimer (handle, TIMER_ID, DELAY, 0);
 		} else {
 			OS.SendMessage (handle, OS.PBM_SETMARQUEE, 1, DELAY);
@@ -244,7 +235,7 @@ void startTimer () {
 void stopTimer () {
 	if ((style & SWT.INDETERMINATE) != 0) {
 		int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
-		if (OS.COMCTL32_MAJOR < 6 || (bits & OS.PBS_MARQUEE) == 0) {
+		if ((bits & OS.PBS_MARQUEE) == 0) {
 			OS.KillTimer (handle, TIMER_ID);
 		} else {
 			OS.SendMessage (handle, OS.PBM_SETMARQUEE, 0, 0);
@@ -328,11 +319,9 @@ public void setSelection (int value) {
 	* PBM_SETPOS. This is undocumented. The fix is to call PBM_SETPOS
 	* a second time.
 	*/
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		long /*int*/ state = OS.SendMessage (handle, OS.PBM_GETSTATE, 0, 0);
-		if (state != OS.PBST_NORMAL) {
-			OS.SendMessage (handle, OS.PBM_SETPOS, value, 0);
-		}
+	long /*int*/ state = OS.SendMessage (handle, OS.PBM_GETSTATE, 0, 0);
+	if (state != OS.PBST_NORMAL) {
+		OS.SendMessage (handle, OS.PBM_SETPOS, value, 0);
 	}
 }
 
@@ -359,18 +348,16 @@ public void setSelection (int value) {
  */
 public void setState (int state) {
 	checkWidget ();
-	if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
-		switch (state) {
-			case SWT.NORMAL:
-				OS.SendMessage (handle, OS.PBM_SETSTATE, OS.PBST_NORMAL, 0);
-				break;
-			case SWT.ERROR:
-				OS.SendMessage (handle, OS.PBM_SETSTATE, OS.PBST_ERROR, 0);
-				break;
-			case SWT.PAUSED:
-				OS.SendMessage (handle, OS.PBM_SETSTATE, OS.PBST_PAUSED, 0);
-				break;
-		}
+	switch (state) {
+		case SWT.NORMAL:
+			OS.SendMessage (handle, OS.PBM_SETSTATE, OS.PBST_NORMAL, 0);
+			break;
+		case SWT.ERROR:
+			OS.SendMessage (handle, OS.PBM_SETSTATE, OS.PBST_ERROR, 0);
+			break;
+		case SWT.PAUSED:
+			OS.SendMessage (handle, OS.PBM_SETSTATE, OS.PBST_PAUSED, 0);
+			break;
 	}
 }
 
@@ -425,7 +412,7 @@ LRESULT WM_SIZE (long /*int*/ wParam, long /*int*/ lParam) {
 	* NOTE:  This only happens on Window XP.
 	*/
 	if ((style & SWT.INDETERMINATE) != 0) {
-		if (OS.WIN32_VERSION == OS.VERSION (5,1) || (OS.COMCTL32_MAJOR >= 6 && !OS.IsAppThemed())) {
+		if (!OS.IsAppThemed()) {
 			forceResize ();
 			RECT rect = new RECT ();
 			OS.GetClientRect (handle, rect);
@@ -452,7 +439,7 @@ LRESULT WM_TIMER (long /*int*/ wParam, long /*int*/ lParam) {
 	if (result != null) return result;
 	if ((style & SWT.INDETERMINATE) != 0) {
 		int bits = OS.GetWindowLong (handle, OS.GWL_STYLE);
-		if (OS.COMCTL32_MAJOR < 6 || (bits & OS.PBS_MARQUEE) == 0) {
+		if ((bits & OS.PBS_MARQUEE) == 0) {
 			if (wParam == TIMER_ID) {
 				OS.SendMessage (handle, OS.PBM_STEPIT, 0, 0);
 			}

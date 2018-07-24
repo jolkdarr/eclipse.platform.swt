@@ -67,6 +67,34 @@ JNIEXPORT jintLong JNICALL OS_NATIVE(AcquireRootMenu)
 }
 #endif
 
+#ifndef NO_CALLBACK_1NSTextAttachmentCell_1attachment
+static jintLong CALLBACK_1NSTextAttachmentCell_1attachment;
+static id proc_CALLBACK_1NSTextAttachmentCell_1attachment(id arg0, SEL arg1) {
+	id* lprc = ((id* (*)(id, SEL))CALLBACK_1NSTextAttachmentCell_1attachment)(arg0, arg1);
+	id rc;
+	if (lprc) {
+		rc = *lprc;
+		free(lprc);
+	} else {
+		memset(&rc, 0, sizeof(id));
+	}
+	return rc;
+}
+static jintLong CALLBACK_NSTextAttachmentCell_attachment(jintLong func) {
+	CALLBACK_1NSTextAttachmentCell_1attachment = func;
+	return (jintLong)proc_CALLBACK_1NSTextAttachmentCell_1attachment;
+}
+JNIEXPORT jintLong JNICALL OS_NATIVE(CALLBACK_1NSTextAttachmentCell_1attachment)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	OS_NATIVE_ENTER(env, that, CALLBACK_1NSTextAttachmentCell_1attachment_FUNC);
+	rc = (jintLong)CALLBACK_NSTextAttachmentCell_attachment(arg0);
+	OS_NATIVE_EXIT(env, that, CALLBACK_1NSTextAttachmentCell_1attachment_FUNC);
+	return rc;
+}
+#endif
+
 #ifndef NO_CALLBACK_1NSTextAttachmentCell_1cellSize
 static jintLong CALLBACK_1NSTextAttachmentCell_1cellSize;
 static NSSize proc_CALLBACK_1NSTextAttachmentCell_1cellSize(id arg0, SEL arg1) {
@@ -375,6 +403,26 @@ JNIEXPORT jintLong JNICALL OS_NATIVE(CALLBACK_1drawBackgroundInClipRect_1)
 	OS_NATIVE_ENTER(env, that, CALLBACK_1drawBackgroundInClipRect_1_FUNC);
 	rc = (jintLong)CALLBACK_drawBackgroundInClipRect_(arg0);
 	OS_NATIVE_EXIT(env, that, CALLBACK_1drawBackgroundInClipRect_1_FUNC);
+	return rc;
+}
+#endif
+
+#ifndef NO_CALLBACK_1drawBezelWithFrame_1inView_1
+static jintLong CALLBACK_1drawBezelWithFrame_1inView_1;
+static void proc_CALLBACK_1drawBezelWithFrame_1inView_1(id arg0, SEL arg1, NSRect arg2, NSView* arg3) {
+	((void (*)(id, SEL, NSRect*, NSView*))CALLBACK_1drawBezelWithFrame_1inView_1)(arg0, arg1, &arg2, arg3);
+}
+static jintLong CALLBACK_drawBezelWithFrame_inView_(jintLong func) {
+	CALLBACK_1drawBezelWithFrame_1inView_1 = func;
+	return (jintLong)proc_CALLBACK_1drawBezelWithFrame_1inView_1;
+}
+JNIEXPORT jintLong JNICALL OS_NATIVE(CALLBACK_1drawBezelWithFrame_1inView_1)
+	(JNIEnv *env, jclass that, jintLong arg0)
+{
+	jintLong rc = 0;
+	OS_NATIVE_ENTER(env, that, CALLBACK_1drawBezelWithFrame_1inView_1_FUNC);
+	rc = (jintLong)CALLBACK_drawBezelWithFrame_inView_(arg0);
+	OS_NATIVE_EXIT(env, that, CALLBACK_1drawBezelWithFrame_1inView_1_FUNC);
 	return rc;
 }
 #endif
@@ -4468,22 +4516,6 @@ JNIEXPORT jintLong JNICALL OS_NATIVE(NSAccessibilityWindowRole)
 }
 #endif
 
-#ifndef NO_NSAddImage
-JNIEXPORT jintLong JNICALL OS_NATIVE(NSAddImage)
-	(JNIEnv *env, jclass that, jbyteArray arg0, jint arg1)
-{
-	jbyte *lparg0=NULL;
-	jintLong rc = 0;
-	OS_NATIVE_ENTER(env, that, NSAddImage_FUNC);
-	if (arg0) if ((lparg0 = (*env)->GetByteArrayElements(env, arg0, NULL)) == NULL) goto fail;
-	rc = (jintLong)NSAddImage((const char*)lparg0, (uint32_t)arg1);
-fail:
-	if (arg0 && lparg0) (*env)->ReleaseByteArrayElements(env, arg0, lparg0, 0);
-	OS_NATIVE_EXIT(env, that, NSAddImage_FUNC);
-	return rc;
-}
-#endif
-
 #ifndef NO_NSAffineTransformStruct_1sizeof
 JNIEXPORT jint JNICALL OS_NATIVE(NSAffineTransformStruct_1sizeof)
 	(JNIEnv *env, jclass that)
@@ -5467,20 +5499,6 @@ JNIEXPORT jintLong JNICALL OS_NATIVE(NSWindowDidResizeNotification)
 }
 #endif
 
-#ifndef NO_NSWindowList
-JNIEXPORT void JNICALL OS_NATIVE(NSWindowList)
-	(JNIEnv *env, jclass that, jintLong arg0, jintLongArray arg1)
-{
-	jintLong *lparg1=NULL;
-	OS_NATIVE_ENTER(env, that, NSWindowList_FUNC);
-	if (arg1) if ((lparg1 = (*env)->GetIntLongArrayElements(env, arg1, NULL)) == NULL) goto fail;
-	NSWindowList((NSInteger)arg0, (NSInteger*)lparg1);
-fail:
-	if (arg1 && lparg1) (*env)->ReleaseIntLongArrayElements(env, arg1, lparg1, 0);
-	OS_NATIVE_EXIT(env, that, NSWindowList_FUNC);
-}
-#endif
-
 #ifndef NO_NSWindowWillCloseNotification
 JNIEXPORT jintLong JNICALL OS_NATIVE(NSWindowWillCloseNotification)
 	(JNIEnv *env, jclass that)
@@ -5878,22 +5896,6 @@ JNIEXPORT void JNICALL OS_NATIVE(SectRgn)
 		}
 	}
 	OS_NATIVE_EXIT(env, that, SectRgn_FUNC);
-}
-#endif
-
-#ifndef NO_SetFrontProcess
-JNIEXPORT jint JNICALL OS_NATIVE(SetFrontProcess)
-	(JNIEnv *env, jclass that, jintArray arg0)
-{
-	jint *lparg0=NULL;
-	jint rc = 0;
-	OS_NATIVE_ENTER(env, that, SetFrontProcess_FUNC);
-	if (arg0) if ((lparg0 = (*env)->GetIntArrayElements(env, arg0, NULL)) == NULL) goto fail;
-	rc = (jint)SetFrontProcess((ProcessSerialNumber *)lparg0);
-fail:
-	if (arg0 && lparg0) (*env)->ReleaseIntArrayElements(env, arg0, lparg0, 0);
-	OS_NATIVE_EXIT(env, that, SetFrontProcess_FUNC);
-	return rc;
 }
 #endif
 

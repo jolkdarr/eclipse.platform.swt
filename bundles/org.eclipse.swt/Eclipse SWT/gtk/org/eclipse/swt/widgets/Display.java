@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,7 @@ package org.eclipse.swt.widgets;
 
 
 import java.io.*;
+import java.net.*;
 import java.util.*;
 import java.util.function.*;
 import java.util.regex.*;
@@ -20,6 +21,7 @@ import java.util.regex.Pattern;
 import org.eclipse.swt.*;
 import org.eclipse.swt.graphics.*;
 import org.eclipse.swt.internal.*;
+import org.eclipse.swt.internal.GDBus.*;
 import org.eclipse.swt.internal.cairo.*;
 import org.eclipse.swt.internal.gtk.*;
 
@@ -114,8 +116,8 @@ public class Display extends Device {
 	boolean wake;
 	int [] max_priority = new int [1], timeout = new int [1];
 	Callback eventCallback, filterCallback;
-	long /*int*/ eventProc, filterProc, windowProc2, windowProc3, windowProc4, windowProc5;
-	Callback windowCallback2, windowCallback3, windowCallback4, windowCallback5;
+	long /*int*/ eventProc, filterProc, windowProc2, windowProc3, windowProc4, windowProc5, windowProc6;
+	Callback windowCallback2, windowCallback3, windowCallback4, windowCallback5, windowCallback6;
 	EventTable eventTable, filterTable;
 	static String APP_NAME = "SWT"; //$NON-NLS-1$
 	static String APP_VERSION = ""; //$NON-NLS-1$
@@ -341,96 +343,97 @@ public class Display extends Device {
 	static final int [] [] KeyTable = {
 
 		/* Keyboard and Mouse Masks */
-		{OS.GDK_Alt_L,		SWT.ALT},
-		{OS.GDK_Alt_R,		SWT.ALT},
-		{OS.GDK_Meta_L,	SWT.ALT},
-		{OS.GDK_Meta_R,	SWT.ALT},
-		{OS.GDK_Shift_L,		SWT.SHIFT},
-		{OS.GDK_Shift_R,		SWT.SHIFT},
-		{OS.GDK_Control_L,	SWT.CONTROL},
-		{OS.GDK_Control_R,	SWT.CONTROL},
+		{GDK.GDK_Alt_L,		SWT.ALT},
+		{GDK.GDK_Alt_R,		SWT.ALT},
+		{GDK.GDK_Meta_L,	SWT.ALT},
+		{GDK.GDK_Meta_R,	SWT.ALT},
+		{GDK.GDK_Shift_L,		SWT.SHIFT},
+		{GDK.GDK_Shift_R,		SWT.SHIFT},
+		{GDK.GDK_Control_L,	SWT.CONTROL},
+		{GDK.GDK_Control_R,	SWT.CONTROL},
+		{GDK.GDK_ISO_Level3_Shift, SWT.ALT_GR},
 //		{OS.GDK_????,		SWT.COMMAND},
 //		{OS.GDK_????,		SWT.COMMAND},
 
 		/* Non-Numeric Keypad Keys */
-		{OS.GDK_Up,						SWT.ARROW_UP},
-		{OS.GDK_KP_Up,					SWT.ARROW_UP},
-		{OS.GDK_Down,					SWT.ARROW_DOWN},
-		{OS.GDK_KP_Down,			SWT.ARROW_DOWN},
-		{OS.GDK_Left,						SWT.ARROW_LEFT},
-		{OS.GDK_KP_Left,				SWT.ARROW_LEFT},
-		{OS.GDK_Right,					SWT.ARROW_RIGHT},
-		{OS.GDK_KP_Right,				SWT.ARROW_RIGHT},
-		{OS.GDK_Page_Up,				SWT.PAGE_UP},
-		{OS.GDK_KP_Page_Up,		SWT.PAGE_UP},
-		{OS.GDK_Page_Down,			SWT.PAGE_DOWN},
-		{OS.GDK_KP_Page_Down,	SWT.PAGE_DOWN},
-		{OS.GDK_Home,					SWT.HOME},
-		{OS.GDK_KP_Home,			SWT.HOME},
-		{OS.GDK_End,						SWT.END},
-		{OS.GDK_KP_End,				SWT.END},
-		{OS.GDK_Insert,					SWT.INSERT},
-		{OS.GDK_KP_Insert,			SWT.INSERT},
+		{GDK.GDK_Up,						SWT.ARROW_UP},
+		{GDK.GDK_KP_Up,					SWT.ARROW_UP},
+		{GDK.GDK_Down,					SWT.ARROW_DOWN},
+		{GDK.GDK_KP_Down,			SWT.ARROW_DOWN},
+		{GDK.GDK_Left,						SWT.ARROW_LEFT},
+		{GDK.GDK_KP_Left,				SWT.ARROW_LEFT},
+		{GDK.GDK_Right,					SWT.ARROW_RIGHT},
+		{GDK.GDK_KP_Right,				SWT.ARROW_RIGHT},
+		{GDK.GDK_Page_Up,				SWT.PAGE_UP},
+		{GDK.GDK_KP_Page_Up,		SWT.PAGE_UP},
+		{GDK.GDK_Page_Down,			SWT.PAGE_DOWN},
+		{GDK.GDK_KP_Page_Down,	SWT.PAGE_DOWN},
+		{GDK.GDK_Home,					SWT.HOME},
+		{GDK.GDK_KP_Home,			SWT.HOME},
+		{GDK.GDK_End,						SWT.END},
+		{GDK.GDK_KP_End,				SWT.END},
+		{GDK.GDK_Insert,					SWT.INSERT},
+		{GDK.GDK_KP_Insert,			SWT.INSERT},
 
 		/* Virtual and Ascii Keys */
-		{OS.GDK_BackSpace,		SWT.BS},
-		{OS.GDK_Return,				SWT.CR},
-		{OS.GDK_Delete,				SWT.DEL},
-		{OS.GDK_KP_Delete,		SWT.DEL},
-		{OS.GDK_Escape,			SWT.ESC},
-		{OS.GDK_Linefeed,			SWT.LF},
-		{OS.GDK_Tab,					SWT.TAB},
-		{OS.GDK_ISO_Left_Tab, 	SWT.TAB},
+		{GDK.GDK_BackSpace,		SWT.BS},
+		{GDK.GDK_Return,				SWT.CR},
+		{GDK.GDK_Delete,				SWT.DEL},
+		{GDK.GDK_KP_Delete,		SWT.DEL},
+		{GDK.GDK_Escape,			SWT.ESC},
+		{GDK.GDK_Linefeed,			SWT.LF},
+		{GDK.GDK_Tab,					SWT.TAB},
+		{GDK.GDK_ISO_Left_Tab, 	SWT.TAB},
 
 		/* Functions Keys */
-		{OS.GDK_F1,		SWT.F1},
-		{OS.GDK_F2,		SWT.F2},
-		{OS.GDK_F3,		SWT.F3},
-		{OS.GDK_F4,		SWT.F4},
-		{OS.GDK_F5,		SWT.F5},
-		{OS.GDK_F6,		SWT.F6},
-		{OS.GDK_F7,		SWT.F7},
-		{OS.GDK_F8,		SWT.F8},
-		{OS.GDK_F9,		SWT.F9},
-		{OS.GDK_F10,		SWT.F10},
-		{OS.GDK_F11,		SWT.F11},
-		{OS.GDK_F12,		SWT.F12},
-		{OS.GDK_F13,		SWT.F13},
-		{OS.GDK_F14,		SWT.F14},
-		{OS.GDK_F15,		SWT.F15},
-		{OS.GDK_F16,		SWT.F16},
-		{OS.GDK_F17,		SWT.F17},
-		{OS.GDK_F18,		SWT.F18},
-		{OS.GDK_F19,		SWT.F19},
-		{OS.GDK_F20,		SWT.F20},
+		{GDK.GDK_F1,		SWT.F1},
+		{GDK.GDK_F2,		SWT.F2},
+		{GDK.GDK_F3,		SWT.F3},
+		{GDK.GDK_F4,		SWT.F4},
+		{GDK.GDK_F5,		SWT.F5},
+		{GDK.GDK_F6,		SWT.F6},
+		{GDK.GDK_F7,		SWT.F7},
+		{GDK.GDK_F8,		SWT.F8},
+		{GDK.GDK_F9,		SWT.F9},
+		{GDK.GDK_F10,		SWT.F10},
+		{GDK.GDK_F11,		SWT.F11},
+		{GDK.GDK_F12,		SWT.F12},
+		{GDK.GDK_F13,		SWT.F13},
+		{GDK.GDK_F14,		SWT.F14},
+		{GDK.GDK_F15,		SWT.F15},
+		{GDK.GDK_F16,		SWT.F16},
+		{GDK.GDK_F17,		SWT.F17},
+		{GDK.GDK_F18,		SWT.F18},
+		{GDK.GDK_F19,		SWT.F19},
+		{GDK.GDK_F20,		SWT.F20},
 
 		/* Numeric Keypad Keys */
-		{OS.GDK_KP_Multiply,		SWT.KEYPAD_MULTIPLY},
-		{OS.GDK_KP_Add,			SWT.KEYPAD_ADD},
-		{OS.GDK_KP_Enter,			SWT.KEYPAD_CR},
-		{OS.GDK_KP_Subtract,	SWT.KEYPAD_SUBTRACT},
-		{OS.GDK_KP_Decimal,	SWT.KEYPAD_DECIMAL},
-		{OS.GDK_KP_Divide,		SWT.KEYPAD_DIVIDE},
-		{OS.GDK_KP_0,			SWT.KEYPAD_0},
-		{OS.GDK_KP_1,			SWT.KEYPAD_1},
-		{OS.GDK_KP_2,			SWT.KEYPAD_2},
-		{OS.GDK_KP_3,			SWT.KEYPAD_3},
-		{OS.GDK_KP_4,			SWT.KEYPAD_4},
-		{OS.GDK_KP_5,			SWT.KEYPAD_5},
-		{OS.GDK_KP_6,			SWT.KEYPAD_6},
-		{OS.GDK_KP_7,			SWT.KEYPAD_7},
-		{OS.GDK_KP_8,			SWT.KEYPAD_8},
-		{OS.GDK_KP_9,			SWT.KEYPAD_9},
-		{OS.GDK_KP_Equal,	SWT.KEYPAD_EQUAL},
+		{GDK.GDK_KP_Multiply,		SWT.KEYPAD_MULTIPLY},
+		{GDK.GDK_KP_Add,			SWT.KEYPAD_ADD},
+		{GDK.GDK_KP_Enter,			SWT.KEYPAD_CR},
+		{GDK.GDK_KP_Subtract,	SWT.KEYPAD_SUBTRACT},
+		{GDK.GDK_KP_Decimal,	SWT.KEYPAD_DECIMAL},
+		{GDK.GDK_KP_Divide,		SWT.KEYPAD_DIVIDE},
+		{GDK.GDK_KP_0,			SWT.KEYPAD_0},
+		{GDK.GDK_KP_1,			SWT.KEYPAD_1},
+		{GDK.GDK_KP_2,			SWT.KEYPAD_2},
+		{GDK.GDK_KP_3,			SWT.KEYPAD_3},
+		{GDK.GDK_KP_4,			SWT.KEYPAD_4},
+		{GDK.GDK_KP_5,			SWT.KEYPAD_5},
+		{GDK.GDK_KP_6,			SWT.KEYPAD_6},
+		{GDK.GDK_KP_7,			SWT.KEYPAD_7},
+		{GDK.GDK_KP_8,			SWT.KEYPAD_8},
+		{GDK.GDK_KP_9,			SWT.KEYPAD_9},
+		{GDK.GDK_KP_Equal,	SWT.KEYPAD_EQUAL},
 
 		/* Other keys */
-		{OS.GDK_Caps_Lock,		SWT.CAPS_LOCK},
-		{OS.GDK_Num_Lock,		SWT.NUM_LOCK},
-		{OS.GDK_Scroll_Lock,		SWT.SCROLL_LOCK},
-		{OS.GDK_Pause,				SWT.PAUSE},
-		{OS.GDK_Break,				SWT.BREAK},
-		{OS.GDK_Print,					SWT.PRINT_SCREEN},
-		{OS.GDK_Help,					SWT.HELP},
+		{GDK.GDK_Caps_Lock,		SWT.CAPS_LOCK},
+		{GDK.GDK_Num_Lock,		SWT.NUM_LOCK},
+		{GDK.GDK_Scroll_Lock,		SWT.SCROLL_LOCK},
+		{GDK.GDK_Pause,				SWT.PAUSE},
+		{GDK.GDK_Break,				SWT.BREAK},
+		{GDK.GDK_Print,					SWT.PRINT_SCREEN},
+		{GDK.GDK_Help,					SWT.HELP},
 
 	};
 
@@ -645,11 +648,11 @@ void addGdkEvent (long /*int*/ event) {
 		gdkEventWidgets = newWidgets;
 	}
 	Widget widget = null;
-	long /*int*/ handle = OS.gtk_get_event_widget (event);
+	long /*int*/ handle = GTK.gtk_get_event_widget (event);
 	if (handle != 0) {
 		do {
 			widget = getWidget (handle);
-		} while (widget == null && (handle = OS.gtk_widget_get_parent (handle)) != 0);
+		} while (widget == null && (handle = GTK.gtk_widget_get_parent (handle)) != 0);
 	}
 	gdkEvents [gdkEventCount] = event;
 	gdkEventWidgets [gdkEventCount] = widget;
@@ -693,13 +696,59 @@ public void addListener (int eventType, Listener listener) {
 	checkDevice ();
 	if (listener == null) error (SWT.ERROR_NULL_ARGUMENT);
 	if (eventTable == null) eventTable = new EventTable ();
+	if (eventType == SWT.OpenDocument || eventType == SWT.OpenUrl) {
+		gdbus_init_methods();
+	}
 	eventTable.hook (eventType, listener);
+}
+
+/**
+ * Handle gdbus on 'org.eclipse.swt' DBus session.
+ * E.g equinox launcher passes files/urls to SWT via gdbus. "./eclipse myFile" or "./eclipse http://www.google.com"
+ *
+ * Only one SWT instance can hold the unique and well-known name at one time, so we have to be mindful
+ * of the case where an SWT app could steal the well-known name and make the equinox launcher confused.
+ *
+ * For equinox launcher, See eclipseGtk.c:gtkPlatformJavaSystemProperties
+ */
+private void gdbus_init_methods() {
+	GDBusMethod[] methods = {
+		new GDBusMethod(
+			// FileOpen call can be reached via:
+			// gdbus call --session --dest org.eclipse.swt --object-path /org/eclipse/swt --method org.eclipse.swt.FileOpen "['/tmp/hi','http://www.eclipse.org']"
+			// See Bug525305_Browser_OpenUrl.java test snippet for testing/verification.
+			// In a child eclipse, this will open the files in a new editor.
+			// This is reached by equinox launcher from eclipseGtk.c. Look for "g_dbus_proxy_call_sync"
+			"FileOpen",
+			new String [][] {{OS.DBUS_TYPE_STRING_ARRAY,"A String array containing file paths or URLs for OpenDocument/OpenUrl signal"}},
+			new String [0][0],
+			(args) -> {
+				String[] fileNames = (String[]) args[0];
+				for (int i = 0; i < fileNames.length; i++) {
+					Event event = new Event ();
+					event.text = fileNames[i];
+					try {
+						if (new URI (fileNames[i]).getScheme() != null) { // For specs, see: https://docs.oracle.com/javase/8/docs/api/java/net/URI.html
+							// E.g: eclipse http://www.google.com
+							sendEvent (SWT.OpenUrl, event);
+						} else {
+							throw new URISyntaxException(fileNames[i], "Not a valid Url. Probably file.");
+						}
+					} catch (URISyntaxException e) {
+						// E.g eclipse /tmp/myfile (absolute)   or  eclipse myfile  (relative)
+						sendEvent (SWT.OpenDocument, event);
+					}
+				}
+				return null;
+			})
+		};
+	GDBus.init(methods);
 }
 
 long /*int*/ allChildrenProc (long /*int*/ widget, long /*int*/ recurse) {
 	allChildren = OS.g_list_append (allChildren, widget);
-	if (recurse != 0 && OS.GTK_IS_CONTAINER (widget)) {
-		OS.gtk_container_forall (widget, allChildrenProc, recurse);
+	if (recurse != 0 && GTK.GTK_IS_CONTAINER (widget)) {
+		GTK.gtk_container_forall (widget, allChildrenProc, recurse);
 	}
 	return 0;
 }
@@ -807,13 +856,8 @@ public void asyncExec (Runnable runnable) {
  */
 public void beep () {
 	if (!isValidThread ()) error (SWT.ERROR_THREAD_INVALID_ACCESS);
-	OS.gdk_beep();
-	if (!OS.isX11()) {
-		OS.gdk_flush ();
-	} else {
-		long /*int*/ xDisplay = OS.gdk_x11_display_get_xdisplay(OS.gdk_display_get_default());
-		OS.XFlush (xDisplay);
-	}
+	GDK.gdk_display_beep(GDK.gdk_display_get_default());
+	GDK.gdk_flush ();
 }
 
 long /*int*/ cellDataProc (long /*int*/ tree_column, long /*int*/ cell, long /*int*/ tree_model, long /*int*/ iter, long /*int*/ data) {
@@ -850,14 +894,14 @@ long /*int*/ checkIfEventProc (long /*int*/ display, long /*int*/ xEvent, long /
 		default:
 			return 0;
 	}
-	long /*int*/ window = OS.gdk_x11_window_lookup_for_display(OS.gdk_display_get_default(), OS.X_EVENT_WINDOW (xEvent));
+	long /*int*/ window = GDK.gdk_x11_window_lookup_for_display(GDK.gdk_display_get_default(), OS.X_EVENT_WINDOW (xEvent));
 	if (window == 0) return 0;
 	if (flushWindow != 0) {
 		if (flushAll) {
 			long /*int*/ tempWindow = window;
 			do {
 				if (tempWindow == flushWindow) break;
-			} while ((tempWindow = OS.gdk_window_get_parent (tempWindow)) != 0);
+			} while ((tempWindow = GDK.gdk_window_get_parent (tempWindow)) != 0);
 			if (tempWindow != flushWindow) return 0;
 		} else {
 			if (window != flushWindow) return 0;
@@ -871,7 +915,7 @@ long /*int*/ checkIfEventProc (long /*int*/ display, long /*int*/ xEvent, long /
 			flushRect.y = exposeEvent.y;
 			flushRect.width = Math.max (0, exposeEvent.width);
 			flushRect.height = Math.max (0, exposeEvent.height);
-			OS.gdk_window_invalidate_rect (window, flushRect, true);
+			GDK.gdk_window_invalidate_rect (window, flushRect, true);
 			exposeEvent.type = -1;
 			OS.memmove (xEvent, exposeEvent, XExposeEvent.sizeof);
 			break;
@@ -960,29 +1004,34 @@ void createDisplay (DeviceData data) {
 			OS.g_thread_init(0);
 		}
 	}
-	if (!OS.gtk_init_check (new long /*int*/ [] {0}, null)) {
+	if (!GTK.gtk_init_check (new long /*int*/ [] {0}, null)) {
 		SWT.error (SWT.ERROR_NO_HANDLES, null, " [gtk_init_check() failed]"); //$NON-NLS-1$
 	}
 	//set GTK+ Theme name as property for introspection purposes
 	System.setProperty("org.eclipse.swt.internal.gtk.theme", OS.getThemeName());
-	if (OS.isX11()) xDisplay = OS.gdk_x11_get_default_xdisplay();
-	int major = OS.gtk_major_version ();
+	if (OS.isX11()) xDisplay = GDK.gdk_x11_get_default_xdisplay();
+	int major = GTK.gtk_major_version ();
 	long /*int*/ ptr;
 	if (major == GTK3_MAJOR) {
-		ptr = OS.gtk_check_version (GTK3_MAJOR, GTK3_MINOR, GTK3_MICRO);
+		ptr = GTK.gtk_check_version (GTK3_MAJOR, GTK3_MINOR, GTK3_MICRO);
 	} else {
-		ptr = OS.gtk_check_version (GTK2_MAJOR, GTK2_MINOR, GTK2_MICRO);
+		ptr = GTK.gtk_check_version (GTK2_MAJOR, GTK2_MINOR, GTK2_MICRO);
 	}
 	if (ptr != 0) {
-		int length = OS.strlen (ptr);
+		int length = C.strlen (ptr);
 		byte [] buffer = new byte [length];
-		OS.memmove (buffer, ptr, length);
+		C.memmove (buffer, ptr, length);
 		System.out.println ("***WARNING: " + new String (Converter.mbcsToWcs (buffer))); //$NON-NLS-1$
 		System.out.println ("***WARNING: SWT requires GTK " + GTK2_MAJOR+ "." + GTK2_MINOR + "." + GTK2_MICRO); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-		int minor = OS.gtk_minor_version (), micro = OS.gtk_micro_version ();
+		int minor = GTK.gtk_minor_version (), micro = GTK.gtk_micro_version ();
 		System.out.println ("***WARNING: Detected: " + major + "." + minor + "." + micro); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 	}
-	if (OS.GTK3) {
+	if (Cairo.cairo_version() < Cairo.CAIRO_VERSION_ENCODE(1, 9, 4)) {
+		System.out.println ("***WARNING: SWT requires Cairo 1.9.4 or newer"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+		String version = Converter.cCharPtrToJavaString(Cairo.cairo_version_string(), false);
+		System.out.println ("***WARNING: Detected: " + version);
+	}
+	if (GTK.GTK3) {
 		fixed_type = OS.swt_fixed_get_type();
 	}
 	if (fixed_type == 0) {
@@ -997,7 +1046,7 @@ void createDisplay (DeviceData data) {
 		fixedSizeAllocateProc = fixedSizeAllocateCallback.getAddress ();
 		if (fixedSizeAllocateProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
 		long /*int*/ queryPtr = OS.g_malloc (GTypeQuery.sizeof);
-		OS.g_type_query (OS.GTK_TYPE_FIXED(), queryPtr);
+		OS.g_type_query (GTK.GTK_TYPE_FIXED(), queryPtr);
 		GTypeQuery query = new GTypeQuery ();
 		OS.memmove (query, queryPtr, GTypeQuery.sizeof);
 		OS.g_free (queryPtr);
@@ -1007,7 +1056,7 @@ void createDisplay (DeviceData data) {
 		fixed_info.instance_size = (short) query.instance_size;
 		fixed_info_ptr = OS.g_malloc (GTypeInfo.sizeof);
 		OS.memmove (fixed_info_ptr, fixed_info, GTypeInfo.sizeof);
-		fixed_type = OS.g_type_register_static (OS.GTK_TYPE_FIXED (), type_name, fixed_info_ptr, 0);
+		fixed_type = OS.g_type_register_static (GTK.GTK_TYPE_FIXED (), type_name, fixed_info_ptr, 0);
 	}
 	if (rendererClassInitProc == 0) {
 		rendererClassInitCallback = new Callback (getClass (), "rendererClassInitProc", 2); //$NON-NLS-1$
@@ -1015,11 +1064,11 @@ void createDisplay (DeviceData data) {
 		if (rendererClassInitProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
 	}
 	if (rendererRenderProc == 0) {
-		rendererRenderCallback = new Callback (getClass (), "rendererRenderProc", OS.GTK3 ? 6 : 7); //$NON-NLS-1$
+		rendererRenderCallback = new Callback (getClass (), "rendererRenderProc", GTK.GTK3 ? 6 : 7); //$NON-NLS-1$
 		rendererRenderProc = rendererRenderCallback.getAddress ();
 		if (rendererRenderProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
 	}
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		if (rendererGetPreferredWidthProc == 0) {
 			rendererGetPreferredWidthCallback = new Callback (getClass (), "rendererGetPreferredWidthProc", 4); //$NON-NLS-1$
 			rendererGetPreferredWidthProc = rendererGetPreferredWidthCallback.getAddress ();
@@ -1034,75 +1083,75 @@ void createDisplay (DeviceData data) {
 	}
 	if (text_renderer_type == 0) {
 		GTypeInfo renderer_info = new GTypeInfo ();
-		renderer_info.class_size = (short) OS.GtkCellRendererTextClass_sizeof ();
+		renderer_info.class_size = (short) GTK.GtkCellRendererTextClass_sizeof ();
 		renderer_info.class_init = rendererClassInitProc;
-		renderer_info.instance_size = (short) OS.GtkCellRendererText_sizeof ();
+		renderer_info.instance_size = (short) GTK.GtkCellRendererText_sizeof ();
 		text_renderer_info_ptr = OS.g_malloc (GTypeInfo.sizeof);
 		OS.memmove (text_renderer_info_ptr, renderer_info, GTypeInfo.sizeof);
 		byte [] type_name = Converter.wcsToMbcs ("SwtTextRenderer", true); //$NON-NLS-1$
-		text_renderer_type = OS.g_type_register_static (OS.GTK_TYPE_CELL_RENDERER_TEXT (), type_name, text_renderer_info_ptr, 0);
+		text_renderer_type = OS.g_type_register_static (GTK.GTK_TYPE_CELL_RENDERER_TEXT (), type_name, text_renderer_info_ptr, 0);
 	}
 	if (pixbuf_renderer_type == 0) {
 		GTypeInfo renderer_info = new GTypeInfo ();
-		renderer_info.class_size = (short) OS.GtkCellRendererPixbufClass_sizeof ();
+		renderer_info.class_size = (short) GTK.GtkCellRendererPixbufClass_sizeof ();
 		renderer_info.class_init = rendererClassInitProc;
-		renderer_info.instance_size = (short) OS.GtkCellRendererPixbuf_sizeof ();
+		renderer_info.instance_size = (short) GTK.GtkCellRendererPixbuf_sizeof ();
 		pixbuf_renderer_info_ptr = OS.g_malloc (GTypeInfo.sizeof);
 		OS.memmove (pixbuf_renderer_info_ptr, renderer_info, GTypeInfo.sizeof);
 		byte [] type_name = Converter.wcsToMbcs ("SwtPixbufRenderer", true); //$NON-NLS-1$
-		pixbuf_renderer_type = OS.g_type_register_static (OS.GTK_TYPE_CELL_RENDERER_PIXBUF (), type_name, pixbuf_renderer_info_ptr, 0);
+		pixbuf_renderer_type = OS.g_type_register_static (GTK.GTK_TYPE_CELL_RENDERER_PIXBUF (), type_name, pixbuf_renderer_info_ptr, 0);
 	}
 	if (toggle_renderer_type == 0) {
 		GTypeInfo renderer_info = new GTypeInfo ();
-		renderer_info.class_size = (short) OS.GtkCellRendererToggleClass_sizeof ();
+		renderer_info.class_size = (short) GTK.GtkCellRendererToggleClass_sizeof ();
 		renderer_info.class_init = rendererClassInitProc;
-		renderer_info.instance_size = (short) OS.GtkCellRendererToggle_sizeof ();
+		renderer_info.instance_size = (short) GTK.GtkCellRendererToggle_sizeof ();
 		toggle_renderer_info_ptr = OS.g_malloc (GTypeInfo.sizeof);
 		OS.memmove (toggle_renderer_info_ptr, renderer_info, GTypeInfo.sizeof);
 		byte [] type_name = Converter.wcsToMbcs ("SwtToggleRenderer", true); //$NON-NLS-1$
-		toggle_renderer_type = OS.g_type_register_static (OS.GTK_TYPE_CELL_RENDERER_TOGGLE (), type_name, toggle_renderer_info_ptr, 0);
+		toggle_renderer_type = OS.g_type_register_static (GTK.GTK_TYPE_CELL_RENDERER_TOGGLE (), type_name, toggle_renderer_info_ptr, 0);
 	}
 
-	OS.gtk_widget_set_default_direction (OS.GTK_TEXT_DIR_LTR);
+	GTK.gtk_widget_set_default_direction (GTK.GTK_TEXT_DIR_LTR);
 	byte [] buffer = Converter.wcsToMbcs (APP_NAME, true);
 	OS.g_set_prgname (buffer);
-	OS.gdk_set_program_class (buffer);
-	if (!OS.GTK3) {
+	GDK.gdk_set_program_class (buffer);
+	if (!GTK.GTK3) {
 		byte [] flatStyle = Converter.wcsToMbcs ("style \"swt-flat\" { GtkToolbar::shadow-type = none } widget \"*.swt-toolbar-flat\" style : highest \"swt-flat\"", true); //$NON-NLS-1$
-		OS.gtk_rc_parse_string (flatStyle);
+		GTK.gtk_rc_parse_string (flatStyle);
 	}
 
 	/* Initialize the hidden shell */
-	shellHandle = OS.gtk_window_new (OS.GTK_WINDOW_TOPLEVEL);
+	shellHandle = GTK.gtk_window_new (GTK.GTK_WINDOW_TOPLEVEL);
 	if (shellHandle == 0) error (SWT.ERROR_NO_HANDLES);
-	OS.gtk_widget_realize (shellHandle);
+	GTK.gtk_widget_realize (shellHandle);
 
 	/* Initialize the filter and event callback */
 	eventCallback = new Callback (this, "eventProc", 2); //$NON-NLS-1$
 	eventProc = eventCallback.getAddress ();
 	if (eventProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
-	OS.gdk_event_handler_set (eventProc, 0, 0);
+	GDK.gdk_event_handler_set (eventProc, 0, 0);
 	filterCallback = new Callback (this, "filterProc", 3); //$NON-NLS-1$
 	filterProc = filterCallback.getAddress ();
 	if (filterProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
-	OS.gdk_window_add_filter  (0, filterProc, 0);
+	GDK.gdk_window_add_filter  (0, filterProc, 0);
 
 	byte[] atomName = Converter.wcsToMbcs ("SWT_Window_" + APP_NAME, true); //$NON-NLS-1$
-	long /*int*/ atom = OS.gdk_atom_intern(atomName, false);
-	OS.gdk_selection_owner_set(OS.gtk_widget_get_window(shellHandle), atom, OS.CurrentTime, false);
-	OS.gdk_selection_owner_get(atom);
+	long /*int*/ atom = GDK.gdk_atom_intern(atomName, false);
+	GDK.gdk_selection_owner_set(GTK.gtk_widget_get_window(shellHandle), atom, OS.CurrentTime, false);
+	GDK.gdk_selection_owner_get(atom);
 
 	signalCallback = new Callback (this, "signalProc", 3); //$NON-NLS-1$
 	signalProc = signalCallback.getAddress ();
 	if (signalProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
-	OS.gtk_widget_add_events (shellHandle, OS.GDK_PROPERTY_CHANGE_MASK);
+	GTK.gtk_widget_add_events (shellHandle, GDK.GDK_PROPERTY_CHANGE_MASK);
 	OS.g_signal_connect (shellHandle, OS.property_notify_event, signalProc, PROPERTY_NOTIFY);
 
 	latinKeyGroup = findLatinKeyGroup ();
 	keysChangedCallback = new Callback (this, "keysChangedProc", 2); //$NON-NLS-1$
 	keysChangedProc = keysChangedCallback.getAddress ();
 	if (keysChangedProc == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
-	OS.g_signal_connect (OS.gdk_keymap_get_default (), OS.keys_changed, keysChangedProc, 0);
+	OS.g_signal_connect (GDK.gdk_keymap_get_default (), OS.keys_changed, keysChangedProc, 0);
 }
 
 /**
@@ -1113,14 +1162,14 @@ void createDisplay (DeviceData data) {
 private int findLatinKeyGroup () {
 	int result = 0;
 	Map<Integer, Integer> groupKeysCount = new HashMap<> ();
-	long /*int*/ keymap = OS.gdk_keymap_get_default ();
+	long /*int*/ keymap = GDK.gdk_keymap_get_default ();
 
 	// count all key groups for Latin alphabet
-	for (int keyval = OS.GDK_KEY_a; keyval <= OS.GDK_KEY_z; keyval++) {
+	for (int keyval = GDK.GDK_KEY_a; keyval <= GDK.GDK_KEY_z; keyval++) {
 		long /*int*/[] keys = new long /*int*/[1];
 		int [] n_keys = new int [1];
 
-		if (OS.gdk_keymap_get_entries_for_keyval (keymap, keyval, keys, n_keys)) {
+		if (GDK.gdk_keymap_get_entries_for_keyval (keymap, keyval, keys, n_keys)) {
 			GdkKeymapKey key_entry = new GdkKeymapKey ();
 			for (int key = 0; key < n_keys [0]; key++) {
 				OS.memmove (key_entry, keys [0] + key * GdkKeymapKey.sizeof, GdkKeymapKey.sizeof);
@@ -1138,11 +1187,9 @@ private int findLatinKeyGroup () {
 
 	// group with maximum keys count is Latin
 	int max_keys_count = 0;
-	Iterator<Map.Entry<Integer, Integer>> it = groupKeysCount.entrySet ().iterator ();
-	while (it.hasNext ()) {
-		Map.Entry<Integer, Integer> entry = it.next ();
-		Integer group = (Integer) entry.getKey ();
-		Integer keys_count = (Integer) entry.getValue ();
+	for (Map.Entry<Integer, Integer> entry : groupKeysCount.entrySet()) {
+		Integer group = entry.getKey ();
+		Integer keys_count = entry.getValue ();
 		if (keys_count > max_keys_count) {
 			result = group;
 			max_keys_count = keys_count;
@@ -1170,15 +1217,15 @@ long /*int*/ keysChangedProc (long /*int*/ keymap, long /*int*/ user_data) {
 
 Image createImage (String name) {
 	byte[] buffer = Converter.wcsToMbcs (name, true);
-	long /*int*/ pixbuf = OS.gtk_icon_theme_load_icon(OS.gtk_icon_theme_get_default(), buffer, 48, OS.GTK_ICON_LOOKUP_FORCE_SIZE, 0);
+	long /*int*/ pixbuf = GTK.gtk_icon_theme_load_icon(GTK.gtk_icon_theme_get_default(), buffer, 48, GTK.GTK_ICON_LOOKUP_FORCE_SIZE, 0);
 	if (pixbuf == 0) return null;
-	int width = OS.gdk_pixbuf_get_width (pixbuf);
-	int height = OS.gdk_pixbuf_get_height (pixbuf);
-	int stride = OS.gdk_pixbuf_get_rowstride (pixbuf);
-	boolean hasAlpha = OS.gdk_pixbuf_get_has_alpha (pixbuf);
-	long /*int*/ pixels = OS.gdk_pixbuf_get_pixels (pixbuf);
+	int width = GDK.gdk_pixbuf_get_width (pixbuf);
+	int height = GDK.gdk_pixbuf_get_height (pixbuf);
+	int stride = GDK.gdk_pixbuf_get_rowstride (pixbuf);
+	boolean hasAlpha = GDK.gdk_pixbuf_get_has_alpha (pixbuf);
+	long /*int*/ pixels = GDK.gdk_pixbuf_get_pixels (pixbuf);
 	byte [] data = new byte [stride * height];
-	OS.memmove (data, pixels, data.length);
+	C.memmove (data, pixels, data.length);
 	OS.g_object_unref (pixbuf);
 	ImageData imageData = null;
 	if (hasAlpha) {
@@ -1230,8 +1277,8 @@ void destroyDisplay () {
 }
 
 long /*int*/ emissionProc (long /*int*/ ihint, long /*int*/ n_param_values, long /*int*/ param_values, long /*int*/ data) {
-	if (OS.gtk_widget_get_toplevel (OS.g_value_peek_pointer(param_values)) == data) {
-		OS.gtk_widget_set_direction (OS.g_value_peek_pointer(param_values), OS.GTK_TEXT_DIR_RTL);
+	if (GTK.gtk_widget_get_toplevel (OS.g_value_peek_pointer(param_values)) == data) {
+		GTK.gtk_widget_set_direction (OS.g_value_peek_pointer(param_values), GTK.GTK_TEXT_DIR_RTL);
 	}
 	return 1;
 }
@@ -1307,13 +1354,13 @@ long /*int*/ eventProc (long /*int*/ event, long /*int*/ data) {
 	* outside of gtk_main_do_event() seems to always
 	* return zero.
 	*/
-	int time = OS.gdk_event_get_time (event);
+	int time = GDK.gdk_event_get_time (event);
 	if (time != 0) lastEventTime = time;
 
-	int eventType = OS.GDK_EVENT_TYPE (event);
+	int eventType = GDK.GDK_EVENT_TYPE (event);
 	switch (eventType) {
-		case OS.GDK_BUTTON_PRESS:
-		case OS.GDK_KEY_PRESS:
+		case GDK.GDK_BUTTON_PRESS:
+		case GDK.GDK_KEY_PRESS:
 			lastUserEventTime = time;
 	}
 	boolean dispatch = true;
@@ -1327,14 +1374,14 @@ long /*int*/ eventProc (long /*int*/ event, long /*int*/ data) {
 		}
 	}
 	if (!dispatch) {
-		addGdkEvent (OS.gdk_event_copy (event));
+		addGdkEvent (GDK.gdk_event_copy (event));
 		return 0;
 	}
 	dispatch = true;
 	if (tracker != null) {
 		dispatch = tracker.processEvent (event);
 	}
-	if (dispatch) OS.gtk_main_do_event (event);
+	if (dispatch) GTK.gtk_main_do_event (event);
 	if (dispatchEvents == null) putGdkEvents ();
 	return 0;
 }
@@ -1445,7 +1492,7 @@ static long /*int*/ rendererClassInitProc (long /*int*/ g_class, long /*int*/ cl
 	GtkCellRendererClass klass = new GtkCellRendererClass ();
 	OS.memmove (klass, g_class);
 	klass.render = rendererRenderProc;
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		klass.get_preferred_width = rendererGetPreferredWidthProc;
 	} else {
 		klass.get_size = rendererGetSizeProc;
@@ -1483,12 +1530,12 @@ static long /*int*/ rendererRenderProc (long /*int*/ cell, long /*int*/ window, 
 }
 
 void flushExposes (long /*int*/ window, boolean all) {
-	OS.gdk_flush ();
-	OS.gdk_flush ();
+	GDK.gdk_flush ();
+	GDK.gdk_flush ();
 	if (OS.isX11()) {
 		this.flushWindow = window;
 		this.flushAll = all;
-		long /*int*/ xDisplay = OS.gdk_x11_display_get_xdisplay(OS.gdk_display_get_default());
+		long /*int*/ xDisplay = GDK.gdk_x11_display_get_xdisplay(GDK.gdk_display_get_default());
 		long /*int*/ xEvent = OS.g_malloc (XEvent.sizeof);
 		OS.XCheckIfEvent (xDisplay, xEvent, checkIfEventProc, 0);
 		OS.g_free (xEvent);
@@ -1532,7 +1579,7 @@ public Rectangle getBounds () {
 
 Rectangle getBoundsInPixels () {
 	checkDevice ();
-	return new Rectangle (0, 0, OS.gdk_screen_width (), OS.gdk_screen_height ());
+	return new Rectangle (0, 0, GDK.gdk_screen_width (), GDK.gdk_screen_height ());
 }
 
 /**
@@ -1548,12 +1595,12 @@ public static Display getCurrent () {
 
 int getCaretBlinkTime () {
 //	checkDevice ();
-	long /*int*/ settings = OS.gtk_settings_get_default ();
+	long /*int*/ settings = GTK.gtk_settings_get_default ();
 	if (settings == 0) return 500;
 	int [] buffer = new int [1];
-	OS.g_object_get (settings, OS.gtk_cursor_blink, buffer, 0);
+	OS.g_object_get (settings, GTK.gtk_cursor_blink, buffer, 0);
 	if (buffer [0] == 0) return 0;
-	OS.g_object_get (settings, OS.gtk_cursor_blink_time, buffer, 0);
+	OS.g_object_get (settings, GTK.gtk_cursor_blink_time, buffer, 0);
 	if (buffer [0] == 0) return 500;
 	/*
 	* By experimentation, GTK application don't use the whole
@@ -1593,7 +1640,7 @@ public Control getCursorControl () {
 	long /*int*/ [] user_data = new long /*int*/ [1];
 	long /*int*/ window = gdk_device_get_window_at_position (x,y);
 	if (window != 0) {
-		OS.gdk_window_get_user_data (window, user_data);
+		GDK.gdk_window_get_user_data (window, user_data);
 		handle = user_data [0];
 	} else {
 		/*
@@ -1602,7 +1649,14 @@ public Control getCursorControl () {
 		* XQueryPointer to find the containing GDK window.
 		*/
 		if (!OS.isX11()) return null;
-		OS.gdk_error_trap_push ();
+		long /*int*/ gdkDisplay = GDK.gdk_display_get_default();
+		if (GTK.GTK3) {
+			if (OS.isX11()) {
+				GDK.gdk_x11_display_error_trap_push(gdkDisplay);
+			}
+		} else {
+			GDK.gdk_error_trap_push ();
+		}
 		int[] unusedInt = new int[1];
 		long /*int*/[] unusedPtr = new long /*int*/[1], buffer = new long /*int*/[1];
 		long /*int*/ xWindow, xParent = OS.XDefaultRootWindow (xDisplay);
@@ -1613,14 +1667,20 @@ public Control getCursorControl () {
 			}
 			if ((xWindow = buffer [0]) != 0) {
 				xParent = xWindow;
-				long /*int*/ gdkWindow = OS.gdk_x11_window_lookup_for_display(OS.gdk_display_get_default(), xWindow);
+				long /*int*/ gdkWindow = GDK.gdk_x11_window_lookup_for_display(gdkDisplay, xWindow);
 				if (gdkWindow != 0)	{
-					OS.gdk_window_get_user_data (gdkWindow, user_data);
+					GDK.gdk_window_get_user_data (gdkWindow, user_data);
 					if (user_data[0] != 0) handle = user_data[0];
 				}
 			}
 		} while (xWindow != 0);
-		OS.gdk_error_trap_pop ();
+		if (GTK.GTK3) {
+			if (OS.isX11()) {
+				GDK.gdk_x11_display_error_trap_pop_ignored(gdkDisplay);
+			}
+		} else {
+			GDK.gdk_error_trap_pop ();
+		}
 	}
 	if (handle == 0) return null;
 	do {
@@ -1629,22 +1689,22 @@ public Control getCursorControl () {
 			Control control = (Control) widget;
 			if (control.isEnabled ()) return control;
 		}
-	} while ((handle = OS.gtk_widget_get_parent (handle)) != 0);
+	} while ((handle = GTK.gtk_widget_get_parent (handle)) != 0);
 	return null;
 }
 
 static GtkBorder getEntryInnerBorder (long /*int*/ handle) {
     GtkBorder gtkBorder = new GtkBorder();
-    long /*int*/ border = OS.gtk_entry_get_inner_border (handle);
+    long /*int*/ border = GTK.gtk_entry_get_inner_border (handle);
     if (border != 0) {
     	OS.memmove (gtkBorder, border, GtkBorder.sizeof);
     	return gtkBorder;
     }
     long /*int*/ []  borderPtr = new long /*int*/ [1];
-    OS.gtk_widget_style_get (handle, OS.inner_border, borderPtr,0);
+    GTK.gtk_widget_style_get (handle, OS.inner_border, borderPtr,0);
     if (borderPtr[0] != 0) {
         OS.memmove (gtkBorder, borderPtr[0], GtkBorder.sizeof);
-        OS.gtk_border_free(borderPtr[0]);
+        GTK.gtk_border_free(borderPtr[0]);
         return gtkBorder;
     }
     gtkBorder.left = INNER_BORDER;
@@ -1711,7 +1771,7 @@ Point getCursorLocationInPixels () {
 		Shell tempShell = activeShell;
 		int [] offsetX = new int [1], offsetY = new int [1];
 		while (tempShell.getParent() != null) {
-			OS.gtk_window_get_position(tempShell.shellHandle, offsetX, offsetY);
+			GTK.gtk_window_get_position(tempShell.shellHandle, offsetX, offsetY);
 			x[0]+= offsetX[0];
 			y[0]+= offsetY[0];
 			tempShell = tempShell.getParent().getShell();
@@ -1861,29 +1921,12 @@ String gtk_css_create_css_color_string (String background, String foreground, in
  * parameter to this method.
  *
  * @param swt an Integer corresponding to the SWT color
+ * @param cssOutput the gtk theme represented as css string.
  *
  * @return a String representation of the color parsed or "parsed" if the color was assigned
  * directly
  */
-String gtk_css_default_theme_values (int swt) {
-	// Find CSS theme name
-	int length;
-	long /*int*/ str;
-	byte [] buffer = OS.getThemeNameBytes();
-	if (buffer == null || buffer.length == 0) {
-		return "";
-	}
-
-	// Fetch the actual theme in char/string format
-	long /*int*/ themeProvider = OS.gtk_css_provider_get_named(buffer, null);
-	str = OS.gtk_css_provider_to_string (themeProvider);
-	length = OS.strlen (str);
-	if (length == 0) {
-		return "";
-	}
-	byte [] themeBuffer = new byte [length];
-	OS.memmove (themeBuffer, str, length);
-	String cssOutput = new String (Converter.mbcsToWcs (themeBuffer));
+String gtk_css_default_theme_values (int swt, String cssOutput) {
 
 	// Parse the theme values based on the corresponding SWT value
 	// i.e. theme_selected_bg_color in GTK is SWT.COLOR_LIST_SELECTION in SWT
@@ -1896,11 +1939,11 @@ String gtk_css_default_theme_values (int swt) {
 	String color = "";
 	switch (swt) {
 		case SWT.COLOR_INFO_FOREGROUND:
-			return gtk_css_default_theme_values_irregular(swt, cssOutput, themeProvider);
+			return gtk_css_default_theme_values_irregular(swt, cssOutput);
 		case SWT.COLOR_INFO_BACKGROUND:
-			return gtk_css_default_theme_values_irregular(swt, cssOutput, themeProvider);
+			return gtk_css_default_theme_values_irregular(swt, cssOutput);
 		case SWT.COLOR_LINK_FOREGROUND:
-			return gtk_css_default_theme_values_irregular(swt, cssOutput, themeProvider);
+			return gtk_css_default_theme_values_irregular(swt, cssOutput);
 		case SWT.COLOR_LIST_BACKGROUND:
 			tSelected = cssOutput.indexOf ("@define-color theme_base_color");
 			selected = cssOutput.indexOf ("@define-color base_color");
@@ -2043,20 +2086,19 @@ String gtk_css_default_theme_values (int swt) {
  *
  * @param swt an Integer corresponding to the SWT color
  * @param cssOutput a String representation of the currently loaded CSS theme
- * @param themeProvider a pointer to the GtkCssProvider associated with the
  * currently loaded CSS theme
  *
  * @return a String representation of the color parsed or "parsed" if the color was assigned
  * directly
  */
-String gtk_css_default_theme_values_irregular(int swt, String cssOutput, long /*int*/ themeProvider) {
+String gtk_css_default_theme_values_irregular(int swt, String cssOutput) {
 	int tSelected, selected, classDef;
 	String color = "";
 	switch (swt) {
 		case SWT.COLOR_INFO_FOREGROUND:
 			selected = cssOutput.indexOf ("@define-color tooltip_fg_color");
 			tSelected = cssOutput.indexOf ("@define-color theme_tooltip_fg_color");
-			if (OS.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
+			if (GTK.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
 				classDef = cssOutput.indexOf ("tooltip * {");
 			} else {
 				classDef = cssOutput.indexOf (".tooltip {");
@@ -2071,10 +2113,10 @@ String gtk_css_default_theme_values_irregular(int swt, String cssOutput, long /*
 					break;
 				}
 			} else if (classDef != -1){
-				if (OS.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
-					COLOR_INFO_FOREGROUND_RGBA = gtk_css_parse_foreground(themeProvider, "tooltip * {");
+				if (GTK.GTK_VERSION >= OS.VERSION(3, 20, 0)) {
+					COLOR_INFO_FOREGROUND_RGBA = gtk_css_parse_foreground(cssOutput, "tooltip * {");
 				} else {
-					COLOR_INFO_FOREGROUND_RGBA = gtk_css_parse_foreground(themeProvider, ".tooltip {");
+					COLOR_INFO_FOREGROUND_RGBA = gtk_css_parse_foreground(cssOutput, ".tooltip {");
 				}
 				return "parsed";
 			}
@@ -2093,7 +2135,7 @@ String gtk_css_default_theme_values_irregular(int swt, String cssOutput, long /*
 					break;
 				}
 			} else if (classDef != -1) {
-				COLOR_INFO_BACKGROUND_RGBA = gtk_css_parse_background(themeProvider, "tooltip.background {");
+				COLOR_INFO_BACKGROUND_RGBA = gtk_css_parse_background(cssOutput, "tooltip.background {");
 				return "parsed";
 			}
 			break;
@@ -2117,7 +2159,7 @@ String gtk_css_default_theme_values_irregular(int swt, String cssOutput, long /*
 				COLOR_LINK_FOREGROUND_RGBA = COLOR_LIST_SELECTION_RGBA;
 				return "parsed";
 			} else if (classDef != -1) {
-				COLOR_LINK_FOREGROUND_RGBA = gtk_css_parse_foreground(themeProvider, "*:link {");
+				COLOR_LINK_FOREGROUND_RGBA = gtk_css_parse_foreground(cssOutput, "*:link {");
 				return "parsed";
 			}
 			break;
@@ -2134,24 +2176,18 @@ String gtk_css_default_theme_values_irregular(int swt, String cssOutput, long /*
  * this method will return a GdkRGBA object with the color red. Supported formats
  * include "background-color" and just "background".
  *
- * @param provider a pointer to the GtkCssProvider associated with the CSS being parsed
+ * @param css a CSS being parsed
  * @param precise a String representation of a selector to search for, or NULL if
  * the entire GtkCssProvider is to be parsed
  *
  * @return a GdkRGBA object representing the background color, or COLOR_WIDGET_BACKGROUND
  * if the background color could not be parsed or isn't set
  */
-GdkRGBA gtk_css_parse_background (long /*int*/ provider, String precise) {
+GdkRGBA gtk_css_parse_background (String css, String precise) {
 	String shortOutput;
 	int startIndex;
 	GdkRGBA rgba = new GdkRGBA ();
-	// Fetch the CSS in char/string format from the GtkCssProvider.
-	long /*int*/ str = OS.gtk_css_provider_to_string (provider);
-	if (str == 0) return COLOR_WIDGET_BACKGROUND_RGBA;
-	int length = OS.strlen (str);
-	byte [] buffer = new byte [length];
-	OS.memmove (buffer, str, length);
-	String cssOutput = new String (Converter.mbcsToWcs (buffer));
+	if (css.isEmpty()) return COLOR_WIDGET_BACKGROUND_RGBA;
 	String searched = "";
 	/*
 	 * This section allows for finer searching: for example
@@ -2163,11 +2199,11 @@ GdkRGBA gtk_css_parse_background (long /*int*/ provider, String precise) {
 	 * of the provider.
 	 */
 	if (precise != null) {
-		if (cssOutput.contains(precise)) {
-			searched = cssOutput.substring(cssOutput.indexOf(precise));
+		if (css.contains(precise)) {
+			searched = css.substring(css.indexOf(precise));
 		}
 	} else {
-		searched = cssOutput;
+		searched = css;
 	}
 	if (searched.isEmpty()) {
 		return COLOR_WIDGET_BACKGROUND_RGBA;
@@ -2189,6 +2225,20 @@ GdkRGBA gtk_css_parse_background (long /*int*/ provider, String precise) {
 	return rgba;
 }
 
+String gtk_css_provider_to_string (long /*int*/ provider) {
+	// Fetch the CSS in char/string format from the provider.
+	if (provider == 0) {
+		return "";
+	}
+	long /*int*/ str = GTK.gtk_css_provider_to_string(provider);
+	if (str == 0) return "";
+	int length = C.strlen (str);
+	byte [] buffer = new byte [length];
+	C.memmove (buffer, str, length);
+	OS.g_free(str);
+	return new String (Converter.mbcsToWcs (buffer));
+}
+
 /**
  * This method allows for parsing of foreground colors from a GTK CSS string.
  * It allows for specific search input, such as a selector or tag, or for parsing
@@ -2197,25 +2247,18 @@ GdkRGBA gtk_css_parse_background (long /*int*/ provider, String precise) {
  * For example: given the string GtkWidget {color: rgba(255, 0, 0, 255);}
  * this method will return a GdkRGBA object with the color red.
  *
- * @param provider a pointer to the GtkCssProvider associated with the CSS being parsed
+ * @param css a CSS representation of the gtk theme
  * @param precise a String representation of a selector to search for, or NULL if
  * the entire GtkCssProvider is to be parsed
  *
  * @return a GdkRGBA object representing the foreground color or COLOR_WIDGET_FOREGROUND
  * if the foreground color could not be parsed or isn't set
  */
-GdkRGBA gtk_css_parse_foreground (long /*int*/ provider, String precise) {
-	if (provider == 0) return COLOR_WIDGET_FOREGROUND_RGBA;
+GdkRGBA gtk_css_parse_foreground (String css, String precise) {
+	if (css.isEmpty()) return COLOR_WIDGET_FOREGROUND_RGBA;
 	String shortOutput;
 	int startIndex;
 	GdkRGBA rgba = new GdkRGBA ();
-	// Fetch the CSS in char/string format from the provider.
-	long /*int*/ str = OS.gtk_css_provider_to_string(provider);
-	if (str == 0) return COLOR_WIDGET_FOREGROUND_RGBA;
-	int length = OS.strlen (str);
-	byte [] buffer = new byte [length];
-	OS.memmove (buffer, str, length);
-	String cssOutput = new String (Converter.mbcsToWcs (buffer));
 	String searched = "";
 	/*
 	 * This section allows for finer searching: for example
@@ -2227,11 +2270,11 @@ GdkRGBA gtk_css_parse_foreground (long /*int*/ provider, String precise) {
 	 * of the provider.
 	 */
 	if (precise != null) {
-		if (cssOutput.contains(precise)) {
-			searched = cssOutput.substring(cssOutput.indexOf(precise));
+		if (css.contains(precise)) {
+			searched = css.substring(css.indexOf(precise));
 		}
 	} else {
-		searched = cssOutput;
+		searched = css;
 	}
 	if (searched.isEmpty()) {
 		return COLOR_WIDGET_FOREGROUND_RGBA;
@@ -2279,7 +2322,7 @@ GdkRGBA gtk_css_property_to_rgba(String property) {
 	String [] propertyParsed = new String [1];
 	//Note that we still need to remove the ";" character from the input string
 	propertyParsed = property.split (";");
-	OS.gdk_rgba_parse (rgba, Converter.wcsToMbcs (propertyParsed[0], true));
+	GDK.gdk_rgba_parse (rgba, Converter.wcsToMbcs (propertyParsed[0], true));
 	return rgba;
 }
 
@@ -2314,10 +2357,11 @@ String gtk_rgba_to_css_string (GdkRGBA rgba) {
 		// If we have a null RGBA, set it to the default COLOR_WIDGET_BACKGROUND.
 		toConvert = COLOR_WIDGET_BACKGROUND_RGBA;
 	}
-	long /*int*/ str = OS.gdk_rgba_to_string (toConvert);
-	int length = OS.strlen (str);
+	long /*int*/ str = GDK.gdk_rgba_to_string (toConvert);
+	int length = C.strlen (str);
 	byte [] buffer = new byte [length];
-	OS.memmove (buffer, str, length);
+	C.memmove (buffer, str, length);
+	OS.g_free(str);
 	return new String (Converter.mbcsToWcs (buffer));
 }
 
@@ -2329,14 +2373,14 @@ String gtk_rgba_to_css_string (GdkRGBA rgba) {
  * @return a String representation of the widget's name
  */
 String gtk_widget_get_name(long /*int*/ handle) {
-	long /*int*/ str = OS.gtk_widget_get_name (handle);
+	long /*int*/ str = GTK.gtk_widget_get_name (handle);
 	String name;
 	if (str == 0) {
 		name = "*";
 	} else {
-		int length = OS.strlen (str);
+		int length = C.strlen (str);
 		byte [] buffer = new byte [length];
-		OS.memmove (buffer, str, length);
+		C.memmove (buffer, str, length);
 		name = new String (Converter.mbcsToWcs (buffer));
 	}
 	return name;
@@ -2351,14 +2395,14 @@ String gtk_widget_get_name(long /*int*/ handle) {
  * @return a String representation of the widget's CSS name
  */
 String gtk_widget_class_get_css_name(long /*int*/ handle) {
-	long /*int*/ str = OS.gtk_widget_class_get_css_name (OS.GTK_WIDGET_GET_CLASS(handle));
+	long /*int*/ str = GTK.gtk_widget_class_get_css_name (GTK.GTK_WIDGET_GET_CLASS(handle));
 	String name;
 	if (str == 0) {
 		name = "*";
 	} else {
-		int length = OS.strlen (str);
+		int length = C.strlen (str);
 		byte [] buffer = new byte [length];
-		OS.memmove (buffer, str, length);
+		C.memmove (buffer, str, length);
 		name = new String (Converter.mbcsToWcs (buffer));
 	}
 	return name;
@@ -2421,8 +2465,8 @@ public Menu getMenuBar () {
 public int getDismissalAlignment () {
 	checkDevice ();
 	int [] buffer = new int [1];
-	long /*int*/ settings = OS.gtk_settings_get_default ();
-	OS.g_object_get (settings, OS.gtk_alternative_button_order, buffer, 0);
+	long /*int*/ settings = GTK.gtk_settings_get_default ();
+	OS.g_object_get (settings, GTK.gtk_alternative_button_order, buffer, 0);
 	return buffer [0] == 1 ? SWT.LEFT : SWT.RIGHT;
 }
 
@@ -2440,9 +2484,9 @@ public int getDismissalAlignment () {
  */
 public int getDoubleClickTime () {
 	checkDevice ();
-	long /*int*/ settings = OS.gtk_settings_get_default ();
+	long /*int*/ settings = GTK.gtk_settings_get_default ();
 	int [] buffer = new int [1];
-	OS.g_object_get (settings, OS.gtk_double_click_time, buffer, 0);
+	OS.g_object_get (settings, GTK.gtk_double_click_time, buffer, 0);
 	return buffer [0];
 }
 
@@ -2466,7 +2510,7 @@ public Control getFocusControl () {
 	}
 	if (activeShell == null) return null;
 	long /*int*/ shellHandle = activeShell.shellHandle;
-	long /*int*/ handle = OS.gtk_window_get_focus (shellHandle);
+	long /*int*/ handle = GTK.gtk_window_get_focus (shellHandle);
 	if (handle == 0) return null;
 	do {
 		Widget widget = getWidget (handle);
@@ -2474,7 +2518,7 @@ public Control getFocusControl () {
 			Control control = (Control) widget;
 			return control.isEnabled () ? control : null;
 		}
-	} while ((handle = OS.gtk_widget_get_parent (handle)) != 0);
+	} while ((handle = GTK.gtk_widget_get_parent (handle)) != 0);
 	return null;
 }
 
@@ -2503,7 +2547,7 @@ public boolean getHighContrast () {
 @Override
 public int getDepth () {
 	checkDevice ();
-	return OS.gdk_visual_get_depth(OS.gdk_visual_get_system());
+	return GDK.gdk_visual_get_depth(GDK.gdk_visual_get_system());
 }
 
 /**
@@ -2561,25 +2605,28 @@ Dialog getModalDialog () {
  * windows.  See http://freedesktop.org/Standards/wm-spec.
  */
 Rectangle getWorkArea() {
+	if (OS.IsWin32) {
+		return null;
+	}
 	byte[] name = Converter.wcsToMbcs ("_NET_WORKAREA", true); //$NON-NLS-1$
-	long /*int*/ atom = OS.gdk_atom_intern (name, true);
-	if (atom == OS.GDK_NONE) return null;
+	long /*int*/ atom = GDK.gdk_atom_intern (name, true);
+	if (atom == GDK.GDK_NONE) return null;
 	long /*int*/[] actualType = new long /*int*/[1];
 	int[] actualFormat = new int[1];
 	int[] actualLength = new int[1];
 	long /*int*/[] data = new long /*int*/[1];
-	if (!OS.gdk_property_get (OS.gdk_get_default_root_window(), atom, OS.GDK_NONE, 0, 16, 0, actualType, actualFormat, actualLength, data)) {
+	if (!GDK.gdk_property_get (GDK.gdk_get_default_root_window(), atom, GDK.GDK_NONE, 0, 16, 0, actualType, actualFormat, actualLength, data)) {
 		return null;
 	}
 	Rectangle result = null;
 	if (data [0] != 0) {
 		if (actualLength [0] == 16) {
 			int values [] = new int [4];
-			OS.memmove (values, data[0], 16);
+			C.memmove (values, data[0], 16);
 			result = new Rectangle (values [0],values [1],values [2],values [3]);
 		} else if (actualLength [0] == 32) {
 			long values [] = new long [4];
-			OS.memmove (values, data[0], 32);
+			C.memmove (values, data[0], 32);
 			result = new Rectangle ((int)values [0],(int)values [1],(int)values [2],(int)values [3]);
 		}
 		OS.g_free (data [0]);
@@ -2598,25 +2645,32 @@ public Monitor [] getMonitors () {
 	checkDevice ();
 	Monitor [] monitors = null;
 	Rectangle workArea = DPIUtil.autoScaleDown (getWorkArea ());
-	long /*int*/ screen = OS.gdk_screen_get_default ();
+	long /*int*/ screen = GDK.gdk_screen_get_default ();
 	if (screen != 0) {
-		int monitorCount = OS.gdk_screen_get_n_monitors (screen);
+		int monitorCount = GDK.gdk_screen_get_n_monitors (screen);
 		if (monitorCount > 0) {
 			monitors = new Monitor [monitorCount];
 			GdkRectangle dest = new GdkRectangle ();
 			for (int i = 0; i < monitorCount; i++) {
-				OS.gdk_screen_get_monitor_geometry (screen, i, dest);
+				GDK.gdk_screen_get_monitor_geometry (screen, i, dest);
 				Monitor monitor = new Monitor ();
 				monitor.handle = i;
 				monitor.x = DPIUtil.autoScaleDown (dest.x);
 				monitor.y = DPIUtil.autoScaleDown (dest.y);
 				monitor.width = DPIUtil.autoScaleDown (dest.width);
 				monitor.height = DPIUtil.autoScaleDown (dest.height);
+				if (GTK.GTK_VERSION >= OS.VERSION (3, 22, 0) && !OS.isX11()) {
+					int scale_factor = (int) GDK.gdk_monitor_get_scale_factor (
+							GDK.gdk_display_get_monitor (GDK.gdk_display_get_default (),  (int) monitor.handle));
+					monitor.zoom = scale_factor * 100;
+				} else {
+					monitor.zoom = Display._getDeviceZoom(monitor.handle);
+				}
 
-				if (OS.GTK_VERSION >= OS.VERSION (3, 4, 0)) {
+				if (GTK.GTK_VERSION >= OS.VERSION (3, 4, 0)) {
 					// workarea was defined in GTK 3.4. If present, it will return the best results
 					// since it takes into account per-monitor trim
-					OS.gdk_screen_get_monitor_workarea (screen, i, dest);
+					GDK.gdk_screen_get_monitor_workarea (screen, i, dest);
 					monitor.clientX = DPIUtil.autoScaleDown (dest.x);
 					monitor.clientY = DPIUtil.autoScaleDown (dest.y);
 					monitor.clientWidth = DPIUtil.autoScaleDown (dest.width);
@@ -2691,10 +2745,10 @@ public Monitor getPrimaryMonitor () {
 	int primaryMonitorIndex = 0;
 
 	//attempt to find actual primary monitor if one is configured:
-	long /*int*/ screen = OS.gdk_screen_get_default ();
+	long /*int*/ screen = GDK.gdk_screen_get_default ();
 	if (screen != 0) {
 		//if no primary monitor is configured by the user, this returns 0.
-		primaryMonitorIndex = OS.gdk_screen_get_primary_monitor (screen);
+		primaryMonitorIndex = GDK.gdk_screen_get_primary_monitor (screen);
 	}
 	return monitors [primaryMonitorIndex];
 }
@@ -2800,29 +2854,29 @@ public Thread getSyncThread () {
 @Override
 public Color getSystemColor (int id) {
 	checkDevice ();
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		GdkRGBA gdkRGBA = null;
 		switch (id) {
-		case SWT.COLOR_LINK_FOREGROUND: 					gdkRGBA = COLOR_LINK_FOREGROUND_RGBA; break;
-		case SWT.COLOR_INFO_FOREGROUND: 					gdkRGBA = COLOR_INFO_FOREGROUND_RGBA; break;
-		case SWT.COLOR_INFO_BACKGROUND: 					gdkRGBA = COLOR_INFO_BACKGROUND_RGBA; break;
-		case SWT.COLOR_TITLE_FOREGROUND:					gdkRGBA = COLOR_TITLE_FOREGROUND_RGBA; break;
-		case SWT.COLOR_TITLE_BACKGROUND:					gdkRGBA = COLOR_TITLE_BACKGROUND_RGBA; break;
-		case SWT.COLOR_TITLE_BACKGROUND_GRADIENT:			gdkRGBA = COLOR_TITLE_BACKGROUND_GRADIENT_RGBA; break;
-		case SWT.COLOR_TITLE_INACTIVE_FOREGROUND:			gdkRGBA = COLOR_TITLE_INACTIVE_FOREGROUND_RGBA; break;
-		case SWT.COLOR_TITLE_INACTIVE_BACKGROUND:			gdkRGBA = COLOR_TITLE_INACTIVE_BACKGROUND_RGBA; break;
-		case SWT.COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT:	gdkRGBA = COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT_RGBA; break;
-		case SWT.COLOR_WIDGET_DARK_SHADOW:					gdkRGBA = COLOR_WIDGET_DARK_SHADOW_RGBA; break;
-		case SWT.COLOR_WIDGET_NORMAL_SHADOW:				gdkRGBA = COLOR_WIDGET_NORMAL_SHADOW_RGBA; break;
-		case SWT.COLOR_WIDGET_LIGHT_SHADOW: 				gdkRGBA = COLOR_WIDGET_LIGHT_SHADOW_RGBA; break;
-		case SWT.COLOR_WIDGET_HIGHLIGHT_SHADOW:				gdkRGBA = COLOR_WIDGET_HIGHLIGHT_SHADOW_RGBA; break;
-		case SWT.COLOR_WIDGET_BACKGROUND: 					gdkRGBA = COLOR_WIDGET_BACKGROUND_RGBA; break;
-		case SWT.COLOR_WIDGET_FOREGROUND: 					gdkRGBA = COLOR_WIDGET_FOREGROUND_RGBA; break;
-		case SWT.COLOR_WIDGET_BORDER: 						gdkRGBA = COLOR_WIDGET_BORDER_RGBA; break;
-		case SWT.COLOR_LIST_FOREGROUND: 					gdkRGBA = COLOR_LIST_FOREGROUND_RGBA; break;
-		case SWT.COLOR_LIST_BACKGROUND: 					gdkRGBA = COLOR_LIST_BACKGROUND_RGBA; break;
-		case SWT.COLOR_LIST_SELECTION: 						gdkRGBA = COLOR_LIST_SELECTION_RGBA; break;
-		case SWT.COLOR_LIST_SELECTION_TEXT: 				gdkRGBA = COLOR_LIST_SELECTION_TEXT_RGBA; break;
+		case SWT.COLOR_LINK_FOREGROUND: 					gdkRGBA = copyRGBA(COLOR_LINK_FOREGROUND_RGBA); break;
+		case SWT.COLOR_INFO_FOREGROUND: 					gdkRGBA = copyRGBA(COLOR_INFO_FOREGROUND_RGBA); break;
+		case SWT.COLOR_INFO_BACKGROUND: 					gdkRGBA = copyRGBA(COLOR_INFO_BACKGROUND_RGBA); break;
+		case SWT.COLOR_TITLE_FOREGROUND:					gdkRGBA = copyRGBA(COLOR_TITLE_FOREGROUND_RGBA); break;
+		case SWT.COLOR_TITLE_BACKGROUND:					gdkRGBA = copyRGBA(COLOR_TITLE_BACKGROUND_RGBA); break;
+		case SWT.COLOR_TITLE_BACKGROUND_GRADIENT:			gdkRGBA = copyRGBA(COLOR_TITLE_BACKGROUND_GRADIENT_RGBA); break;
+		case SWT.COLOR_TITLE_INACTIVE_FOREGROUND:			gdkRGBA = copyRGBA(COLOR_TITLE_INACTIVE_FOREGROUND_RGBA); break;
+		case SWT.COLOR_TITLE_INACTIVE_BACKGROUND:			gdkRGBA = copyRGBA(COLOR_TITLE_INACTIVE_BACKGROUND_RGBA); break;
+		case SWT.COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT:	gdkRGBA = copyRGBA(COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT_RGBA); break;
+		case SWT.COLOR_WIDGET_DARK_SHADOW:					gdkRGBA = copyRGBA(COLOR_WIDGET_DARK_SHADOW_RGBA); break;
+		case SWT.COLOR_WIDGET_NORMAL_SHADOW:				gdkRGBA = copyRGBA(COLOR_WIDGET_NORMAL_SHADOW_RGBA); break;
+		case SWT.COLOR_WIDGET_LIGHT_SHADOW: 				gdkRGBA = copyRGBA(COLOR_WIDGET_LIGHT_SHADOW_RGBA); break;
+		case SWT.COLOR_WIDGET_HIGHLIGHT_SHADOW:				gdkRGBA = copyRGBA(COLOR_WIDGET_HIGHLIGHT_SHADOW_RGBA); break;
+		case SWT.COLOR_WIDGET_BACKGROUND: 					gdkRGBA = copyRGBA(COLOR_WIDGET_BACKGROUND_RGBA); break;
+		case SWT.COLOR_WIDGET_FOREGROUND: 					gdkRGBA = copyRGBA(COLOR_WIDGET_FOREGROUND_RGBA); break;
+		case SWT.COLOR_WIDGET_BORDER: 						gdkRGBA = copyRGBA(COLOR_WIDGET_BORDER_RGBA); break;
+		case SWT.COLOR_LIST_FOREGROUND: 					gdkRGBA = copyRGBA(COLOR_LIST_FOREGROUND_RGBA); break;
+		case SWT.COLOR_LIST_BACKGROUND: 					gdkRGBA = copyRGBA(COLOR_LIST_BACKGROUND_RGBA); break;
+		case SWT.COLOR_LIST_SELECTION: 						gdkRGBA = copyRGBA(COLOR_LIST_SELECTION_RGBA); break;
+		case SWT.COLOR_LIST_SELECTION_TEXT: 				gdkRGBA = copyRGBA(COLOR_LIST_SELECTION_TEXT_RGBA); break;
 		default:
 			return super.getSystemColor (id);
 		}
@@ -3024,7 +3078,7 @@ GdkRGBA toGdkRGBA (GdkRGBA rgba, double brightness) {
 	double[] hue = new double[1];
 	double[] saturationHSV = new double[1];
 	double[] value = new double[1];
-	OS.gtk_rgb_to_hsv(newRGBA.red, newRGBA.green, newRGBA.blue, hue, saturationHSV, value);
+	GTK.gtk_rgb_to_hsv(newRGBA.red, newRGBA.green, newRGBA.blue, hue, saturationHSV, value);
 
 	// Calculate luminosity
 	double luminosity = ((2 - saturationHSV[0]) * value[0]) / 2;
@@ -3044,7 +3098,7 @@ GdkRGBA toGdkRGBA (GdkRGBA rgba, double brightness) {
 	saturationHSV[0] = (2 * saturationHSL) / (luminosity + saturationHSL);
 
 	// Convert from HSV back to RGB and return the GdkRGBA object
-	OS.gtk_hsv_to_rgb(hue[0], saturationHSV[0], value[0], hue, saturationHSV, value);
+	GTK.gtk_hsv_to_rgb(hue[0], saturationHSV[0], value[0], hue, saturationHSV, value);
 	newRGBA.red = hue[0];
 	newRGBA.green = saturationHSV[0];
 	newRGBA.blue = value[0];
@@ -3052,28 +3106,28 @@ GdkRGBA toGdkRGBA (GdkRGBA rgba, double brightness) {
 }
 
 GdkRGBA getBackgroundColor (long /*int*/ context, int state) {
-	assert OS.GTK3 : "GTK3 code was run by GTK2";
+	assert GTK.GTK3 : "GTK3 code was run by GTK2";
 	/*
 	* Draw the context background to an offset screen surface and get the color
 	* in the middle of the surface.
 	*/
 	GdkRGBA rgba = new GdkRGBA ();
-	OS.gtk_style_context_save (context);
-	OS.gtk_style_context_set_state (context, state);
+	GTK.gtk_style_context_save (context);
+	GTK.gtk_style_context_set_state (context, state);
 	long /*int*/ surface = Cairo.cairo_image_surface_create (Cairo.CAIRO_FORMAT_RGB24, 1, 1);
 	long /*int*/ cairo = Cairo.cairo_create (surface);
-	OS.gtk_render_background (context, cairo, -50, -50, 100, 100);
+	GTK.gtk_render_background (context, cairo, -50, -50, 100, 100);
 	Cairo.cairo_fill (cairo);
 	Cairo.cairo_surface_flush (surface);
 	byte[] buffer = new byte[3];
-	OS.memmove (buffer, Cairo.cairo_image_surface_get_data(surface), buffer.length);
+	C.memmove (buffer, Cairo.cairo_image_surface_get_data(surface), buffer.length);
 	rgba.red = buffer[2] / 255f;
 	rgba.green = buffer[1] / 255f;
 	rgba.blue = buffer[0] / 255f;
 	rgba.alpha = 1.0;
 	Cairo.cairo_surface_destroy (surface);
 	Cairo.cairo_destroy (cairo);
-	OS.gtk_style_context_restore (context);
+	GTK.gtk_style_context_restore (context);
 	return rgba;
 }
 
@@ -3089,13 +3143,13 @@ GdkRGBA copyRGBA (GdkRGBA source) {
 }
 
 void initializeSystemColors () {
-	long /*int*/ tooltipShellHandle = OS.gtk_window_new (OS.GTK_WINDOW_POPUP);
+	long /*int*/ tooltipShellHandle = GTK.gtk_window_new (GTK.GTK_WINDOW_POPUP);
 	if (tooltipShellHandle == 0) error (SWT.ERROR_NO_HANDLES);
-	byte[] gtk_tooltip = Converter.wcsToMbcs (OS.GTK3 ? "gtk-tooltip" : "gtk-tooltips", true); //$NON-NLS-1$
-	OS.gtk_widget_set_name (tooltipShellHandle, gtk_tooltip);
-	OS.gtk_widget_realize (tooltipShellHandle);
+	byte[] gtk_tooltip = Converter.wcsToMbcs (GTK.GTK3 ? "gtk-tooltip" : "gtk-tooltips", true); //$NON-NLS-1$
+	GTK.gtk_widget_set_name (tooltipShellHandle, gtk_tooltip);
+	GTK.gtk_widget_realize (tooltipShellHandle);
 
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		COLOR_WIDGET_DARK_SHADOW_RGBA = new GdkRGBA ();
 		COLOR_WIDGET_DARK_SHADOW_RGBA.alpha = 1.0;
 		/*
@@ -3117,174 +3171,187 @@ void initializeSystemColors () {
 		 * them, while some colors only have one potential match. Therefore
 		 * some colors will have better theme coverage than others.
 		 */
-		long /*int*/ context = OS.gtk_widget_get_style_context (tooltipShellHandle);
-		OS.gtk_style_context_add_class (context, OS.GTK_STYLE_CLASS_TOOLTIP);
-		OS.gtk_style_context_invalidate(context);
+		long /*int*/ context = GTK.gtk_widget_get_style_context (tooltipShellHandle);
+		GTK.gtk_style_context_add_class (context, GTK.GTK_STYLE_CLASS_TOOLTIP);
+		GTK.gtk_style_context_invalidate(context);
 		GdkRGBA rgba = new GdkRGBA();
 
 		// Initialize and create a list of X11 named colors
 		initializeColorList();
+		/*
+		 * Find current GTK theme: either use the system theme,
+		 * or one provided using the GTK_THEME environment variable.
+		 * See bug 534007.
+		 */
+		byte [] buffer = OS.GTK_THEME_SET ? Converter.wcsToMbcs (OS.GTK_THEME_NAME, true) : OS.getThemeNameBytes();
+		// Load the dark variant if specified
+		byte [] darkBuffer = OS.GTK_THEME_DARK ? darkBuffer = Converter.wcsToMbcs ("dark", true) : null;
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorInfoForeground = gtk_css_default_theme_values(SWT.COLOR_INFO_FOREGROUND);
+		// Fetch the actual theme in char/string format
+		long /*int*/ themeProvider = GTK.gtk_css_provider_get_named(buffer, darkBuffer);
+
+		String cssOutput = gtk_css_provider_to_string(themeProvider);
+
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorInfoForeground = gtk_css_default_theme_values(SWT.COLOR_INFO_FOREGROUND, cssOutput);
 			if (!colorInfoForeground.isEmpty()) {
 				if (colorInfoForeground != "parsed") {
 					COLOR_INFO_FOREGROUND_RGBA = gtk_css_property_to_rgba (colorInfoForeground);
 				}
 			} else {
-				COLOR_INFO_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL);
+				COLOR_INFO_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 			}
 		} else {
-			COLOR_INFO_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL);
+			COLOR_INFO_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 		}
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorInfoBackground = gtk_css_default_theme_values(SWT.COLOR_INFO_BACKGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorInfoBackground = gtk_css_default_theme_values(SWT.COLOR_INFO_BACKGROUND, cssOutput);
 			if (!colorInfoBackground.isEmpty()) {
 				if (colorInfoBackground != "parsed") {
 					COLOR_INFO_BACKGROUND_RGBA = gtk_css_property_to_rgba (colorInfoBackground);
 				}
 			} else {
-				COLOR_INFO_BACKGROUND_RGBA = getBackgroundColor (context, OS.GTK_STATE_FLAG_NORMAL);
+				COLOR_INFO_BACKGROUND_RGBA = getBackgroundColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 			}
 		} else {
-			COLOR_INFO_BACKGROUND_RGBA = getBackgroundColor (context, OS.GTK_STATE_FLAG_NORMAL);
+			COLOR_INFO_BACKGROUND_RGBA = getBackgroundColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 		}
-		OS.gtk_widget_destroy (tooltipShellHandle);
+		GTK.gtk_widget_destroy (tooltipShellHandle);
 
-		context = OS.gtk_widget_get_style_context (shellHandle);
+		context = GTK.gtk_widget_get_style_context (shellHandle);
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorWidgetForeground = gtk_css_default_theme_values(SWT.COLOR_WIDGET_FOREGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorWidgetForeground = gtk_css_default_theme_values(SWT.COLOR_WIDGET_FOREGROUND, cssOutput);
 			if (!colorWidgetForeground.isEmpty()) {
 				COLOR_WIDGET_FOREGROUND_RGBA = gtk_css_property_to_rgba (colorWidgetForeground);
 			} else {
-				COLOR_WIDGET_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL);
+				COLOR_WIDGET_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 			}
 		} else {
-			COLOR_WIDGET_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL);
+			COLOR_WIDGET_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 		}
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorWidgetBackground = gtk_css_default_theme_values(SWT.COLOR_WIDGET_BACKGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorWidgetBackground = gtk_css_default_theme_values(SWT.COLOR_WIDGET_BACKGROUND, cssOutput);
 			if (!colorWidgetBackground.isEmpty()) {
 				COLOR_WIDGET_BACKGROUND_RGBA = gtk_css_property_to_rgba (colorWidgetBackground);
 			} else {
-				OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+				GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_NORMAL, rgba);
 				COLOR_WIDGET_BACKGROUND_RGBA = copyRGBA (rgba);
 			}
 		} else {
-			OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+			GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_NORMAL, rgba);
 			COLOR_WIDGET_BACKGROUND_RGBA = copyRGBA (rgba);
 		}
 		COLOR_WIDGET_LIGHT_SHADOW_RGBA = COLOR_WIDGET_BACKGROUND_RGBA;
 		COLOR_WIDGET_NORMAL_SHADOW_RGBA = toGdkRGBA (COLOR_WIDGET_BACKGROUND_RGBA, 0.7);
 		COLOR_WIDGET_HIGHLIGHT_SHADOW_RGBA = toGdkRGBA (COLOR_WIDGET_BACKGROUND_RGBA, 1.3);
 
-		OS.gtk_style_context_save (context);
-		OS.gtk_style_context_add_class(context, OS.GTK_STYLE_CLASS_VIEW);
-		OS.gtk_style_context_add_class(context, OS.GTK_STYLE_CLASS_CELL);
-		OS.gtk_style_context_invalidate(context);
+		GTK.gtk_style_context_save (context);
+		GTK.gtk_style_context_add_class(context, GTK.GTK_STYLE_CLASS_VIEW);
+		GTK.gtk_style_context_add_class(context, GTK.GTK_STYLE_CLASS_CELL);
+		GTK.gtk_style_context_invalidate(context);
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorListForeground = gtk_css_default_theme_values(SWT.COLOR_LIST_FOREGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorListForeground = gtk_css_default_theme_values(SWT.COLOR_LIST_FOREGROUND, cssOutput);
 			if (!colorListForeground.isEmpty()) {
 				COLOR_LIST_FOREGROUND_RGBA = gtk_css_property_to_rgba (colorListForeground);
 			} else {
-				COLOR_LIST_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL);
+				COLOR_LIST_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 			}
 		} else {
-			COLOR_LIST_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_NORMAL);
+			COLOR_LIST_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_NORMAL);
 		}
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorListBackground = gtk_css_default_theme_values(SWT.COLOR_LIST_BACKGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorListBackground = gtk_css_default_theme_values(SWT.COLOR_LIST_BACKGROUND, cssOutput);
 			if (!colorListBackground.isEmpty()) {
 				COLOR_LIST_BACKGROUND_RGBA = gtk_css_property_to_rgba (colorListBackground);
 			} else {
-				OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+				GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_NORMAL, rgba);
 				COLOR_LIST_BACKGROUND_RGBA = copyRGBA(rgba);
 			}
 		} else {
-			OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_NORMAL, rgba);
+			GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_NORMAL, rgba);
 			COLOR_LIST_BACKGROUND_RGBA = copyRGBA(rgba);
 		}
 
-		OS.gtk_style_context_restore (context);
+		GTK.gtk_style_context_restore (context);
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorListSelectionText = gtk_css_default_theme_values(SWT.COLOR_LIST_SELECTION_TEXT);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorListSelectionText = gtk_css_default_theme_values(SWT.COLOR_LIST_SELECTION_TEXT, cssOutput);
 			if (!colorListSelectionText.isEmpty()) {
 				COLOR_LIST_SELECTION_TEXT_RGBA = gtk_css_property_to_rgba (colorListSelectionText);
 			} else {
-				COLOR_LIST_SELECTION_TEXT_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_SELECTED);
+				COLOR_LIST_SELECTION_TEXT_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_SELECTED);
 			}
 		} else {
-			COLOR_LIST_SELECTION_TEXT_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_SELECTED);
+			COLOR_LIST_SELECTION_TEXT_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_SELECTED);
 		}
 		COLOR_TITLE_FOREGROUND_RGBA = COLOR_LIST_SELECTION_TEXT_RGBA;
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorListSelection = gtk_css_default_theme_values(SWT.COLOR_LIST_SELECTION);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorListSelection = gtk_css_default_theme_values(SWT.COLOR_LIST_SELECTION, cssOutput);
 			if (!colorListSelection.isEmpty()) {
 				COLOR_LIST_SELECTION_RGBA = gtk_css_property_to_rgba (colorListSelection);
 			} else {
-				OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_SELECTED, rgba);
+				GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_SELECTED, rgba);
 				COLOR_LIST_SELECTION_RGBA = copyRGBA (rgba);
 			}
 		} else {
-			OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_SELECTED, rgba);
+			GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_SELECTED, rgba);
 			COLOR_LIST_SELECTION_RGBA = copyRGBA (rgba);
 		}
 		COLOR_TITLE_BACKGROUND_RGBA = COLOR_LIST_SELECTION_RGBA;
 		COLOR_TITLE_BACKGROUND_GRADIENT_RGBA = toGdkRGBA (COLOR_LIST_SELECTION_RGBA, 1.3);
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorListSelectionTextInactive = gtk_css_default_theme_values(SWT_COLOR_LIST_SELECTION_TEXT_INACTIVE);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorListSelectionTextInactive = gtk_css_default_theme_values(SWT_COLOR_LIST_SELECTION_TEXT_INACTIVE, cssOutput);
 			if (!colorListSelectionTextInactive.isEmpty()) {
 				COLOR_LIST_SELECTION_TEXT_INACTIVE_RGBA = gtk_css_property_to_rgba (colorListSelectionTextInactive);
 			} else {
-				COLOR_LIST_SELECTION_TEXT_INACTIVE_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_ACTIVE);
+				COLOR_LIST_SELECTION_TEXT_INACTIVE_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_ACTIVE);
 			}
 		} else {
-			COLOR_LIST_SELECTION_TEXT_INACTIVE_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_ACTIVE);
+			COLOR_LIST_SELECTION_TEXT_INACTIVE_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_ACTIVE);
 		}
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorListSelectionInactive = gtk_css_default_theme_values(SWT_COLOR_LIST_SELECTION_INACTIVE);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorListSelectionInactive = gtk_css_default_theme_values(SWT_COLOR_LIST_SELECTION_INACTIVE, cssOutput);
 			if (!colorListSelectionInactive.isEmpty()) {
 				COLOR_LIST_SELECTION_INACTIVE_RGBA = gtk_css_property_to_rgba (colorListSelectionInactive);
 			} else {
-				OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_ACTIVE, rgba);
+				GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_ACTIVE, rgba);
 				COLOR_LIST_SELECTION_INACTIVE_RGBA = copyRGBA (rgba);
 			}
 		} else {
-			OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_ACTIVE, rgba);
+			GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_ACTIVE, rgba);
 			COLOR_LIST_SELECTION_INACTIVE_RGBA = copyRGBA (rgba);
 		}
 
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorTitleInactiveForeground = gtk_css_default_theme_values(SWT.COLOR_TITLE_INACTIVE_FOREGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorTitleInactiveForeground = gtk_css_default_theme_values(SWT.COLOR_TITLE_INACTIVE_FOREGROUND, cssOutput);
 			if (!colorTitleInactiveForeground.isEmpty()) {
 				COLOR_TITLE_INACTIVE_FOREGROUND_RGBA = gtk_css_property_to_rgba (colorTitleInactiveForeground);
 			} else {
-				COLOR_TITLE_INACTIVE_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_INSENSITIVE);
+				COLOR_TITLE_INACTIVE_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_INSENSITIVE);
 			}
 		} else {
-			COLOR_TITLE_INACTIVE_FOREGROUND_RGBA = styleContextGetColor (context, OS.GTK_STATE_FLAG_INSENSITIVE);
+			COLOR_TITLE_INACTIVE_FOREGROUND_RGBA = styleContextGetColor (context, GTK.GTK_STATE_FLAG_INSENSITIVE);
 		}
 
 		COLOR_TITLE_INACTIVE_BACKGROUND_RGBA = rgba;
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorTitleInactiveBackground = gtk_css_default_theme_values(SWT.COLOR_TITLE_INACTIVE_BACKGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorTitleInactiveBackground = gtk_css_default_theme_values(SWT.COLOR_TITLE_INACTIVE_BACKGROUND, cssOutput);
 			if (!colorTitleInactiveBackground.isEmpty()) {
 				COLOR_TITLE_INACTIVE_BACKGROUND_RGBA = gtk_css_property_to_rgba (colorTitleInactiveBackground);
 			} else {
-				OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_INSENSITIVE, rgba);
+				GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_INSENSITIVE, rgba);
 				COLOR_TITLE_INACTIVE_BACKGROUND_RGBA = copyRGBA (rgba);
 			}
 		} else {
-			OS.gtk_style_context_get_background_color (context, OS.GTK_STATE_FLAG_INSENSITIVE, rgba);
+			GTK.gtk_style_context_get_background_color (context, GTK.GTK_STATE_FLAG_INSENSITIVE, rgba);
 			COLOR_TITLE_INACTIVE_BACKGROUND_RGBA = copyRGBA (rgba);
 		}
 		COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT_RGBA = toGdkRGBA (COLOR_TITLE_INACTIVE_BACKGROUND_RGBA, 1.3);
@@ -3292,8 +3359,8 @@ void initializeSystemColors () {
 		// NOTE: If COLOR_LINK_FOREGROUND cannot be found from the GTK CSS theme then there is no reliable
 		// way to find it on GTK3 using GtkStyleContext machinery. Use COLOR_LIST_SELECTION instead
 		// as they are often the same.
-		if (OS.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
-			String colorLinkForeground = gtk_css_default_theme_values(SWT.COLOR_LINK_FOREGROUND);
+		if (GTK.GTK_VERSION >= OS.VERSION(3, 14, 0)) {
+			String colorLinkForeground = gtk_css_default_theme_values(SWT.COLOR_LINK_FOREGROUND, cssOutput);
 			if (!colorLinkForeground.isEmpty()) {
 				if (colorLinkForeground != "parsed") {
 					COLOR_LINK_FOREGROUND_RGBA = gtk_css_property_to_rgba (colorLinkForeground);
@@ -3309,38 +3376,38 @@ void initializeSystemColors () {
 	} else {
 		COLOR_LINK_FOREGROUND = initializeColorLinkForeground(tooltipShellHandle);
 
-		long /*int*/ colormap = OS.gdk_colormap_get_system();
-		OS.gdk_colormap_alloc_color(colormap, COLOR_LINK_FOREGROUND, true, true);
+		long /*int*/ colormap = GDK.gdk_colormap_get_system();
+		GDK.gdk_colormap_alloc_color(colormap, COLOR_LINK_FOREGROUND, true, true);
 
 		/* Get Tooltip resources */
-		long /*int*/ tooltipStyle = OS.gtk_widget_get_style (tooltipShellHandle);
+		long /*int*/ tooltipStyle = GTK.gtk_widget_get_style (tooltipShellHandle);
 		GdkColor gdkColor = new GdkColor();
-		OS.gtk_style_get_fg (tooltipStyle, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_fg (tooltipStyle, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_INFO_FOREGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_bg (tooltipStyle, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_bg (tooltipStyle, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_INFO_BACKGROUND = gdkColor;
-		OS.gtk_widget_destroy (tooltipShellHandle);
+		GTK.gtk_widget_destroy (tooltipShellHandle);
 
 		/* Get Shell resources */
-		long /*int*/ style = OS.gtk_widget_get_style (shellHandle);
+		long /*int*/ style = GTK.gtk_widget_get_style (shellHandle);
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_black (style, gdkColor);
+		GTK.gtk_style_get_black (style, gdkColor);
 		COLOR_WIDGET_DARK_SHADOW = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_dark (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_dark (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_WIDGET_NORMAL_SHADOW = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_bg (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_bg (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_WIDGET_LIGHT_SHADOW = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_light (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_light (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_WIDGET_HIGHLIGHT_SHADOW = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_fg (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_fg (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_WIDGET_FOREGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_bg (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_bg (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_WIDGET_BACKGROUND = gdkColor;
 		//gdkColor = new GdkColor();
 		//OS.gtk_style_get_text (style, OS.GTK_STATE_NORMAL, gdkColor);
@@ -3349,40 +3416,40 @@ void initializeSystemColors () {
 		//OS.gtk_style_get_base (style, OS.GTK_STATE_NORMAL, gdkColor);
 		//COLOR_TEXT_BACKGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_text (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_text (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_LIST_FOREGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_base (style, OS.GTK_STATE_NORMAL, gdkColor);
+		GTK.gtk_style_get_base (style, GTK.GTK_STATE_NORMAL, gdkColor);
 		COLOR_LIST_BACKGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_text (style, OS.GTK_STATE_SELECTED, gdkColor);
+		GTK.gtk_style_get_text (style, GTK.GTK_STATE_SELECTED, gdkColor);
 		COLOR_LIST_SELECTION_TEXT = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_base (style, OS.GTK_STATE_SELECTED, gdkColor);
+		GTK.gtk_style_get_base (style, GTK.GTK_STATE_SELECTED, gdkColor);
 		COLOR_LIST_SELECTION = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_text (style, OS.GTK_STATE_ACTIVE, gdkColor);
+		GTK.gtk_style_get_text (style, GTK.GTK_STATE_ACTIVE, gdkColor);
 		COLOR_LIST_SELECTION_TEXT_INACTIVE = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_base (style, OS.GTK_STATE_ACTIVE, gdkColor);
+		GTK.gtk_style_get_base (style, GTK.GTK_STATE_ACTIVE, gdkColor);
 		COLOR_LIST_SELECTION_INACTIVE = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_bg (style, OS.GTK_STATE_SELECTED, gdkColor);
+		GTK.gtk_style_get_bg (style, GTK.GTK_STATE_SELECTED, gdkColor);
 		COLOR_TITLE_BACKGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_fg (style, OS.GTK_STATE_SELECTED, gdkColor);
+		GTK.gtk_style_get_fg (style, GTK.GTK_STATE_SELECTED, gdkColor);
 		COLOR_TITLE_FOREGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_light (style, OS.GTK_STATE_SELECTED, gdkColor);
+		GTK.gtk_style_get_light (style, GTK.GTK_STATE_SELECTED, gdkColor);
 		COLOR_TITLE_BACKGROUND_GRADIENT = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_bg (style, OS.GTK_STATE_INSENSITIVE, gdkColor);
+		GTK.gtk_style_get_bg (style, GTK.GTK_STATE_INSENSITIVE, gdkColor);
 		COLOR_TITLE_INACTIVE_BACKGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_fg (style, OS.GTK_STATE_INSENSITIVE, gdkColor);
+		GTK.gtk_style_get_fg (style, GTK.GTK_STATE_INSENSITIVE, gdkColor);
 		COLOR_TITLE_INACTIVE_FOREGROUND = gdkColor;
 		gdkColor = new GdkColor();
-		OS.gtk_style_get_light (style, OS.GTK_STATE_INSENSITIVE, gdkColor);
+		GTK.gtk_style_get_light (style, GTK.GTK_STATE_INSENSITIVE, gdkColor);
 		COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT = gdkColor;
 
 	}
@@ -3392,15 +3459,15 @@ void initializeSystemColors () {
  * Initialize COLOR_LINK_FOREGROUND in a helper method to allow for calling on GTK2.
  */
 GdkColor initializeColorLinkForeground (long /*int*/ tooltipShellHandle) {
-	long /*int*/ linkWidget = OS.gtk_label_new (new byte[1]);
+	long /*int*/ linkWidget = GTK.gtk_label_new (new byte[1]);
 	if (linkWidget == 0) error (SWT.ERROR_NO_HANDLES);
-	OS.gtk_container_add (tooltipShellHandle, linkWidget);
+	GTK.gtk_container_add (tooltipShellHandle, linkWidget);
 	long /*int*/ [] linkColor = new long /*int*/ [1];
-	OS.gtk_widget_style_get (linkWidget, OS.link_color, linkColor, 0);
+	GTK.gtk_widget_style_get (linkWidget, OS.link_color, linkColor, 0);
 	GdkColor gdkColor = new GdkColor();
 	if (linkColor [0] != 0) {
 		OS.memmove (gdkColor, linkColor[0], GdkColor.sizeof);
-		OS.gdk_color_free (linkColor [0]);
+		GDK.gdk_color_free (linkColor [0]);
 	} else {
 		gdkColor.blue = (short)0xeeee;
 	}
@@ -3408,7 +3475,7 @@ GdkColor initializeColorLinkForeground (long /*int*/ tooltipShellHandle) {
 }
 
 GdkRGBA styleContextGetColor(long /*int*/ context, int flag) {
-	assert OS.GTK3 : "GTK3 code was run by GTK2";
+	assert GTK.GTK3 : "GTK3 code was run by GTK2";
 	/*
 	* Feature in GTK: we need to handle calls to gtk_style_context_get_color()
 	* differently due to changes in GTK3.18+. This solves failing test cases
@@ -3416,13 +3483,13 @@ GdkRGBA styleContextGetColor(long /*int*/ context, int flag) {
 	* Reference: https://blogs.gnome.org/mclasen/2015/11/20/a-gtk-update/
 	*/
 	GdkRGBA rgba = new GdkRGBA ();
-	if (OS.GTK_VERSION >= OS.VERSION(3, 18, 0)) {
-		OS.gtk_style_context_save(context);
-		OS.gtk_style_context_set_state(context, flag);
-		OS.gtk_style_context_get_color (context, flag, rgba);
-		OS.gtk_style_context_restore(context);
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 18, 0)) {
+		GTK.gtk_style_context_save(context);
+		GTK.gtk_style_context_set_state(context, flag);
+		GTK.gtk_style_context_get_color (context, flag, rgba);
+		GTK.gtk_style_context_restore(context);
 	} else {
-		OS.gtk_style_context_get_color (context, flag, rgba);
+		GTK.gtk_style_context_get_color (context, flag, rgba);
 	}
 	return rgba;
 }
@@ -3544,38 +3611,49 @@ void initializeCallbacks () {
 	signalIds = new int [Widget.LAST_SIGNAL];
 
 	/* Cache signals for GtkWidget */
-	signalIds [Widget.BUTTON_PRESS_EVENT] = OS.g_signal_lookup (OS.button_press_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.BUTTON_RELEASE_EVENT] = OS.g_signal_lookup (OS.button_release_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.CONFIGURE_EVENT] = OS.g_signal_lookup (OS.configure_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.DELETE_EVENT] = OS.g_signal_lookup (OS.delete_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.ENTER_NOTIFY_EVENT] = OS.g_signal_lookup (OS.enter_notify_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.EVENT] = OS.g_signal_lookup (OS.event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.EVENT_AFTER] = OS.g_signal_lookup (OS.event_after, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.EXPOSE_EVENT] = OS.g_signal_lookup (OS.GTK3 ? OS.draw : OS.expose_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.EXPOSE_EVENT_INVERSE] = OS.g_signal_lookup (OS.GTK3 ? OS.draw : OS.expose_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.FOCUS] = OS.g_signal_lookup (OS.focus, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.FOCUS_IN_EVENT] = OS.g_signal_lookup (OS.focus_in_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.FOCUS_OUT_EVENT] = OS.g_signal_lookup (OS.focus_out_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.GRAB_FOCUS] = OS.g_signal_lookup (OS.grab_focus, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.HIDE] = OS.g_signal_lookup (OS.hide, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.KEY_PRESS_EVENT] = OS.g_signal_lookup (OS.key_press_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.KEY_RELEASE_EVENT] = OS.g_signal_lookup (OS.key_release_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.LEAVE_NOTIFY_EVENT] = OS.g_signal_lookup (OS.leave_notify_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.MAP] = OS.g_signal_lookup (OS.map, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.MAP_EVENT] = OS.g_signal_lookup (OS.map_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.MNEMONIC_ACTIVATE] = OS.g_signal_lookup (OS.mnemonic_activate, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.MOTION_NOTIFY_EVENT] = OS.g_signal_lookup (OS.motion_notify_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.POPUP_MENU] = OS.g_signal_lookup (OS.popup_menu, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.REALIZE] = OS.g_signal_lookup (OS.realize, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.SCROLL_EVENT] = OS.g_signal_lookup (OS.scroll_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.SHOW] = OS.g_signal_lookup (OS.show, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.SHOW_HELP] = OS.g_signal_lookup (OS.show_help, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.SIZE_ALLOCATE] = OS.g_signal_lookup (OS.size_allocate, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.STYLE_SET] = OS.g_signal_lookup (OS.style_set, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.UNMAP] = OS.g_signal_lookup (OS.unmap, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.UNMAP_EVENT] = OS.g_signal_lookup (OS.unmap_event, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.UNREALIZE] = OS.g_signal_lookup (OS.realize, OS.GTK_TYPE_WIDGET ());
-	signalIds [Widget.WINDOW_STATE_EVENT] = OS.g_signal_lookup (OS.window_state_event, OS.GTK_TYPE_WIDGET ());
+	signalIds [Widget.BUTTON_PRESS_EVENT] = OS.g_signal_lookup (OS.button_press_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.BUTTON_RELEASE_EVENT] = OS.g_signal_lookup (OS.button_release_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.CONFIGURE_EVENT] = OS.g_signal_lookup (OS.configure_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.DELETE_EVENT] = OS.g_signal_lookup (OS.delete_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.ENTER_NOTIFY_EVENT] = OS.g_signal_lookup (OS.enter_notify_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.EVENT] = OS.g_signal_lookup (OS.event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.EVENT_AFTER] = OS.g_signal_lookup (OS.event_after, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.EXPOSE_EVENT] = OS.g_signal_lookup (GTK.GTK3 ? OS.draw : OS.expose_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.EXPOSE_EVENT_INVERSE] = OS.g_signal_lookup (GTK.GTK3 ? OS.draw : OS.expose_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.FOCUS] = OS.g_signal_lookup (OS.focus, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.FOCUS_IN_EVENT] = OS.g_signal_lookup (OS.focus_in_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.FOCUS_OUT_EVENT] = OS.g_signal_lookup (OS.focus_out_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.GRAB_FOCUS] = OS.g_signal_lookup (OS.grab_focus, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.HIDE] = OS.g_signal_lookup (OS.hide, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.KEY_PRESS_EVENT] = OS.g_signal_lookup (OS.key_press_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.KEY_RELEASE_EVENT] = OS.g_signal_lookup (OS.key_release_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.LEAVE_NOTIFY_EVENT] = OS.g_signal_lookup (OS.leave_notify_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.MAP] = OS.g_signal_lookup (OS.map, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.MAP_EVENT] = OS.g_signal_lookup (OS.map_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.MNEMONIC_ACTIVATE] = OS.g_signal_lookup (OS.mnemonic_activate, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.MOTION_NOTIFY_EVENT] = OS.g_signal_lookup (OS.motion_notify_event, GTK.GTK_TYPE_WIDGET ());
+	/*
+	 * Connect to the "popped-up" signal on GTK3.22+ if the user has specified the
+	 * SWT_MENU_LOCATION_DEBUGGING environment variable.
+	 */
+	if (GTK.GTK_VERSION >= OS.VERSION(3, 22, 0) && OS.SWT_MENU_LOCATION_DEBUGGING) {
+		long /*int*/ menuType = GTK.GTK_TYPE_MENU ();
+		OS.g_type_class_ref (menuType);
+		signalIds [Widget.POPPED_UP] = OS.g_signal_lookup (OS.popped_up, menuType);
+	} else {
+		signalIds [Widget.POPPED_UP] = 0;
+	}
+	signalIds [Widget.POPUP_MENU] = OS.g_signal_lookup (OS.popup_menu, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.REALIZE] = OS.g_signal_lookup (OS.realize, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.SCROLL_EVENT] = OS.g_signal_lookup (OS.scroll_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.SHOW] = OS.g_signal_lookup (OS.show, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.SHOW_HELP] = OS.g_signal_lookup (OS.show_help, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.SIZE_ALLOCATE] = OS.g_signal_lookup (OS.size_allocate, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.STYLE_SET] = OS.g_signal_lookup (OS.style_set, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.UNMAP] = OS.g_signal_lookup (OS.unmap, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.UNMAP_EVENT] = OS.g_signal_lookup (OS.unmap_event, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.UNREALIZE] = OS.g_signal_lookup (OS.realize, GTK.GTK_TYPE_WIDGET ());
+	signalIds [Widget.WINDOW_STATE_EVENT] = OS.g_signal_lookup (OS.window_state_event, GTK.GTK_TYPE_WIDGET ());
 
 	windowCallback2 = new Callback (this, "windowProc", 2); //$NON-NLS-1$
 	windowProc2 = windowCallback2.getAddress ();
@@ -3680,6 +3758,13 @@ void initializeCallbacks () {
 	closuresProc [Widget.MOVE_CURSOR] = windowProc5;
 	closuresProc [Widget.MOVE_CURSOR_INVERSE] = windowProc5;
 
+	if (signalIds [Widget.POPPED_UP] != 0) {
+		windowCallback6 = new Callback (this, "windowProc", 6); //$NON-NLS-1$
+		windowProc6 = windowCallback6.getAddress ();
+		if (windowProc6 == 0) error (SWT.ERROR_NO_MORE_CALLBACKS);
+		closuresProc [Widget.POPPED_UP] = windowProc6;
+	}
+
 	for (int i = 0; i < Widget.LAST_SIGNAL; i++) {
 		if (closuresProc[i] != 0) {
 			closures [i] = OS.g_cclosure_new(closuresProc [i], i, 0);
@@ -3774,8 +3859,8 @@ void initializeSubclasses () {
 	OS.G_OBJECT_CLASS_SET_CONSTRUCTOR (pangoLayoutClass, OS.pangoLayoutNewProc_CALLBACK(pangoLayoutNewProc));
 	OS.g_type_class_unref (pangoLayoutClass);
 
-	if (OS.GTK3) {
-		long /*int*/ imContextType = OS.GTK_TYPE_IM_MULTICONTEXT ();
+	if (GTK.GTK3) {
+		long /*int*/ imContextType = GTK.GTK_TYPE_IM_MULTICONTEXT ();
 		long /*int*/ imContextClass = OS.g_type_class_ref (imContextType);
 		imContextNewProc = OS.G_OBJECT_CLASS_CONSTRUCTOR (imContextClass);
 		OS.G_OBJECT_CLASS_SET_CONSTRUCTOR (imContextClass, OS.imContextNewProc_CALLBACK(imContextNewProc));
@@ -3794,7 +3879,7 @@ void initializeSubclasses () {
 		OS.g_type_class_unref (pangoFontFaceClass);
 
 		if (!OS.IsWin32) { /* TODO [win32] replace unixprint */
-			long /*int*/ printerOptionWidgetType = OS.gtk_printer_option_widget_get_type();
+			long /*int*/ printerOptionWidgetType = GTK.gtk_printer_option_widget_get_type();
 			long /*int*/ printerOptionWidgetClass = OS.g_type_class_ref (printerOptionWidgetType);
 			printerOptionWidgetNewProc = OS.G_OBJECT_CLASS_CONSTRUCTOR (printerOptionWidgetClass);
 			OS.G_OBJECT_CLASS_SET_CONSTRUCTOR (printerOptionWidgetClass, OS.printerOptionWidgetNewProc_CALLBACK(printerOptionWidgetNewProc));
@@ -3815,11 +3900,11 @@ void initializeSystemSettings () {
 	* fix is to for the initializaion by creating
 	* a temporary GtkEntry.
 	*/
-	long /*int*/ entry = OS.gtk_entry_new ();
-	OS.gtk_widget_destroy (entry);
+	long /*int*/ entry = GTK.gtk_entry_new ();
+	GTK.gtk_widget_destroy (entry);
 	int [] buffer2 = new int [1];
-	long /*int*/ settings = OS.gtk_settings_get_default ();
-	OS.g_object_get (settings, OS.gtk_entry_select_on_focus, buffer2, 0);
+	long /*int*/ settings = GTK.gtk_settings_get_default ();
+	OS.g_object_get (settings, GTK.gtk_entry_select_on_focus, buffer2, 0);
 	entrySelectOnFocus = buffer2 [0] != 0;
 }
 
@@ -3834,14 +3919,14 @@ void initializeWindowManager () {
 	/* Get the window manager name */
 	windowManager = ""; //$NON-NLS-1$
 	if (OS.isX11()) {
-		long /*int*/ screen = OS.gdk_screen_get_default ();
+		long /*int*/ screen = GDK.gdk_screen_get_default ();
 		if (screen != 0) {
-			long /*int*/ ptr2 = OS.gdk_x11_screen_get_window_manager_name (screen);
+			long /*int*/ ptr2 = GDK.gdk_x11_screen_get_window_manager_name (screen);
 			if (ptr2 != 0) {
-				int length = OS.strlen (ptr2);
+				int length = C.strlen (ptr2);
 				if (length > 0) {
 					byte [] buffer2 = new byte [length];
-					OS.memmove (buffer2, ptr2, length);
+					C.memmove (buffer2, ptr2, length);
 					windowManager = new String (Converter.mbcsToWcs (buffer2));
 				}
 			}
@@ -3894,8 +3979,8 @@ public void internal_dispose_GC (long /*int*/ hDC, GCData data) {
 @Override
 public long /*int*/ internal_new_GC (GCData data) {
 	if (isDisposed()) error(SWT.ERROR_DEVICE_DISPOSED);
-	long /*int*/ root = OS.gdk_get_default_root_window();
-	long /*int*/ gc = OS.gdk_cairo_create (root);
+	long /*int*/ root = GDK.gdk_get_default_root_window();
+	long /*int*/ gc = GDK.gdk_cairo_create (root);
 	if (gc == 0) error (SWT.ERROR_NO_HANDLES);
 	//TODO how gdk_gc_set_subwindow is done in cairo?
 	if (data != null) {
@@ -3905,7 +3990,7 @@ public long /*int*/ internal_new_GC (GCData data) {
 		}
 		data.device = this;
 		data.drawable = root;
-		if (OS.GTK3) {
+		if (GTK.GTK3) {
 			data.backgroundRGBA = getSystemColor (SWT.COLOR_WHITE).handleRGBA;
 			data.foregroundRGBA = getSystemColor (SWT.COLOR_BLACK).handleRGBA;
 		} else {
@@ -4177,7 +4262,12 @@ Rectangle mapInPixels (Control from, Control to, int x, int y, int width, int he
 
 long /*int*/ mouseHoverProc (long /*int*/ handle) {
 	Widget widget = getWidget (handle);
-	if (widget == null) return 0;
+	// null the GSource id as our implementation always returns 0 so the hover is
+	// hidden and this leads to the GSource to be destroyed
+	mouseHoverId = 0;
+	if (widget == null) {
+		return 0;
+	}
 	return widget.hoverProc (handle);
 }
 
@@ -4204,6 +4294,10 @@ long /*int*/ mouseHoverProc (long /*int*/ handle) {
  * <li>(in) character a character that corresponds to a keyboard key</li>
  * <li>(in) keyCode the key code of the key that was typed,
  *          as defined by the key code constants in class <code>SWT</code></li>
+ * <p> Optional (on some platforms): </p>
+ * <li>(in) stateMask the state of the keyboard modifier,
+ * 			as defined by the key code constants in class <code>SWT</code>
+ * </li>
  * </ul>
  * <p>MouseDown, MouseUp</p>
  * <p>The following fields in the <code>Event</code> apply:
@@ -4248,7 +4342,7 @@ public boolean post (Event event) {
 	* thread already be in the operating system.  This avoids deadlock
 	* should the other thread need the device lock.
 	*/
-	Lock lock = OS.lock;
+	Lock lock = Platform.lock;
 	lock.lock();
 	try {
 		synchronized (Device.class) {
@@ -4257,35 +4351,58 @@ public boolean post (Event event) {
 			if (!OS.isX11()) {
 				return false;
 			}
-			long /*int*/ xDisplay = OS.gdk_x11_display_get_xdisplay(OS.gdk_display_get_default());
 			int type = event.type;
+
+			if (type == SWT.MouseMove) {
+				Rectangle loc = DPIUtil.autoScaleUp(event.getBounds ());
+				setCursorLocationInPixels(new Point(loc.x, loc.y));
+				return true;
+			}
+
+			long /*int*/ gdkDisplay = GDK.gdk_display_get_default();
+			long /*int*/ gdkScreen = GDK.gdk_screen_get_default();
+			long /*int*/ gdkWindow = GDK.gdk_screen_get_active_window(gdkScreen);
+			int[] x = new int[1], y = new int[1];
+			if (gdkWindow == 0) {
+				// Under some window managers or wayland gdk can not determine the active window and passing null
+				// to gdk_test_simulate_button leads to crash.
+				return false;
+			}
+			if (GTK.GTK3) {
+				long /*int*/ gdkPointer = GDK.gdk_get_pointer(gdkDisplay);
+				GDK.gdk_window_get_device_position(gdkWindow, gdkPointer, x, y, new int[1]);
+			} else {
+				GDK.gdk_window_get_pointer(gdkWindow, x, y, new int[1]);
+			}
+
 			switch (type) {
 				case SWT.KeyDown:
 				case SWT.KeyUp: {
-					int keyCode = 0;
-					long /*int*/ keysym = untranslateKey (event.keyCode);
-					if (keysym != 0) keyCode = OS.XKeysymToKeycode (xDisplay, keysym);
-					if (keyCode == 0) {
+					int keysym = untranslateKey (event.keyCode);
+					if (keysym == 0) {
 						char key = event.character;
 						switch (key) {
-							case SWT.BS: keysym = OS.GDK_BackSpace; break;
-							case SWT.CR: keysym = OS.GDK_Return; break;
-							case SWT.DEL: keysym = OS.GDK_Delete; break;
-							case SWT.ESC: keysym = OS.GDK_Escape; break;
-							case SWT.TAB: keysym = OS.GDK_Tab; break;
-							case SWT.LF: keysym = OS.GDK_Linefeed; break;
+							case SWT.BS: keysym = GDK.GDK_BackSpace; break;
+							case SWT.CR: keysym = GDK.GDK_Return; break;
+							case SWT.DEL: keysym = GDK.GDK_Delete; break;
+							case SWT.ESC: keysym = GDK.GDK_Escape; break;
+							case SWT.TAB: keysym = GDK.GDK_Tab; break;
+							case SWT.LF: keysym = GDK.GDK_Linefeed; break;
 							default:
 								keysym = key;
 						}
-						keyCode = OS.XKeysymToKeycode (xDisplay, keysym);
-						if (keyCode == 0) return false;
+						if (keysym == 0) return false;
 					}
-					OS.XTestFakeKeyEvent (xDisplay, keyCode, type == SWT.KeyDown, 0);
-					return true;
-				}
-				case SWT.MouseMove: {
-					Rectangle loc = DPIUtil.autoScaleUp(event.getBounds ());
-					setCursorLocationInPixels(new Point(loc.x, loc.y));
+					int modifier = 0;
+					switch (event.stateMask) {
+						case SWT.SHIFT: modifier = GDK.GDK_SHIFT_MASK; break;
+						case SWT.ALT: modifier = GDK.GDK_MOD1_MASK; break;
+						case SWT.CONTROL: modifier = GDK.GDK_CONTROL_MASK; break;
+						case SWT.ALT_GR: modifier = GDK.GDK_MOD5_MASK; break;
+						default:
+							modifier = 0;
+					}
+					GDK.gdk_test_simulate_key(gdkWindow, x[0], y[0], keysym, modifier, type == SWT.KeyDown ? GDK.GDK_KEY_PRESS: GDK.GDK_KEY_RELEASE);
 					return true;
 				}
 				case SWT.MouseDown:
@@ -4299,23 +4416,7 @@ public boolean post (Event event) {
 						case 5: button = 7;	break;
 						default: return false;
 					}
-					long /*int*/ gdkDisplay = OS.gdk_display_get_default();
-					long /*int*/ gdkScreen = OS.gdk_screen_get_default();
-					long /*int*/ gdkWindow = OS.gdk_screen_get_active_window(gdkScreen);
-					int[] x = new int[1], y = new int[1];
-					if (gdkWindow == 0) {
-						// Under some window managers or wayland gdk can not determine the active window and passing null
-						// to gdk_test_simulate_button leads to crash.
-						return false;
-					}
-					if (OS.GTK3) {
-						long /*int*/ gdkDeviceManager = OS.gdk_display_get_device_manager(gdkDisplay);
-						long /*int*/ gdkPointer = OS.gdk_device_manager_get_client_pointer(gdkDeviceManager);
-						OS.gdk_window_get_device_position(gdkWindow, gdkPointer, x, y, new int[1]);
-					} else {
-						OS.gdk_window_get_pointer(gdkWindow, x, y, new int[1]);
-					}
-					OS.gdk_test_simulate_button(gdkWindow, x[0], y[0], button, 0, type == SWT.MouseDown ? OS.GDK_BUTTON_PRESS: OS.GDK_BUTTON_RELEASE);
+					GDK.gdk_test_simulate_button(gdkWindow, x[0], y[0], button, 0, type == SWT.MouseDown ? GDK.GDK_BUTTON_PRESS: GDK.GDK_BUTTON_RELEASE);
 					return true;
 				}
 				/*
@@ -4364,9 +4465,9 @@ void putGdkEvents () {
 			long /*int*/ event = gdkEvents [i];
 			Widget widget = gdkEventWidgets [i];
 			if (widget == null || !widget.isDisposed ()) {
-				OS.gdk_event_put (event);
+				GDK.gdk_event_put (event);
 			}
-			OS.gdk_event_free (event);
+			GDK.gdk_event_free (event);
 			gdkEvents [i] = 0;
 			gdkEventWidgets [i] = null;
 		}
@@ -4411,7 +4512,7 @@ public boolean readAndDispatch () {
 	* code outside of SWT (i.e AWT, etc). It ensures that the current
 	* thread leaves the GTK lock before calling the function below.
 	*/
-	OS.gdk_threads_leave();
+	GDK.gdk_threads_leave();
 	events |= OS.g_main_context_iteration (0, false);
 	if (events) {
 		runDeferredEvents ();
@@ -4496,11 +4597,14 @@ void releaseDisplay () {
 	windowCallback3.dispose ();  windowCallback3 = null;
 	windowCallback4.dispose ();  windowCallback4 = null;
 	windowCallback5.dispose ();  windowCallback5 = null;
-	windowProc2 = windowProc3 = windowProc4 = windowProc5 = 0;
+	if (windowCallback6 != null) {
+		windowCallback6.dispose ();  windowCallback6 = null;
+	}
+	windowProc2 = windowProc3 = windowProc4 = windowProc5 = windowProc6 = 0;
 
 	/* Dispose xfilter callback */
 	if (filterProc != 0) {
-		OS.gdk_window_remove_filter(0, filterProc, 0);
+		GDK.gdk_window_remove_filter(0, filterProc, 0);
 	}
 	filterCallback.dispose(); filterCallback = null;
 	filterProc = 0;
@@ -4510,7 +4614,7 @@ void releaseDisplay () {
 	checkIfEventProc = 0;
 
 	/* Dispose preedit window */
-	if (preeditWindow != 0) OS.gtk_widget_destroy (preeditWindow);
+	if (preeditWindow != 0) GTK.gtk_widget_destroy (preeditWindow);
 	imControl = null;
 
 	/* Dispose the tooltip map callback */
@@ -4611,11 +4715,11 @@ void releaseDisplay () {
 	COLOR_INFO_BACKGROUND = COLOR_INFO_FOREGROUND = COLOR_LINK_FOREGROUND = null;
 
 	/* Dispose the event callback */
-	OS.gdk_event_handler_set (0, 0, 0);
+	GDK.gdk_event_handler_set (0, 0, 0);
 	eventCallback.dispose ();  eventCallback = null;
 
 	/* Dispose the hidden shell */
-	if (shellHandle != 0) OS.gtk_widget_destroy (shellHandle);
+	if (shellHandle != 0) GTK.gtk_widget_destroy (shellHandle);
 	shellHandle = 0;
 
 	/* Dispose the settings callback */
@@ -4632,8 +4736,8 @@ void releaseDisplay () {
 	OS.G_OBJECT_CLASS_SET_CONSTRUCTOR (pangoLayoutClass, pangoLayoutNewProc);
 	OS.g_type_class_unref (pangoLayoutClass);
 	pangoLayoutNewProc = 0;
-	if (OS.GTK3) {
-		long /*int*/ imContextType = OS.GTK_TYPE_IM_MULTICONTEXT ();
+	if (GTK.GTK3) {
+		long /*int*/ imContextType = GTK.GTK_TYPE_IM_MULTICONTEXT ();
 		long /*int*/ imContextClass = OS.g_type_class_ref (imContextType);
 		OS.G_OBJECT_CLASS_SET_CONSTRUCTOR (imContextClass, imContextNewProc);
 		OS.g_type_class_unref (imContextClass);
@@ -5001,14 +5105,13 @@ public void setCursorLocation (int x, int y) {
 }
 
 void setCursorLocationInPixels (Point location) {
-	long /*int*/ gdkDisplay = OS.gdk_display_get_default();
-	long /*int*/ gdkScreen = OS.gdk_screen_get_default();
-	if (!OS.GTK3) {
-		OS.gdk_display_warp_pointer(gdkDisplay, gdkScreen, location.x, location.y);
+	long /*int*/ gdkDisplay = GDK.gdk_display_get_default();
+	long /*int*/ gdkScreen = GDK.gdk_screen_get_default();
+	if (!GTK.GTK3) {
+		GDK.gdk_display_warp_pointer(gdkDisplay, gdkScreen, location.x, location.y);
 	} else {
-		long /*int*/ gdkDeviceManager = OS.gdk_display_get_device_manager(gdkDisplay);
-		long /*int*/ gdkPointer = OS.gdk_device_manager_get_client_pointer(gdkDeviceManager);
-		OS.gdk_device_warp(gdkPointer, gdkScreen, location.x, location.y);
+		long /*int*/ gdkPointer = GDK.gdk_get_pointer(gdkDisplay);
+		GDK.gdk_device_warp(gdkPointer, gdkScreen, location.x, location.y);
 	}
 }
 
@@ -5166,16 +5269,16 @@ public void setData (Object data) {
 }
 
 long /*int*/ setDirectionProc (long /*int*/ widget, long /*int*/ direction) {
-	OS.gtk_widget_set_direction (widget, (int)/*64*/ direction);
-	if (OS.GTK_IS_MENU_ITEM (widget)) {
-		long /*int*/ submenu = OS.gtk_menu_item_get_submenu (widget);
+	GTK.gtk_widget_set_direction (widget, (int)/*64*/ direction);
+	if (GTK.GTK_IS_MENU_ITEM (widget)) {
+		long /*int*/ submenu = GTK.gtk_menu_item_get_submenu (widget);
 		if (submenu != 0) {
-			OS.gtk_widget_set_direction (submenu, (int)/*64*/ direction);
-			OS.gtk_container_forall (submenu, setDirectionProc, direction);
+			GTK.gtk_widget_set_direction (submenu, (int)/*64*/ direction);
+			GTK.gtk_container_forall (submenu, setDirectionProc, direction);
 		}
 	}
-	if (OS.GTK_IS_CONTAINER (widget)) {
-		OS.gtk_container_forall (widget, setDirectionProc, direction);
+	if (GTK.GTK_IS_CONTAINER (widget)) {
+		GTK.gtk_container_forall (widget, setDirectionProc, direction);
 	}
 	return 0;
 }
@@ -5294,43 +5397,43 @@ public final Consumer<Error> getErrorHandler () {
 void showIMWindow (Control control) {
 	imControl = control;
 	if (preeditWindow == 0) {
-		preeditWindow = OS.gtk_window_new (OS.GTK_WINDOW_POPUP);
+		preeditWindow = GTK.gtk_window_new (GTK.GTK_WINDOW_POPUP);
 		if (preeditWindow == 0) error (SWT.ERROR_NO_HANDLES);
-		preeditLabel = OS.gtk_label_new (null);
+		preeditLabel = GTK.gtk_label_new (null);
 		if (preeditLabel == 0) error (SWT.ERROR_NO_HANDLES);
-		OS.gtk_container_add (preeditWindow, preeditLabel);
-		OS.gtk_widget_show (preeditLabel);
+		GTK.gtk_container_add (preeditWindow, preeditLabel);
+		GTK.gtk_widget_show (preeditLabel);
 	}
 	long /*int*/ [] preeditString = new long /*int*/ [1];
 	long /*int*/ [] pangoAttrs = new long /*int*/ [1];
 	long /*int*/ imHandle = control.imHandle ();
-	OS.gtk_im_context_get_preedit_string (imHandle, preeditString, pangoAttrs, null);
-	if (preeditString [0] != 0 && OS.strlen (preeditString [0]) > 0) {
+	GTK.gtk_im_context_get_preedit_string (imHandle, preeditString, pangoAttrs, null);
+	if (preeditString [0] != 0 && C.strlen (preeditString [0]) > 0) {
 		Control widget = control.findBackgroundControl ();
 		if (widget == null) widget = control;
-		if (OS.GTK3) {
+		if (GTK.GTK3) {
 			widget.setBackgroundGdkRGBA (preeditWindow, control.getBackgroundGdkRGBA());
 			widget.setForegroundGdkRGBA (preeditLabel, control.getForegroundGdkRGBA());
 		} else {
 			GdkColor color = widget.getBackgroundGdkColor ();
-			OS.gtk_widget_modify_bg (preeditWindow,  OS.GTK_STATE_NORMAL, color);
+			GTK.gtk_widget_modify_bg (preeditWindow,  GTK.GTK_STATE_NORMAL, color);
 			widget.setForegroundColor (preeditLabel, control.getForegroundGdkColor());
 		}
 		widget.setFontDescription (preeditLabel, control.getFontDescription ());
-		if (pangoAttrs [0] != 0) OS.gtk_label_set_attributes (preeditLabel, pangoAttrs[0]);
-		OS.gtk_label_set_text (preeditLabel, preeditString [0]);
+		if (pangoAttrs [0] != 0) GTK.gtk_label_set_attributes (preeditLabel, pangoAttrs[0]);
+		GTK.gtk_label_set_text (preeditLabel, preeditString [0]);
 		Point point = control.toDisplayInPixels (control.getIMCaretPos ());
-		OS.gtk_window_move (preeditWindow, point.x, point.y);
+		GTK.gtk_window_move (preeditWindow, point.x, point.y);
 		GtkRequisition requisition = new GtkRequisition ();
-		if (OS.GTK3) {
-			OS.gtk_widget_get_preferred_size (preeditLabel, requisition, null);
+		if (GTK.GTK3) {
+			GTK.gtk_widget_get_preferred_size (preeditLabel, requisition, null);
 		} else {
-			OS.gtk_widget_size_request (preeditLabel, requisition);
+			GTK.gtk_widget_size_request (preeditLabel, requisition);
 		}
-		OS.gtk_window_resize (preeditWindow, requisition.width, requisition.height);
-		OS.gtk_widget_show (preeditWindow);
+		GTK.gtk_window_resize (preeditWindow, requisition.width, requisition.height);
+		GTK.gtk_widget_show (preeditWindow);
 	} else {
-		OS.gtk_widget_hide (preeditWindow);
+		GTK.gtk_widget_hide (preeditWindow);
 	}
 	if (preeditString [0] != 0) OS.g_free (preeditString [0]);
 	if (pangoAttrs [0] != 0) OS.pango_attr_list_unref (pangoAttrs [0]);
@@ -5390,7 +5493,7 @@ public boolean sleep () {
 					if (timeout [0] < 0) timeout [0] = 50;
 
 					/* Exit the OS lock to allow other threads to enter GTK */
-					Lock lock = OS.lock;
+					Lock lock = Platform.lock;
 					int count = lock.lock ();
 					for (int i = 0; i < count; i++) lock.unlock ();
 					try {
@@ -5665,9 +5768,8 @@ String simple_color_parser (String output, String value, int index) {
 	 */
 	if (output != null && value != null) {
 		int position;
-		String color;
 		position = index + value.length() + 1;
-		color = output.substring(position);
+		String color = output.substring(position);
 		// Check for rgb color case
 		if (color.startsWith("#") || color.startsWith("rgb")) {
 			return color;
@@ -5686,48 +5788,6 @@ long /*int*/ signalProc (long /*int*/ gobject, long /*int*/ arg1, long /*int*/ u
 	switch((int)/*64*/user_data) {
 		case STYLE_SET:
 			settingsChanged = true;
-			break;
-		case PROPERTY_NOTIFY:
-			GdkEventProperty gdkEvent = new GdkEventProperty ();
-			OS.memmove (gdkEvent, arg1);
-			if (gdkEvent.type == OS.GDK_PROPERTY_NOTIFY) {
-				byte[] name = Converter.wcsToMbcs ("org.eclipse.swt.filePath.message", true); //$NON-NLS-1$
-				long /*int*/ atom = OS.gdk_x11_atom_to_xatom (OS.gdk_atom_intern (name, true));
-				if (atom == OS.gdk_x11_atom_to_xatom (gdkEvent.atom)) {
-					long /*int*/ xWindow;
-					if (OS.GTK3) {
-						xWindow = OS.gdk_x11_window_get_xid (OS.gtk_widget_get_window (shellHandle));
-					} else {
-						xWindow = OS.gdk_x11_drawable_get_xid (OS.gtk_widget_get_window( shellHandle));
-					}
-					long /*int*/ [] type = new long /*int*/ [1];
-					int [] format = new int [1];
-					int [] nitems = new int [1];
-					int [] bytes_after = new int [1];
-					long /*int*/ [] data = new long /*int*/ [1];
-					OS.XGetWindowProperty (OS.gdk_x11_display_get_xdisplay(OS.gdk_display_get_default()), xWindow, atom, 0, -1, true, OS.AnyPropertyType,
-							type, format, nitems, bytes_after, data);
-
-					if (nitems [0] > 0) {
-						byte [] buffer = new byte [nitems [0]];
-						OS.memmove(buffer, data [0], buffer.length);
-						OS.XFree (data [0]);
-						char[] chars = Converter.mbcsToWcs(buffer);
-						String string = new String (chars);
-
-						int lastIndex = 0;
-						int index = string.indexOf (':');
-						while (index != -1) {
-							String file = string.substring (lastIndex, index);
-							Event event = new Event ();
-							event.text = file;
-							sendEvent (SWT.OpenDocument, event);
-							lastIndex = index+1;
-							index = string.indexOf(':', lastIndex);
-						}
-					}
-				}
-			}
 			break;
 	}
 	return 0;
@@ -5802,8 +5862,8 @@ public void update () {
 	 * Do not send expose events on GTK 3.16.0+
 	 * It's worth checking whether can be removed on all GTK 3 versions.
 	 */
-	if (OS.GTK_VERSION < OS.VERSION(3, 16, 0)) {
-		OS.gdk_window_process_all_updates ();
+	if (GTK.GTK_VERSION < OS.VERSION(3, 16, 0)) {
+		GDK.gdk_window_process_all_updates ();
 	}
 }
 
@@ -5855,6 +5915,12 @@ long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ ar
 	return widget.windowProc (handle, arg0, arg1, arg2, user_data);
 }
 
+long /*int*/ windowProc (long /*int*/ handle, long /*int*/ arg0, long /*int*/ arg1, long /*int*/ arg2, long /*int*/ arg3, long /*int*/ user_data) {
+	Widget widget = getWidget (handle);
+	if (widget == null) return 0;
+	return widget.windowProc (handle, arg0, arg1, arg2, arg3, user_data);
+}
+
 long /*int*/ windowTimerProc (long /*int*/ handle) {
 	Widget widget = getWidget (handle);
 	if (widget == null) return 0;
@@ -5862,30 +5928,28 @@ long /*int*/ windowTimerProc (long /*int*/ handle) {
 }
 
 long /*int*/ gdk_window_get_device_position (long /*int*/ window, int[] x, int[] y, int[] mask) {
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		long /*int*/ display = 0;
 		if( window != 0) {
-			display = OS.gdk_window_get_display (window);
+			display = GDK.gdk_window_get_display (window);
 		} else {
-			window = OS.gdk_get_default_root_window ();
-			display = OS.gdk_window_get_display (window);
+			window = GDK.gdk_get_default_root_window ();
+			display = GDK.gdk_window_get_display (window);
 		}
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager (display);
-		long /*int*/ pointer = OS.gdk_device_manager_get_client_pointer (device_manager);
-		return OS.gdk_window_get_device_position(window, pointer, x, y, mask);
+		long /*int*/ pointer = GDK.gdk_get_pointer (display);
+		return GDK.gdk_window_get_device_position(window, pointer, x, y, mask);
 	} else {
-		return OS.gdk_window_get_pointer (window, x, y, mask);
+		return GDK.gdk_window_get_pointer (window, x, y, mask);
 	}
 }
 
 long /*int*/ gdk_device_get_window_at_position (int[] win_x, int[] win_y) {
-	if (OS.GTK3) {
-		long /*int*/ display = OS.gdk_display_get_default ();
-		long /*int*/ device_manager = OS.gdk_display_get_device_manager (display);
-		long /*int*/ device = OS.gdk_device_manager_get_client_pointer (device_manager);
-		return OS.gdk_device_get_window_at_position (device, win_x, win_y);
+	if (GTK.GTK3) {
+		long /*int*/ display = GDK.gdk_display_get_default ();
+		long /*int*/ device = GDK.gdk_get_pointer(display);
+		return GDK.gdk_device_get_window_at_position (device, win_x, win_y);
 	} else {
-		return OS.gdk_window_at_pointer (win_x, win_y);
+		return GDK.gdk_window_at_pointer (win_x, win_y);
 	}
 }
 
@@ -5907,5 +5971,14 @@ protected long /*int*/ gsettingsProc (long /*int*/ gobject, long /*int*/ arg1, l
 	return 0;
 }
 
-
+static int _getDeviceZoom (long /*int*/ monitor_num) {
+	long /*int*/ screen = GDK.gdk_screen_get_default ();
+	int dpi = (int) GDK.gdk_screen_get_resolution (screen);
+	if (dpi <= 0) dpi = 96; // gdk_screen_get_resolution returns -1 in case of error
+	if (GTK.GTK_VERSION > OS.VERSION (3, 9, 0)) {
+		int scale = GDK.gdk_screen_get_monitor_scale_factor (screen, (int) monitor_num);
+		dpi = dpi * scale;
+	}
+	return DPIUtil.mapDPIToZoom (dpi);
+}
 }

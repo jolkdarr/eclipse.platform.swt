@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2012 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,13 +7,15 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Martin Karpisek <martin.karpisek@gmail.com> - Bug 443250
  *******************************************************************************/
 package org.eclipse.swt.widgets;
 
 
-import org.eclipse.swt.internal.*;
-import org.eclipse.swt.internal.win32.*;
 import org.eclipse.swt.*;
+import org.eclipse.swt.internal.*;
+import org.eclipse.swt.internal.com.win32.*;
+import org.eclipse.swt.internal.win32.*;
 
 /**
  * Instances of this class allow the user to navigate
@@ -34,6 +36,15 @@ import org.eclipse.swt.*;
  * @noextend This class is not intended to be subclassed by clients.
  */
 public class DirectoryDialog extends Dialog {
+	static final byte[] CLSID_FileOpenDialog = new byte[16];
+	static final byte[] IID_IFileOpenDialog = new byte[16];
+	static final byte[] IID_IShellItem = new byte[16];
+	static {
+		OS.IIDFromString("{DC1C5A9C-E88A-4dde-A5A1-60F82A20AEF7}\0".toCharArray(), CLSID_FileOpenDialog); //$NON-NLS-1$
+		OS.IIDFromString("{d57c7288-d4ad-4768-be02-9d969532d960}\0".toCharArray(), IID_IFileOpenDialog); //$NON-NLS-1$
+		OS.IIDFromString("{43826d1e-e718-42ee-bc55-a1e261c37bfe}\0".toCharArray(), IID_IShellItem); //$NON-NLS-1$
+ 	}
+
 	String message = "", filterPath = "";  //$NON-NLS-1$//$NON-NLS-2$
 	String directoryPath;
 
@@ -100,7 +111,7 @@ long /*int*/ BrowseCallbackProc (long /*int*/ hwnd, long /*int*/ uMsg, long /*in
 		case OS.BFFM_VALIDATEFAILEDA:
 		case OS.BFFM_VALIDATEFAILEDW:
 			/* Use the character encoding for the default locale */
-			int length = OS.IsUnicode ? OS.wcslen (lParam) : OS.strlen (lParam);
+			int length = OS.wcslen (lParam);
 			TCHAR buffer = new TCHAR (0, length);
 			int byteCount = buffer.length () * TCHAR.sizeof;
 			OS.MoveMemory (buffer, lParam, byteCount);
@@ -145,9 +156,14 @@ public String getMessage () {
  *    <li>ERROR_THREAD_INVALID_ACCESS - if not called from the thread that created the dialog</li>
  * </ul>
  */
-public String open () {
-	if (OS.IsWinCE) error (SWT.ERROR_NOT_IMPLEMENTED);
+public String open() {
+	if (OS.WIN32_VERSION >= OS.VERSION (6, 0)) {
+		return openCommonItemDialog();
+	}
+	return openCommonFileDialog();
+}
 
+private String openCommonFileDialog () {
 	long /*int*/ hHeap = OS.GetProcessHeap ();
 
 	/* Get the owner HWND for the dialog */
@@ -215,21 +231,7 @@ public String open () {
 	int oldErrorMode = OS.SetErrorMode (OS.SEM_FAILCRITICALERRORS);
 
 	display.sendPreExternalEventDispatchEvent ();
-	/*
-	* Bug in Windows.  When a WH_MSGFILTER hook is used to run code
-	* during the message loop for SHBrowseForFolder(), running code
-	* in the hook can cause a GP.  Specifically, SetWindowText()
-	* for static controls seemed to make the problem happen.
-	* The fix is to disable async messages while the directory
-	* dialog is open.
-	*
-	* NOTE:  This only happens in versions of the comctl32.dll
-	* earlier than 6.0.
-	*/
-	boolean oldRunMessages = display.runMessages;
-	if (OS.COMCTL32_MAJOR < 6) display.runMessages = false;
 	long /*int*/ lpItemIdList = OS.SHBrowseForFolder (lpbi);
-	if (OS.COMCTL32_MAJOR < 6) display.runMessages = oldRunMessages;
 	display.sendPostExternalEventDispatchEvent ();
 	OS.SetErrorMode (oldErrorMode);
 
@@ -274,6 +276,67 @@ public String open () {
 	return directoryPath;
 }
 
+private String openCommonItemDialog() {
+	this.directoryPath = null;
+
+	long /*int*/ [] ppv = new long /*int*/ [1];
+	if (OS.CoCreateInstance(CLSID_FileOpenDialog, 0, OS.CLSCTX_INPROC_SERVER, IID_IFileOpenDialog, ppv) == OS.S_OK) {
+		long /*int*/ fileDialog = ppv[0];
+
+		int[] options = new int[1];
+		if ((OS.VtblCall(FileDialogVtbl.GET_OPTIONS, fileDialog, options)) == OS.S_OK) {
+			options[0] |= OS.FOS_PICKFOLDERS | OS.FOS_FORCEFILESYSTEM | OS.FOS_NOCHANGEDIR;
+
+			OS.VtblCall(FileDialogVtbl.SET_OPTIONS, fileDialog, options[0]);
+		}
+
+		if (title == null) title = "";
+		if (title.length() > 0) {
+			char[] buffer = new char[title.length() + 1];
+			title.getChars(0, title.length(), buffer, 0);
+			OS.VtblCall(FileDialogVtbl.SET_TITLE, fileDialog, buffer);
+		}
+
+		if (filterPath != null && filterPath.length() > 0) {
+			String path = filterPath.replace('/', '\\');
+			char[] buffer = new char[path.length() + 1];
+			path.getChars(0, path.length(), buffer, 0);
+			if (OS.SHCreateItemFromParsingName(buffer, 0, IID_IShellItem, ppv) == OS.S_OK) {
+				long /*int*/ psi = ppv[0];
+				/*
+				 * SetDefaultDirectory does not work if the dialog has
+				 * persisted recently used folder. The fix is to clear the
+				 * persisted data.
+				 */
+				OS.VtblCall(FileDialogVtbl.CLEAR_CLIENT_DATA, fileDialog);
+				OS.VtblCall(FileDialogVtbl.SET_DEFAULT_FOLDER, fileDialog, psi);
+				OS.VtblCall(FileDialogVtbl.RELEASE, psi);
+			}
+		}
+
+		long /*int*/ hwndOwner = parent.handle;
+		if (OS.VtblCall(FileDialogVtbl.SHOW, fileDialog, hwndOwner) == OS.S_OK) {
+			if (OS.VtblCall(FileDialogVtbl.GET_RESULT, fileDialog, ppv) == OS.S_OK) {
+				long /*int*/ psi = ppv[0];
+				if (OS.VtblCall(ShellItemVtbl.GET_DISPLAY_NAME, psi, OS.SIGDN_FILESYSPATH, ppv) == OS.S_OK) {
+					long /*int*/ wstr = ppv[0];
+					int length = OS.wcslen(wstr);
+					char[] buffer = new char[length];
+					OS.MoveMemory(buffer, wstr, length * 2);
+					OS.CoTaskMemFree(wstr);
+
+					directoryPath = new String(buffer);
+				}
+				OS.VtblCall(FileDialogVtbl.RELEASE, psi);
+			}
+		}
+
+		OS.VtblCall(FileDialogVtbl.RELEASE, fileDialog);
+	}
+
+	return directoryPath;
+}
+
 /**
  * Sets the path that the dialog will use to filter
  * the directories it shows to the argument, which may
@@ -295,6 +358,11 @@ public void setFilterPath (String string) {
  * Sets the dialog's message, which is a description of
  * the purpose for which it was opened. This message will be
  * visible on the dialog while it is open.
+ * <p>
+ * NOTE: This operation is a hint and is not supported on some platforms. For
+ * example, on Windows (Vista and later), the <code>DirectoryDialog</code>
+ * doesn't have any provision to set a message.
+ * </p>
  *
  * @param string the message
  *

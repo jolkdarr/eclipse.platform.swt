@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -352,12 +352,8 @@ private void drag(Event dragEvent) {
         * The fix is to force all paints to be delivered before
         * calling ImageList_DragEnter().
         */
-		if (OS.IsWinCE) {
-			OS.UpdateWindow (topControl.handle);
-		} else {
-			int flags = OS.RDW_UPDATENOW | OS.RDW_ALLCHILDREN;
-			OS.RedrawWindow (topControl.handle, null, 0, flags);
-		}
+		int flags = OS.RDW_UPDATENOW | OS.RDW_ALLCHILDREN;
+		OS.RedrawWindow (topControl.handle, null, 0, flags);
 		POINT pt = new POINT ();
 		pt.x = DPIUtil.autoScaleUp(dragEvent.x);// To Pixels
 		pt.y = DPIUtil.autoScaleUp(dragEvent.y);// To Pixels
@@ -428,7 +424,7 @@ private int EnumFormatEtc(int dwDirection, long /*int*/ ppenumFormatetc) {
 	}
 	enumFORMATETC.setFormats(formats);
 
-	OS.MoveMemory(ppenumFormatetc, new long /*int*/[] {enumFORMATETC.getAddress()}, OS.PTR_SIZEOF);
+	OS.MoveMemory(ppenumFormatetc, new long /*int*/[] {enumFORMATETC.getAddress()}, C.PTR_SIZEOF);
 	return COM.S_OK;
 }
 /**
@@ -644,18 +640,18 @@ private int QueryInterface(long /*int*/ riid, long /*int*/ ppvObject) {
 	COM.MoveMemory(guid, riid, GUID.sizeof);
 
 	if (COM.IsEqualGUID(guid, COM.IIDIUnknown) || COM.IsEqualGUID(guid, COM.IIDIDropSource)) {
-		OS.MoveMemory(ppvObject, new long /*int*/[] {iDropSource.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iDropSource.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
 
 	if (COM.IsEqualGUID(guid, COM.IIDIDataObject) ) {
-		OS.MoveMemory(ppvObject, new long /*int*/[] {iDataObject.getAddress()}, OS.PTR_SIZEOF);
+		OS.MoveMemory(ppvObject, new long /*int*/[] {iDataObject.getAddress()}, C.PTR_SIZEOF);
 		AddRef();
 		return COM.S_OK;
 	}
 
-	OS.MoveMemory(ppvObject, new long /*int*/[] {0}, OS.PTR_SIZEOF);
+	OS.MoveMemory(ppvObject, new long /*int*/[] {0}, C.PTR_SIZEOF);
 	return COM.E_NOINTERFACE;
 }
 
@@ -704,7 +700,7 @@ private int SetData(long /*int*/ pFormatetc, long /*int*/ pmedium, int fRelease)
 		COM.MoveMemory(stgmedium, pmedium,STGMEDIUM.sizeof);
 		//TODO - this should be GlobalLock()
 		long /*int*/[] ptrEffect = new long /*int*/[1];
-		OS.MoveMemory(ptrEffect, stgmedium.unionField, OS.PTR_SIZEOF);
+		OS.MoveMemory(ptrEffect, stgmedium.unionField, C.PTR_SIZEOF);
 		int[] effect = new int[1];
 		OS.MoveMemory(effect, ptrEffect[0], 4);
 		dataEffect = osToOp(effect[0]);

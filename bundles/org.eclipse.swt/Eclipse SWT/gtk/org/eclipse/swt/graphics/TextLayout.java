@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -78,9 +78,9 @@ public final class TextLayout extends Resource {
 public TextLayout (Device device) {
 	super(device);
 	device = this.device;
-	context = OS.gdk_pango_context_get();
+	context = GDK.gdk_pango_context_get();
 	if (context == 0) SWT.error(SWT.ERROR_NO_HANDLES);
-	OS.pango_context_set_language(context, OS.gtk_get_default_language());
+	OS.pango_context_set_language(context, GTK.gtk_get_default_language());
 	OS.pango_context_set_base_dir(context, OS.PANGO_DIRECTION_LTR);
 	layout = OS.pango_layout_new(context);
 	if (layout == 0) SWT.error(SWT.ERROR_NO_HANDLES);
@@ -179,7 +179,7 @@ void computeRuns () {
 			}
 		}
 	}
-	int strlen = OS.strlen(ptr);
+	int strlen = C.strlen(ptr);
 	Font defaultFont = font != null ? font : device.systemFont;
 	for (int i = 0; i < stylesCount - 1; i++) {
 		StyleItem styleItem = styles[i];
@@ -218,7 +218,7 @@ void computeRuns () {
 					if (style.foreground == null) {
 						// Bug 497071: use COLOR_LINK_FOREGROUND for StyledText links
 						long /*int*/ attr;
-						if (OS.GTK3) {
+						if (GTK.GTK3) {
 							GdkRGBA linkRGBA = device.getSystemColor(SWT.COLOR_LINK_FOREGROUND).handleRGBA;
 							// Manual conversion since PangoAttrColor is a special case.
 							// It uses GdkColor style colors but is supported on GTK3.
@@ -246,7 +246,7 @@ void computeRuns () {
 			OS.pango_attr_list_insert(attrList, attr);
 			OS.pango_attr_list_insert(selAttrList, OS.pango_attribute_copy(attr));
 			if (style.underlineColor != null) {
-				if (OS.GTK3) {
+				if (GTK.GTK3) {
 					GdkRGBA rgba = style.underlineColor.handleRGBA;
 					attr = OS.pango_attr_underline_color_new((short)(rgba.red * 0xFFFF),
 							(short)(rgba.green * 0xFFFF), (short)(rgba.blue * 0xFFFF));
@@ -273,7 +273,7 @@ void computeRuns () {
 			OS.pango_attr_list_insert(attrList, attr);
 			OS.pango_attr_list_insert(selAttrList, OS.pango_attribute_copy(attr));
 			if (style.strikeoutColor != null) {
-				if (OS.GTK3) {
+				if (GTK.GTK3) {
 					GdkRGBA rgba = style.strikeoutColor.handleRGBA;
 					attr = OS.pango_attr_strikethrough_color_new((short)(rgba.red * 0xFFFF),
 							(short)(rgba.green * 0xFFFF), (short)(rgba.blue * 0xFFFF));
@@ -294,7 +294,7 @@ void computeRuns () {
 		Color foreground = style.foreground;
 		if (foreground != null && !foreground.isDisposed()) {
 			long /*int*/ attr;
-			if (OS.GTK3) {
+			if (GTK.GTK3) {
 				GdkRGBA rgba = foreground.handleRGBA;
 				attr = OS.pango_attr_foreground_new((short)(rgba.red * 0xFFFF),
 						(short)(rgba.green * 0xFFFF), (short)(rgba.blue * 0xFFFF));
@@ -311,7 +311,7 @@ void computeRuns () {
 		Color background = style.background;
 		if (background != null && !background.isDisposed()) {
 			long /*int*/ attr;
-			if (OS.GTK3) {
+			if (GTK.GTK3) {
 				GdkRGBA rgba = background.handleRGBA;
 				attr = OS.pango_attr_background_new((short)(rgba.red * 0xFFFF),
 						(short)(rgba.green * 0xFFFF), (short)(rgba.blue * 0xFFFF));
@@ -500,7 +500,7 @@ void drawInPixels(GC gc, int x, int y, int selectionStart, int selectionEnd, Col
 		long /*int*/ iter = OS.pango_layout_get_iter(layout);
 		if (selectionBackground == null) selectionBackground = device.getSystemColor(SWT.COLOR_LIST_SELECTION);
 		Cairo.cairo_save(cairo);
-		if (OS.GTK3) {
+		if (GTK.GTK3) {
 			GdkRGBA rgba = selectionBackground.handleRGBA;
 			Cairo.cairo_set_source_rgba(cairo, rgba.red, rgba.green, rgba.blue, rgba.alpha);
 		} else {
@@ -577,7 +577,7 @@ void drawInPixels(GC gc, int x, int y, int selectionStart, int selectionEnd, Col
 				Cairo.cairo_scale(cairo, -1,  1);
 				Cairo.cairo_translate(cairo, -2 * x - width(), 0);
 			}
-			drawWithCairo(gc, x, y, 0, OS.strlen(ptr), fullSelection, selectionForeground, selectionBackground);
+			drawWithCairo(gc, x, y, 0, C.strlen(ptr), fullSelection, selectionForeground, selectionBackground);
 			if ((data.style & SWT.MIRRORED) != 0) {
 				Cairo.cairo_restore(cairo);
 			}
@@ -585,7 +585,7 @@ void drawInPixels(GC gc, int x, int y, int selectionStart, int selectionEnd, Col
 			long /*int*/ ptr = OS.pango_layout_get_text(layout);
 			int byteSelStart = (int)/*64*/(OS.g_utf16_offset_to_pointer(ptr, selectionStart) - ptr);
 			int byteSelEnd = (int)/*64*/(OS.g_utf16_offset_to_pointer(ptr, selectionEnd + 1) - ptr);
-			int strlen = OS.strlen(ptr);
+			int strlen = C.strlen(ptr);
 			byteSelStart = Math.min(byteSelStart, strlen);
 			byteSelEnd = Math.min(byteSelEnd, strlen);
 			if ((data.style & SWT.MIRRORED) != 0) {
@@ -614,19 +614,19 @@ void drawWithCairo(GC gc, int x, int y, int start, int end, boolean fullSelectio
 		drawBorder(gc, x, y, null);
 	}
 	int[] ranges = new int[]{start, end};
-	long /*int*/ rgn = OS.gdk_pango_layout_get_clip_region(layout, x, y, ranges, ranges.length / 2);
+	long /*int*/ rgn = GDK.gdk_pango_layout_get_clip_region(layout, x, y, ranges, ranges.length / 2);
 	if (rgn != 0) {
-		OS.gdk_cairo_region(cairo, rgn);
+		GDK.gdk_cairo_region(cairo, rgn);
 		Cairo.cairo_clip(cairo);
-		if (OS.GTK3) {
+		if (GTK.GTK3) {
 			Cairo.cairo_set_source_rgba(cairo, bg.handleRGBA.red, bg.handleRGBA.green, bg.handleRGBA.blue, bg.handleRGBA.alpha);
 		} else {
 			Cairo.cairo_set_source_rgba(cairo, (bg.handle.red & 0xFFFF) / (float)0xFFFF, (bg.handle.green & 0xFFFF) / (float)0xFFFF, (bg.handle.blue & 0xFFFF) / (float)0xFFFF, data.alpha / (float)0xFF);
 		}
 		Cairo.cairo_paint(cairo);
-		OS.gdk_region_destroy(rgn);
+		GDK.gdk_region_destroy(rgn);
 	}
-	if (OS.GTK3) {
+	if (GTK.GTK3) {
 		Cairo.cairo_set_source_rgba(cairo, fg.handleRGBA.red, fg.handleRGBA.green, fg.handleRGBA.blue, fg.handleRGBA.alpha);
 	} else {
 		Cairo.cairo_set_source_rgba(cairo, (fg.handle.red & 0xFFFF) / (float)0xFFFF, (fg.handle.green & 0xFFFF) / (float)0xFFFF, (fg.handle.blue & 0xFFFF) / (float)0xFFFF, data.alpha / (float)0xFF);
@@ -661,7 +661,7 @@ void drawBorder(GC gc, int x, int y, Color selectionColor) {
 			int byteStart = (int)/*64*/(OS.g_utf16_offset_to_pointer(ptr, start) - ptr);
 			int byteEnd = (int)/*64*/(OS.g_utf16_offset_to_pointer(ptr, end + 1) - ptr);
 			int[] ranges = new int[]{byteStart, byteEnd};
-			long /*int*/ rgn = OS.gdk_pango_layout_get_clip_region(layout, x, y, ranges, ranges.length / 2);
+			long /*int*/ rgn = GDK.gdk_pango_layout_get_clip_region(layout, x, y, ranges, ranges.length / 2);
 			if (rgn != 0) {
 				int[] nRects = new int[1];
 				long /*int*/[] rects = new long /*int*/[1];
@@ -669,7 +669,7 @@ void drawBorder(GC gc, int x, int y, Color selectionColor) {
 				GdkRectangle rect = new GdkRectangle();
 				GdkRGBA colorRGBA = null;
 				GdkColor color = null;
-				if (OS.GTK3) {
+				if (GTK.GTK3) {
 					if (colorRGBA == null && style.borderColor != null) colorRGBA = style.borderColor.handleRGBA;
 					if (colorRGBA == null && selectionColor != null) colorRGBA = selectionColor.handleRGBA;
 					if (colorRGBA == null && style.foreground != null) colorRGBA = style.foreground.handleRGBA;
@@ -687,7 +687,7 @@ void drawBorder(GC gc, int x, int y, Color selectionColor) {
 					case SWT.BORDER_DASH: dashes = width != 0 ? GC.LINE_DASH : GC.LINE_DASH_ZERO; break;
 					case SWT.BORDER_DOT: dashes = width != 0 ? GC.LINE_DOT : GC.LINE_DOT_ZERO; break;
 				}
-				if (OS.GTK3) {
+				if (GTK.GTK3) {
 					Cairo.cairo_set_source_rgba(cairo, colorRGBA.red, colorRGBA.green, colorRGBA.blue, colorRGBA.alpha);
 				} else {
 					Cairo.cairo_set_source_rgba(cairo, (color.red & 0xFFFF) / (float)0xFFFF, (color.green & 0xFFFF) / (float)0xFFFF, (color.blue & 0xFFFF) / (float)0xFFFF, data.alpha / (float)0xFF);
@@ -708,7 +708,7 @@ void drawBorder(GC gc, int x, int y, Color selectionColor) {
 				}
 				Cairo.cairo_stroke(cairo);
 				if (rects[0] != 0) OS.g_free(rects[0]);
-				OS.gdk_region_destroy(rgn);
+				GDK.gdk_region_destroy(rgn);
 			}
 		}
 	}
@@ -841,11 +841,11 @@ Rectangle getBoundsInPixels(int start, int end) {
 	long /*int*/ ptr = OS.pango_layout_get_text(layout);
 	int byteStart = (int)/*64*/(OS.g_utf16_offset_to_pointer (ptr, start) - ptr);
 	int byteEnd = (int)/*64*/(OS.g_utf16_offset_to_pointer (ptr, end + 1) - ptr);
-	int strlen = OS.strlen(ptr);
+	int strlen = C.strlen(ptr);
 	byteStart = Math.min(byteStart, strlen);
 	byteEnd = Math.min(byteEnd, strlen);
 	int[] ranges = new int[]{byteStart, byteEnd};
-	long /*int*/ clipRegion = OS.gdk_pango_layout_get_clip_region(layout, 0, 0, ranges, 1);
+	long /*int*/ clipRegion = GDK.gdk_pango_layout_get_clip_region(layout, 0, 0, ranges, 1);
 	if (clipRegion == 0) return new Rectangle(0, 0, 0, 0);
 	GdkRectangle rect = new GdkRectangle();
 
@@ -857,7 +857,7 @@ Rectangle getBoundsInPixels(int start, int end) {
 	PangoRectangle pangoRect = new PangoRectangle();
 	long /*int*/ iter = OS.pango_layout_get_iter(layout);
 	if (iter == 0) SWT.error(SWT.ERROR_NO_HANDLES);
-	long /*int*/ linesRegion = OS.gdk_region_new();
+	long /*int*/ linesRegion = GDK.gdk_region_new();
 	if (linesRegion == 0) SWT.error(SWT.ERROR_NO_HANDLES);
 	int lineEnd = 0;
 	do {
@@ -872,14 +872,14 @@ Rectangle getBoundsInPixels(int start, int end) {
 		rect.y = OS.PANGO_PIXELS(pangoRect.y);
 		rect.width = OS.PANGO_PIXELS(pangoRect.width);
 		rect.height = OS.PANGO_PIXELS(pangoRect.height);
-		OS.gdk_region_union_with_rect(linesRegion, rect);
+		GDK.gdk_region_union_with_rect(linesRegion, rect);
 	} while (lineEnd + 1 <= byteEnd);
-	OS.gdk_region_intersect(clipRegion, linesRegion);
-	OS.gdk_region_destroy(linesRegion);
+	GDK.gdk_region_intersect(clipRegion, linesRegion);
+	GDK.gdk_region_destroy(linesRegion);
 	OS.pango_layout_iter_free(iter);
 
-	OS.gdk_region_get_clipbox(clipRegion, rect);
-	OS.gdk_region_destroy(clipRegion);
+	GDK.gdk_region_get_clipbox(clipRegion, rect);
+	GDK.gdk_region_destroy(clipRegion);
 	if (OS.pango_context_get_base_dir(context) == OS.PANGO_DIRECTION_RTL) {
 		rect.x = width() - rect.x - rect.width;
 	}
@@ -984,7 +984,7 @@ public int getLevel(int offset) {
 	PangoLayoutRun run = new PangoLayoutRun();
 	long /*int*/ ptr = OS.pango_layout_get_text(layout);
 	long /*int*/ byteOffset = OS.g_utf16_offset_to_pointer(ptr, offset) - ptr;
-	int strlen = OS.strlen(ptr);
+	int strlen = C.strlen(ptr);
 	byteOffset = Math.min(byteOffset, strlen);
 	do {
 		long /*int*/ runPtr = OS.pango_layout_iter_get_run(iter);
@@ -1082,7 +1082,7 @@ public int getLineIndex(int offset) {
 	int line = 0;
 	long /*int*/ ptr = OS.pango_layout_get_text(layout);
 	long /*int*/ byteOffset = OS.g_utf16_offset_to_pointer(ptr,offset) - ptr;
-	int strlen = OS.strlen(ptr);
+	int strlen = C.strlen(ptr);
 	byteOffset = Math.min(byteOffset, strlen);
 	long /*int*/ iter = OS.pango_layout_get_iter(layout);
 	if (iter == 0) SWT.error(SWT.ERROR_NO_HANDLES);
@@ -1193,7 +1193,7 @@ Point getLocationInPixels(int offset, boolean trailing) {
 	offset = translateOffset(offset);
 	long /*int*/ ptr = OS.pango_layout_get_text(layout);
 	int byteOffset = (int)/*64*/(OS.g_utf16_offset_to_pointer(ptr, offset) - ptr);
-	int strlen = OS.strlen(ptr);
+	int strlen = C.strlen(ptr);
 	byteOffset = Math.min(byteOffset, strlen);
 	PangoRectangle pos = new PangoRectangle();
 	OS.pango_layout_index_to_pos(layout, byteOffset, pos);
@@ -2330,6 +2330,27 @@ int width () {
 	int[] w = new int[1], h = new int[1];
 	OS.pango_layout_get_pixel_size(layout, w, h);
 	return w[0];
+}
+
+/**
+ * Sets Default Tab Width in terms if number of space characters.
+ *
+ * @param tabLength in number of characters
+ *
+ * @exception IllegalArgumentException <ul>
+ *    <li>ERROR_INVALID_ARGUMENT - if the tabLength is less than <code>0</code></li>
+ * </ul>
+ * @exception SWTException <ul>
+ *    <li>ERROR_GRAPHIC_DISPOSED - if the receiver has been disposed</li>
+ * </ul>
+ * 
+ * @noreference This method is not intended to be referenced by clients. 
+ * 
+ * DO NOT USE This might be removed in 4.8
+ * @since 3.107
+ */
+public void setDefaultTabWidth(int tabLength) {
+	//unused in GTK
 }
 
 }

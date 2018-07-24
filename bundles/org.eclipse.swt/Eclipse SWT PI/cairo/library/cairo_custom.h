@@ -22,8 +22,6 @@
 /* Libraries for dynamic loaded functions */
 #ifdef AIX
 #define LIB_CAIRO "libcairo.a(libcairo.so.2)"
-#elif HPUX
-#define LIB_CAIRO "libcairo.so"
 #elif _WIN32
 #define LIB_CAIRO "libcairo-2.dll"
 #else
@@ -33,7 +31,11 @@
 #define cairo_pdf_surface_set_size_LIB LIB_CAIRO
 #define cairo_ps_surface_set_size_LIB LIB_CAIRO
 #define cairo_region_num_rectangles_LIB LIB_CAIRO
+#define cairo_region_contains_point_LIB LIB_CAIRO
+#define cairo_region_copy_LIB LIB_CAIRO
 #define cairo_region_get_rectangle_LIB LIB_CAIRO
+#define cairo_surface_set_device_scale_LIB LIB_CAIRO
+#define cairo_surface_get_device_scale_LIB LIB_CAIRO
 
 #ifdef CAIRO_HAS_XLIB_SURFACE
 #define cairo_xlib_surface_get_height_LIB LIB_CAIRO

@@ -20,6 +20,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.DeviceData;
 import org.eclipse.swt.graphics.Font;
@@ -217,7 +219,7 @@ public void test_getActiveShell() {
 		Shell shell = new Shell(display);
 		shell.setText("test_getActiveShell");
 		shell.open();
-		drainEventQueue(display, 150); // workaround for https://bugs.eclipse.org/506680
+		drainEventQueue(display, 2000); // workaround for https://bugs.eclipse.org/506680
 		assertSame(shell, display.getActiveShell());
 		shell.dispose();
 	} finally {
@@ -414,14 +416,14 @@ public void test_getSyncThread() {
 
 			// Create a runnable and invoke with asyncExec to verify that
 			// the syncThread is null while it's running.
-			final boolean[] asyncExecRan = new boolean[] {false};
+			AtomicBoolean asyncExecRan = new AtomicBoolean(false);
 			display.asyncExec(() -> {
 				assertNull(display.getSyncThread());
-				asyncExecRan[0] = true;
+				asyncExecRan.set(true);
 			});
 
 			try {
-				while (!asyncExecRan[0]) {
+				while (!asyncExecRan.get()) {
 					Thread.sleep(100);
 				}
 			} catch (InterruptedException ex) {
@@ -1189,9 +1191,9 @@ public void test_setCursorLocationII() {
 		display.setCursorLocation(location.x, location.y); // don't put cursor into a corner, since that could trigger special platform events
 		drainEventQueue(display, 150); // workaround for https://bugs.eclipse.org/492569
 		Point actual = display.getCursorLocation();
-		if (!BUG_492569) {
+		if (!BUG_492569 && SwtTestUtil.isX11) {
 			if (!location.equals(actual)) {
-				Screenshots.takeScreenshot(getClass(), testName.getMethodName());
+				Screenshots.takeScreenshot(getClass(), testName.getMethodName()); // Bug 528968 This call causes crash on Wayland.
 				fail("\nExpected:"+location.toString()+"  Actual:"+actual.toString());
 			}
 		} else {
@@ -1221,9 +1223,9 @@ public void test_setCursorLocationLorg_eclipse_swt_graphics_Point() {
 		}
 		drainEventQueue(display, 150); // workaround for https://bugs.eclipse.org/492569
 		Point actual = display.getCursorLocation();
-		if (!BUG_492569) {
+		if (!BUG_492569 && SwtTestUtil.isX11) {
 			if (!location.equals(actual)) {
-				Screenshots.takeScreenshot(getClass(), testName.getMethodName());
+				Screenshots.takeScreenshot(getClass(), testName.getMethodName()); // Bug 528968 This call causes crash on Wayland.
 				fail("\nExpected:"+location.toString()+"  Actual:"+actual.toString());
 			}
 		} else {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2004, 2015 IBM Corporation and others.
+ * Copyright (c) 2004, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,10 +11,10 @@
 package org.eclipse.swt.tools.internal;
 
 import java.io.*;
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.zip.*;
 
+import org.eclipse.jdt.core.dom.*;
 import org.eclipse.swt.*;
 
 public class JNIGeneratorApp {
@@ -259,14 +259,14 @@ public void generate(ProgressMonitor progress) {
 	this.progress = null;
 }
 
-String getPackageName(String className) {
+String getPackageName() {
 	int dot = mainClassName.lastIndexOf('.');
 	if (dot == -1) return "";
 	return mainClassName.substring(0, dot);
 }
 
-String[] getClassNames(String mainClassName) {
-	String pkgName = getPackageName(mainClassName);
+String[] getClassNames() {
+	String pkgName = getPackageName();
 	String classpath = getClasspath();
 	if (classpath == null) classpath = System.getProperty("java.class.path");
 	String pkgPath = pkgName.replace('.', File.separatorChar);
@@ -296,6 +296,9 @@ String[] getClassNames(String mainClassName) {
 			File file = new File(path + File.separator + pkgPath);
 			if (file.exists()) {
 				String[] entries = file.list();
+				if(entries == null) {
+					entries = new String[0];
+				}
 				for (int i = 0; i < entries.length; i++) {
 					String entry = entries[i];
 					File f = new File(file, entry);
@@ -317,9 +320,9 @@ public JNIClass[] getClasses() {
 	if (classes != null) return classes;
 	if (mainClassName == null) return new JNIClass[0];
 	if (USE_AST) return getASTClasses();
-	String[] classNames = getClassNames(mainClassName);
+	String[] classNames = getClassNames();
 	Arrays.sort(classNames);
-	String packageName = getPackageName(mainClassName);
+	String packageName = getPackageName();
 	JNIClass[] classes = new JNIClass[classNames.length];
 	for (int i = 0; i < classNames.length; i++) {
 		String className = classNames[i];
@@ -345,9 +348,12 @@ JNIClass[] getASTClasses() {
 	String root = classesDir != null ? classesDir : new File(outputDir).getParent() + "/";
 	String mainPath = new File(root + mainClassName.replace('.', '/') + ".java").getAbsolutePath();
 	List<JNIClass> classes = new ArrayList<>();
-	String packageName = getPackageName(mainClassName);
+	String packageName = getPackageName();
 	File dir = new File(root + "/" + packageName.replace('.', '/'));
 	File[] files = dir.listFiles();
+	if (files == null) {
+		files = new File[0];
+	}
 	for (int i = 0; i < files.length; i++) {
 		File file = files[i];
 		try {
@@ -356,7 +362,13 @@ JNIClass[] getASTClasses() {
 				if (mainPath.equals(path)){
 					classes.add(mainClass);
 				} else {
-					classes.add(new ASTClass(path, metaData));
+					try {
+						classes.add(new ASTClass(path, metaData));
+					} catch (ClassCastException cce) {
+						if (cce.getMessage().startsWith(EnumDeclaration.class.getName())) {
+							// this can be ignored since enums don't affect native files
+						}
+					}
 				}
 			}
 		} catch (Exception e) {

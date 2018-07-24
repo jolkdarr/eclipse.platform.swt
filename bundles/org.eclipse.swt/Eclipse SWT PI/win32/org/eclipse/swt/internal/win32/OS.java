@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
+ *     Martin Karpisek <martin.karpisek@gmail.com> - Bug 443250
  *******************************************************************************/
 package org.eclipse.swt.internal.win32;
 
@@ -21,197 +22,47 @@ public class OS extends C {
 	/*
 	* SWT Windows flags
 	*/
-	public static final boolean IsWin32s;
-	public static final boolean IsWin95;
-	public static final boolean IsWinNT;
-	public static final boolean IsWinCE;
-	public static final boolean IsPPC;
-	public static final boolean IsHPC;
-	public static final boolean IsSP;
 	public static final boolean IsDBLocale;
-	public static final boolean IsUnicode;
-	public static final int WIN32_MAJOR, WIN32_MINOR, WIN32_VERSION;
-	public static final int COMCTL32_MAJOR, COMCTL32_MINOR, COMCTL32_VERSION;
-	public static final int SHELL32_MAJOR, SHELL32_MINOR, SHELL32_VERSION;
+	public static final boolean IsUnicode = true;
+	public static final int WIN32_VERSION;
 
 	public static final String NO_MANIFEST = "org.eclipse.swt.internal.win32.OS.NO_MANIFEST";
 
-	/*
-	* Flags for Window API GetVersionEx()
-	*/
-	public static final int VER_PLATFORM_WIN32s = 0;
-	public static final int VER_PLATFORM_WIN32_WINDOWS = 1;
-	public static final int VER_PLATFORM_WIN32_NT = 2;
-	public static final int VER_PLATFORM_WIN32_CE = 3;
-
 	/* Forward references */
-	public static final int HEAP_ZERO_MEMORY = 0x8;
 	public static final int ACTCTX_FLAG_RESOURCE_NAME_VALID = 0x00000008;
 	public static final int ACTCTX_FLAG_SET_PROCESS_DEFAULT = 0x00000010;
+	public static final int ACTCTX_FLAG_HMODULE_VALID = 0x00000080;
 	public static final int MANIFEST_RESOURCE_ID = 2;
-	public static final int SM_DBCSENABLED = 0x2A;
 	public static final int SM_IMMENABLED = 0x52;
-	public static final int LANG_KOREAN = 0x12;
-	public static final int LANG_JAPANESE = 0x11;
-	public static final int MAX_PATH = 260;
 
-	/* Get the Windows version and the flags */
 	static {
-		/*
-		* Try the UNICODE version of GetVersionEx first
-		* and then the ANSI version.  The UNICODE version
-		* is present on all versions of Windows but is not
-		* implemented on Win95/98/ME.
-		*
-		* NOTE: The value of OSVERSIONINFO.sizeof cannot
-		* be static final because it relies on the Windows
-		* platform version to be initialized and IsUnicode
-		* has not been calculated.  It must be initialized
-		* here, after the platform is determined in order
-		* for the value to be correct.
-		*/
-		OSVERSIONINFO info = new OSVERSIONINFOW ();
-		info.dwOSVersionInfoSize = OSVERSIONINFOW.sizeof;
-		if (!OS.GetVersionExW ((OSVERSIONINFOW)info)) {
-			info = new OSVERSIONINFOA ();
-			info.dwOSVersionInfoSize = OSVERSIONINFOA.sizeof;
-			OS.GetVersionExA ((OSVERSIONINFOA)info);
-		}
-		OSVERSIONINFO.sizeof = info.dwOSVersionInfoSize;
-
-		IsWin32s = info.dwPlatformId == VER_PLATFORM_WIN32s;
-		IsWin95 = info.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS;
-		IsWinNT = info.dwPlatformId == VER_PLATFORM_WIN32_NT;
-		IsWinCE = info.dwPlatformId == VER_PLATFORM_WIN32_CE;
-		IsSP = IsSP();
-		IsPPC = IsPPC();
-		IsHPC = IsWinCE && !IsPPC && !IsSP;
-		WIN32_MAJOR = info.dwMajorVersion;
-		WIN32_MINOR = info.dwMinorVersion;
-		WIN32_VERSION = VERSION (WIN32_MAJOR, WIN32_MINOR);
-		IsUnicode = !IsWin32s && !IsWin95;
+		/* Get the Windows version */
+		int dwVersion = OS.GetVersion ();
+		WIN32_VERSION = VERSION (dwVersion & 0xff, (dwVersion >> 8) & 0xff);
 
 		/* Load the manifest to force the XP Theme */
 		if (System.getProperty (NO_MANIFEST) == null) {
-			if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (5, 1)) {
-				TCHAR buffer = new TCHAR (0, MAX_PATH);
-				long /*int*/ hModule = OS.GetLibraryHandle ();
-				while (OS.GetModuleFileName (hModule, buffer, buffer.length ()) == buffer.length ()) {
-					buffer = new TCHAR (0, buffer.length () + MAX_PATH);
-				}
-				long /*int*/ hHeap = OS.GetProcessHeap ();
-				int byteCount = buffer.length () * (OS.IsUnicode ? 2 : 1);
-				long /*int*/ pszText = OS.HeapAlloc (hHeap, HEAP_ZERO_MEMORY, byteCount);
-				OS.MoveMemory (pszText, buffer, byteCount);
-				ACTCTX pActCtx = new ACTCTX ();
-				pActCtx.cbSize = ACTCTX.sizeof;
-				pActCtx.dwFlags = ACTCTX_FLAG_RESOURCE_NAME_VALID | ACTCTX_FLAG_SET_PROCESS_DEFAULT;
-				pActCtx.lpSource = pszText;
-				pActCtx.lpResourceName = MANIFEST_RESOURCE_ID;
-				long /*int*/ hActCtx = OS.CreateActCtx (pActCtx);
-				if (pszText != 0) OS.HeapFree (hHeap, 0, pszText);
-				long /*int*/ [] lpCookie = new long /*int*/ [1];
-				OS.ActivateActCtx (hActCtx, lpCookie);
-				/*
-				* NOTE:  A single activation context is created and activated
-				* for the entire lifetime of the program.  It is deactivated
-				* and released by Windows when the program exits.
-				*/
-			}
+			ACTCTX pActCtx = new ACTCTX ();
+			pActCtx.cbSize = ACTCTX.sizeof;
+			pActCtx.dwFlags = ACTCTX_FLAG_RESOURCE_NAME_VALID | ACTCTX_FLAG_HMODULE_VALID | ACTCTX_FLAG_SET_PROCESS_DEFAULT;
+			pActCtx.hModule = OS.GetLibraryHandle ();
+			pActCtx.lpResourceName = MANIFEST_RESOURCE_ID;
+			long /*int*/ hActCtx = OS.CreateActCtx (pActCtx);
+			long /*int*/ [] lpCookie = new long /*int*/ [1];
+			OS.ActivateActCtx (hActCtx, lpCookie);
+			/*
+			* NOTE:  A single activation context is created and activated
+			* for the entire lifetime of the program.  It is deactivated
+			* and released by Windows when the program exits.
+			*/
 		}
 
 		/* Make the process DPI aware for Windows Vista */
-		if (!OS.IsWinCE && OS.WIN32_VERSION >= OS.VERSION (6, 0)) OS.SetProcessDPIAware ();
+		OS.SetProcessDPIAware ();
 
 		/* Get the DBCS flag */
-		boolean dbcsEnabled = OS.GetSystemMetrics (SM_DBCSENABLED) != 0;
-		boolean immEnabled = OS.GetSystemMetrics (SM_IMMENABLED) != 0;
-		IsDBLocale = dbcsEnabled || immEnabled;
-
-		/*
-		* Bug in Windows.  On Korean Windows XP when the Text
-		* Services Framework support for legacy applications
-		* is enabled, certain legacy calls segment fault.
-		* For example, when ImmSetCompositionWindow() is used
-		* to move the composition window outside of the client
-		* area, Windows crashes.  The fix is to disable legacy
-		* support.
-		*
-		* Note: The bug is fixed in Service Pack 2.
-		*/
-		if (!OS.IsWinCE && OS.WIN32_VERSION == OS.VERSION (5, 1)) {
-			short langID = OS.GetSystemDefaultUILanguage ();
-			short primaryLang = OS.PRIMARYLANGID (langID);
-			if (primaryLang == LANG_KOREAN) {
-				OSVERSIONINFOEX infoex = IsUnicode ? (OSVERSIONINFOEX)new OSVERSIONINFOEXW () : (OSVERSIONINFOEX)new OSVERSIONINFOEXA ();
-				infoex.dwOSVersionInfoSize = OSVERSIONINFOEX.sizeof;
-				GetVersionEx (infoex);
-				if (infoex.wServicePackMajor < 2) {
-					OS.ImmDisableTextFrameService (0);
-				}
-			}
-		}
+		IsDBLocale = OS.GetSystemMetrics (SM_IMMENABLED) != 0;
 	}
-
-	/* Get the COMCTL32.DLL version */
-	static {
-		DLLVERSIONINFO dvi = new DLLVERSIONINFO ();
-		dvi.cbSize = DLLVERSIONINFO.sizeof;
-		dvi.dwMajorVersion = 4;
-		dvi.dwMinorVersion = 0;
-		TCHAR lpLibFileName = new TCHAR (0, "comctl32.dll", true); //$NON-NLS-1$
-		long /*int*/ hModule = OS.LoadLibrary (lpLibFileName);
-		if (hModule != 0) {
-			String name = "DllGetVersion\0"; //$NON-NLS-1$
-			byte [] lpProcName = new byte [name.length ()];
-			for (int i=0; i<lpProcName.length; i++) {
-				lpProcName [i] = (byte) name.charAt (i);
-			}
-			long /*int*/ DllGetVersion = OS.GetProcAddress (hModule, lpProcName);
-			if (DllGetVersion != 0) OS.Call (DllGetVersion, dvi);
-			OS.FreeLibrary (hModule);
-		}
-		COMCTL32_MAJOR = dvi.dwMajorVersion;
-		COMCTL32_MINOR = dvi.dwMinorVersion;
-		COMCTL32_VERSION = VERSION (COMCTL32_MAJOR, COMCTL32_MINOR);
-	}
-
-	/* Get the Shell32.DLL version */
-	static {
-		DLLVERSIONINFO dvi = new DLLVERSIONINFO ();
-		dvi.cbSize = DLLVERSIONINFO.sizeof;
-		dvi.dwMajorVersion = 4;
-		TCHAR lpLibFileName = new TCHAR (0, "Shell32.dll", true); //$NON-NLS-1$
-		long /*int*/ hModule = OS.LoadLibrary (lpLibFileName);
-		if (hModule != 0) {
-			String name = "DllGetVersion\0"; //$NON-NLS-1$
-			byte [] lpProcName = new byte [name.length ()];
-			for (int i=0; i<lpProcName.length; i++) {
-				lpProcName [i] = (byte) name.charAt (i);
-			}
-			long /*int*/ DllGetVersion = OS.GetProcAddress (hModule, lpProcName);
-			if (DllGetVersion != 0) OS.Call (DllGetVersion, dvi);
-			OS.FreeLibrary (hModule);
-		}
-		SHELL32_MAJOR = dvi.dwMajorVersion;
-		SHELL32_MINOR = dvi.dwMinorVersion;
-		SHELL32_VERSION = VERSION (SHELL32_MAJOR, SHELL32_MINOR);
-	}
-
-	/* Flag used on WinCE */
-	static final int SYS_COLOR_INDEX_FLAG = OS.IsWinCE ? 0x40000000 : 0x0;
-
-	/*
-	* NOTE:  There is a bug in JVM 1.2 where loading
-	* a class with a large number of constants causes
-	* a segment fault to occur sometime later after
-	* the class is loaded.  The fix is to break the
-	* class up into a hierarchy of classes that each
-	* contain a smaller number of constants.  This
-	* fix is not necessary at this time but is required
-	* when all constants are uncommented.  We have not
-	* done the research to determine the limit.
-	*/
 
 	/* Constants */
 	public static final int ABS_DOWNDISABLED = 8;
@@ -232,8 +83,6 @@ public class OS extends C {
 	public static final int ABS_UPPRESSED = 3;
 	public static final int AC_SRC_OVER = 0;
 	public static final int AC_SRC_ALPHA = 1;
-//	public static final int ACTCTX_FLAG_RESOURCE_NAME_VALID = 0x00000008;
-//	public static final int ACTCTX_FLAG_SET_PROCESS_DEFAULT = 0x00000010;
 	public static final int ALTERNATE = 1;
 	public static final int ASSOCF_NOTRUNCATE = 0x00000020;
 	public static final int ASSOCF_INIT_IGNOREUNKNOWN = 0x400;
@@ -241,15 +90,6 @@ public class OS extends C {
 	public static final int ASSOCSTR_DEFAULTICON = 15;
 	public static final int ASSOCSTR_FRIENDLYAPPNAME = 4;
 	public static final int ASSOCSTR_FRIENDLYDOCNAME = 3;
-	public static final int AW_SLIDE = 0x00040000;
-	public static final int AW_ACTIVATE = 0x00020000;
-	public static final int AW_BLEND = 0x00080000;
-	public static final int AW_HIDE = 0x00010000;
-	public static final int AW_CENTER = 0x00000010;
-	public static final int AW_HOR_POSITIVE = 0x00000001;
-	public static final int AW_HOR_NEGATIVE = 0x00000002;
-	public static final int AW_VER_POSITIVE = 0x00000004;
-	public static final int AW_VER_NEGATIVE = 0x00000008;
 	public static final int ATTR_INPUT = 0x00;
 	public static final int ATTR_TARGET_CONVERTED = 0x01;
 	public static final int ATTR_CONVERTED = 0x02;
@@ -272,7 +112,7 @@ public class OS extends C {
 	public static final int BDR_RAISED = 0x0005;
 	public static final int BDR_SUNKEN = 0x000a;
 	public static final int BFFM_INITIALIZED = 0x1;
-	public static final int BFFM_SETSELECTION = IsUnicode ? 0x467 : 0x466;
+	public static final int BFFM_SETSELECTION = 0x467;
 	public static final int BFFM_VALIDATEFAILED = IsUnicode ? 0x4 : 0x3;
 	public static final int BFFM_VALIDATEFAILEDW = 0x4;
 	public static final int BFFM_VALIDATEFAILEDA = 0x3;
@@ -389,10 +229,6 @@ public class OS extends C {
 	public static final int CB_SETHORIZONTALEXTENT = 0x015e;
 	public static final int CB_SETITEMHEIGHT = 0x0153;
 	public static final int CB_SHOWDROPDOWN = 0x14f;
-	public static final int CBXS_NORMAL = 1;
-	public static final int CBXS_HOT = 2;
-	public static final int CBXS_PRESSED = 3;
-	public static final int CBXS_DISABLED = 4;
 	public static final int CCHDEVICENAME = 32;
 	public static final int CCHFORMNAME = 32;
 	public static final int CCHILDREN_SCROLLBAR = 5;
@@ -471,41 +307,39 @@ public class OS extends C {
 	public static final int CSIDL_APPDATA = 0x1a;
 	public static final int CSIDL_LOCAL_APPDATA = 0x1c;
 	public static final int COLORONCOLOR = 0x3;
-	public static final int COLOR_3DDKSHADOW = 0x15 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_3DFACE = 0xf | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_3DHIGHLIGHT = 0x14 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_3DHILIGHT = 0x14 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_3DLIGHT = 0x16 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_3DSHADOW = 0x10 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_ACTIVECAPTION = 0x2 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_BTNFACE = 0xf | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_BTNHIGHLIGHT = 0x14 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_BTNSHADOW = 0x10 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_BTNTEXT = 0x12 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_CAPTIONTEXT = 0x9 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_GRADIENTACTIVECAPTION = 0x1b | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_GRADIENTINACTIVECAPTION = 0x1c | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_GRAYTEXT = 0x11 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_HIGHLIGHT = 0xd | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_HIGHLIGHTTEXT = 0xe | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_HOTLIGHT = 26 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_INACTIVECAPTION = 0x3 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_INACTIVECAPTIONTEXT = 0x13 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_INFOBK = 0x18 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_INFOTEXT = 0x17 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_MENU = 0x4 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_MENUTEXT = 0x7 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_SCROLLBAR = 0x0 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_WINDOW = 0x5 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_WINDOWFRAME = 0x6 | SYS_COLOR_INDEX_FLAG;
-	public static final int COLOR_WINDOWTEXT = 0x8 | SYS_COLOR_INDEX_FLAG;
+	public static final int COLOR_3DDKSHADOW = 0x15;
+	public static final int COLOR_3DFACE = 0xf;
+	public static final int COLOR_3DHIGHLIGHT = 0x14;
+	public static final int COLOR_3DHILIGHT = 0x14;
+	public static final int COLOR_3DLIGHT = 0x16;
+	public static final int COLOR_3DSHADOW = 0x10;
+	public static final int COLOR_ACTIVECAPTION = 0x2;
+	public static final int COLOR_BTNFACE = 0xf;
+	public static final int COLOR_BTNHIGHLIGHT = 0x14;
+	public static final int COLOR_BTNSHADOW = 0x10;
+	public static final int COLOR_BTNTEXT = 0x12;
+	public static final int COLOR_CAPTIONTEXT = 0x9;
+	public static final int COLOR_GRADIENTACTIVECAPTION = 0x1b;
+	public static final int COLOR_GRADIENTINACTIVECAPTION = 0x1c;
+	public static final int COLOR_GRAYTEXT = 0x11;
+	public static final int COLOR_HIGHLIGHT = 0xd;
+	public static final int COLOR_HIGHLIGHTTEXT = 0xe;
+	public static final int COLOR_HOTLIGHT = 26;
+	public static final int COLOR_INACTIVECAPTION = 0x3;
+	public static final int COLOR_INACTIVECAPTIONTEXT = 0x13;
+	public static final int COLOR_INFOBK = 0x18;
+	public static final int COLOR_INFOTEXT = 0x17;
+	public static final int COLOR_MENU = 0x4;
+	public static final int COLOR_MENUTEXT = 0x7;
+	public static final int COLOR_SCROLLBAR = 0x0;
+	public static final int COLOR_WINDOW = 0x5;
+	public static final int COLOR_WINDOWFRAME = 0x6;
+	public static final int COLOR_WINDOWTEXT = 0x8;
 	public static final int COMPLEXREGION = 0x3;
 	public static final int CP_ACP = 0x0;
 	public static final int CP_UTF8 = 65001;
 	public static final int CP_DROPDOWNBUTTON = 1;
-	public static final int CP_INSTALLED = 0x1;
 	public static final int CPS_COMPLETE = 0x1;
-	public static final int CS_BYTEALIGNWINDOW = 0x2000;
 	public static final int CS_DBLCLKS = 0x8;
 	public static final int CS_DROPSHADOW = 0x20000;
 	public static final int CS_GLOBALCLASS = 0x4000;
@@ -514,9 +348,6 @@ public class OS extends C {
 	public static final int CS_OWNDC = 0x20;
 	public static final int CW_USEDEFAULT = 0x80000000;
 	public static final String DATETIMEPICK_CLASS = "SysDateTimePick32"; //$NON-NLS-1$
-	public static final int DATE_LONGDATE = 0x00000002;
-	public static final int DATE_SHORTDATE = 0x00000001;
-	public static final int DATE_YEARMONTH = 0x00000008; //#if(WINVER >= 0x0500)
 	public static final int DCX_CACHE = 0x2;
 	public static final int DCX_CLIPCHILDREN = 0x8;
 	public static final int DCX_CLIPSIBLINGS = 0x10;
@@ -559,10 +390,7 @@ public class OS extends C {
 	public static final short DMDUP_SIMPLEX = 1;
 	public static final short DMDUP_VERTICAL = 2;
 	public static final short DMDUP_HORIZONTAL = 3;
-	public static final int DSS_DISABLED = 0x20;
 	public static final int DSTINVERT = 0x550009;
-	public static final int DST_BITMAP = 0x4;
-	public static final int DST_ICON = 0x3;
 	public static final int DT_BOTTOM = 0x8;
 	public static final int DT_CALCRECT = 0x400;
 	public static final int DT_CENTER = 0x1;
@@ -581,8 +409,9 @@ public class OS extends C {
 	public static final int DT_WORDBREAK = 0x10;
 	public static final int DTM_FIRST = 0x1000;
 	public static final int DTM_GETSYSTEMTIME = DTM_FIRST + 1;
+	public static final int DTM_SETMCSTYLE = DTM_FIRST + 11;
 	public static final int DTM_GETIDEALSIZE = DTM_FIRST + 15;
-	public static final int DTM_SETFORMAT = IsUnicode ? DTM_FIRST + 50 : DTM_FIRST + 5;
+	public static final int DTM_SETFORMAT = DTM_FIRST + 50;
 	public static final int DTM_SETSYSTEMTIME = DTM_FIRST + 2;
 	public static final int DTN_FIRST = 0xFFFFFD08;
 	public static final int DTN_DATETIMECHANGE = DTN_FIRST + 1;
@@ -593,9 +422,6 @@ public class OS extends C {
 	public static final int DTS_SHORTDATEFORMAT = 0x0000;
 	public static final int DTS_TIMEFORMAT = 0x0009;
 	public static final int DTS_UPDOWN = 0x0001;
-	public static final int DWM_BB_ENABLE = 0x1;
-	public static final int DWM_BB_BLURREGION = 0x2;
-	public static final int DWM_BB_TRANSITIONONMAXIMIZED = 0x4;
 	public static final int E_POINTER = 0x80004003;
 	public static final int EBP_NORMALGROUPBACKGROUND = 5;
 	public static final int EBP_NORMALGROUPCOLLAPSE = 6;
@@ -607,9 +433,6 @@ public class OS extends C {
 	public static final int EBP_HEADERBACKGROUND = 1;
 	public static final int EC_LEFTMARGIN = 0x1;
 	public static final int EC_RIGHTMARGIN = 0x2;
-	public static final int ECOOP_AND = 0x3;
-	public static final int ECOOP_OR = 0x2;
-	public static final int ECO_AUTOHSCROLL = 0x80;
 	public static final int EDGE_RAISED = (BDR_RAISEDOUTER | BDR_RAISEDINNER);
 	public static final int EDGE_SUNKEN = (BDR_SUNKENOUTER | BDR_SUNKENINNER);
 	public static final int EDGE_ETCHED = (BDR_SUNKENOUTER | BDR_RAISEDINNER);
@@ -703,6 +526,9 @@ public class OS extends C {
 	public static final int FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x00000100;
 	public static final int FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000;
 	public static final int FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200;
+	public static final int FOS_NOCHANGEDIR = 0x8;
+	public static final int FOS_PICKFOLDERS = 0x20;
+	public static final int FOS_FORCEFILESYSTEM = 0x40;
 	public static final int FR_PRIVATE = 0x10;
 	public static final int FSHIFT = 0x4;
 	public static final int FVIRTKEY = 0x1;
@@ -720,7 +546,6 @@ public class OS extends C {
 	public static final int GCS_COMPATTR = 0x0010;
 	public static final int GCS_COMPCLAUSE = 0x0020;
 	public static final int GCS_CURSORPOS = 0x0080;
-	public static final int GDT_VALID = 0;
 	public static final int GET_FEATURE_FROM_PROCESS = 0x2;
 	public static final int GF_BEGIN = 1;
 	public static final int GF_INERTIA = 2;
@@ -740,14 +565,8 @@ public class OS extends C {
 	public static final int GMEM_FIXED = 0x0;
 	public static final int GMEM_MOVEABLE = 0x2;
 	public static final int GMEM_ZEROINIT = 0x40;
-	public static final int GN_CONTEXTMENU = 1000;
-	public static final int GPTR = 0x40;
 	public static final int GRADIENT_FILL_RECT_H = 0x0;
 	public static final int GRADIENT_FILL_RECT_V = 0x1;
-	public static final int GTL_NUMBYTES = 0x10;
-	public static final int GTL_NUMCHARS = 0x8;
-	public static final int GTL_PRECISE = 0x2;
-	public static final int GT_DEFAULT = 0x0;
 	public static final int GUI_16BITTASK = 0x20;
 	public static final int GUI_CARETBLINKING = 0x1;
 	public static final int GUI_INMENUMODE = 0x4;
@@ -838,7 +657,7 @@ public class OS extends C {
 	public static final int HDS_HOTTRACK = 0x4;
 	public static final int HDS_NOSIZING = 0x800;
 	public static final int HDS_OVERFLOW = 0x1000;
-//	public static final int HEAP_ZERO_MEMORY = 0x8;
+	public static final int HEAP_ZERO_MEMORY = 0x8;
 	public static final int HELPINFO_MENUITEM = 0x2;
 	public static final int HHT_ONDIVIDER = 0x4;
 	public static final int HHT_ONDIVOPEN = 0x8;
@@ -902,10 +721,6 @@ public class OS extends C {
 	public static final int ILC_COLOR8 = 0x8;
 	public static final int ILC_MASK = 0x1;
 	public static final int ILC_MIRROR = 0x2000;
-	public static final int ILD_NORMAL = 0x0;
-	public static final int ILD_SELECTED = 0x4;
-	public static final int IMAGE_BITMAP = 0x0;
-	public static final int IMAGE_CURSOR = 0x2;
 	public static final int IMAGE_ICON = 0x1;
 	public static final int IME_CMODE_FULLSHAPE = 0x8;
 	public static final int IME_CMODE_KATAKANA = 0x2;
@@ -913,7 +728,6 @@ public class OS extends C {
 	public static final int IME_CMODE_ROMAN = 0x10;
 	public static final int IME_ESC_HANJA_MODE = 0x1008;
 	public static final int IMEMOUSE_LDOWN = 1;
-	public static final int INFINITE = 0xffffffff;
 	public static final int INPUT_KEYBOARD = 1;
 	public static final int INPUT_MOUSE = 0;
 	public static final int INTERNET_MAX_URL_LENGTH = 2084;
@@ -926,11 +740,11 @@ public class OS extends C {
 	public static final int KEYEVENTF_EXTENDEDKEY = 0x0001;
 	public static final int KEYEVENTF_KEYUP = 0x0002;
 	public static final int L_MAX_URL_LENGTH = 2084;
-//	public static final int LANG_KOREAN = 0x12;
+	public static final int LANG_JAPANESE = 0x11;
+	public static final int LANG_KOREAN = 0x12;
 	public static final int LANG_NEUTRAL = 0x0;
 	public static final int LANG_USER_DEFAULT = 1 << 10;
 	public static final int LAYOUT_RTL = 0x1;
-	public static final int LAYOUT_BITMAPORIENTATIONPRESERVED = 0x8;
 	public static final int LBN_DBLCLK = 0x2;
 	public static final int LBN_SELCHANGE = 0x1;
 	public static final int LBS_EXTENDEDSEL = 0x800;
@@ -982,37 +796,11 @@ public class OS extends C {
 	public static final int LM_GETITEM = 0x703;
 	public static final int LCID_SUPPORTED = 0x2;
 	public static final int LOCALE_IDEFAULTANSICODEPAGE = 0x1004;
-	public static final int LOCALE_IDATE = 0x00000021;
-	public static final int LOCALE_ITIME = 0x00000023;
-	public static final int LOCALE_RETURN_NUMBER = 0x20000000; // #if(WINVER >= 0x0400)
-	public static final int LOCALE_S1159 = 0x00000028;
-	public static final int LOCALE_S2359 = 0x00000029;
 	public static final int LOCALE_SDECIMAL = 14;
 	public static final int LOCALE_SISO3166CTRYNAME = 0x5a;
 	public static final int LOCALE_SISO639LANGNAME = 0x59;
-	public static final int LOCALE_SLONGDATE = 0x00000020;
-	public static final int LOCALE_SSHORTDATE = 0x0000001F;
 	public static final int LOCALE_STIMEFORMAT = 0x00001003;
-	public static final int LOCALE_SYEARMONTH = 0x00001006;  // #if(WINVER >= 0x0500)
-	public static final int LOCALE_SDAYNAME1    = 0x0000002A;   // long name for Monday
-	public static final int LOCALE_SDAYNAME2    = 0x0000002B;   // long name for Tuesday
-	public static final int LOCALE_SDAYNAME3    = 0x0000002C;   // long name for Wednesday
-	public static final int LOCALE_SDAYNAME4    = 0x0000002D;   // long name for Thursday
-	public static final int LOCALE_SDAYNAME5    = 0x0000002E;   // long name for Friday
-	public static final int LOCALE_SDAYNAME6    = 0x0000002F;   // long name for Saturday
-	public static final int LOCALE_SDAYNAME7    = 0x00000030;   // long name for Sunday
-	public static final int LOCALE_SMONTHNAME1  = 0x00000038;   // long name for January
-	public static final int LOCALE_SMONTHNAME2  = 0x00000039;   // long name for February
-	public static final int LOCALE_SMONTHNAME3  = 0x0000003A;   // long name for March
-	public static final int LOCALE_SMONTHNAME4  = 0x0000003B;   // long name for April
-	public static final int LOCALE_SMONTHNAME5  = 0x0000003C;   // long name for May
-	public static final int LOCALE_SMONTHNAME6  = 0x0000003D;   // long name for June
-	public static final int LOCALE_SMONTHNAME7  = 0x0000003E;   // long name for July
-	public static final int LOCALE_SMONTHNAME8  = 0x0000003F;   // long name for August
-	public static final int LOCALE_SMONTHNAME9  = 0x00000040;   // long name for September
-	public static final int LOCALE_SMONTHNAME10 = 0x00000041;   // long name for October
-	public static final int LOCALE_SMONTHNAME11 = 0x00000042;   // long name for November
-	public static final int LOCALE_SMONTHNAME12 = 0x00000043;   // long name for December
+	public static final int LOCALE_SYEARMONTH = 0x00001006;
 	public static final int LOCALE_USER_DEFAULT = 1024;
 	public static final int LOGPIXELSX = 0x58;
 	public static final int LOGPIXELSY = 0x5a;
@@ -1054,7 +842,7 @@ public class OS extends C {
 	public static final int LVM_DELETEITEM = 0x1008;
 	public static final int LVM_ENSUREVISIBLE = 0x1013;
 	public static final int LVM_GETBKCOLOR = 0x1000;
-	public static final int LVM_GETCOLUMN = IsUnicode ? 0x105f : 0x1019;
+	public static final int LVM_GETCOLUMN = 0x105f;
 	public static final int LVM_GETCOLUMNORDERARRAY = LVM_FIRST + 59;
 	public static final int LVM_GETCOLUMNWIDTH = 0x101d;
 	public static final int LVM_GETCOUNTPERPAGE = 0x1028;
@@ -1070,25 +858,25 @@ public class OS extends C {
 	public static final int LVM_GETNEXTITEM = 0x100c;
 	public static final int LVM_GETSELECTEDCOLUMN = LVM_FIRST + 174;
 	public static final int LVM_GETSELECTEDCOUNT = 0x1032;
-	public static final int LVM_GETSTRINGWIDTH = IsUnicode ? 0x1057 : 0x1011;
+	public static final int LVM_GETSTRINGWIDTH = 0x1057;
 	public static final int LVM_GETSUBITEMRECT = 0x1038;
 	public static final int LVM_GETTEXTCOLOR = 0x1023;
 	public static final int LVM_GETTOOLTIPS = 0x104e;
 	public static final int LVM_GETTOPINDEX = 0x1027;
 	public static final int LVM_HITTEST = 0x1012;
-	public static final int LVM_INSERTCOLUMN = IsUnicode ? 0x1061 : 0x101b;
-	public static final int LVM_INSERTITEM = IsUnicode ? 0x104d : 0x1007;
+	public static final int LVM_INSERTCOLUMN = 0x1061;
+	public static final int LVM_INSERTITEM = 0x104d;
 	public static final int LVM_REDRAWITEMS = LVM_FIRST + 21;
 	public static final int LVM_SCROLL = 0x1014;
 	public static final int LVM_SETBKCOLOR = 0x1001;
 	public static final int LVM_SETCALLBACKMASK = LVM_FIRST + 11;
-	public static final int LVM_SETCOLUMN = IsUnicode ? 0x1060 : 0x101a;
+	public static final int LVM_SETCOLUMN = 0x1060;
 	public static final int LVM_SETCOLUMNORDERARRAY = LVM_FIRST + 58;
 	public static final int LVM_SETCOLUMNWIDTH = 0x101e;
 	public static final int LVM_SETEXTENDEDLISTVIEWSTYLE = 0x1036;
 	public static final int LVM_SETIMAGELIST = 0x1003;
 	public static final int LVM_SETINSERTMARK = LVM_FIRST + 166;
-	public static final int LVM_SETITEM = IsUnicode ? 0x104c : 0x1006;
+	public static final int LVM_SETITEM = 0x104c;
 	public static final int LVM_SETITEMCOUNT = LVM_FIRST + 47;
 	public static final int LVM_SETITEMSTATE = 0x102b;
 	public static final int LVM_SETSELECTIONMARK = LVM_FIRST + 67;
@@ -1140,9 +928,8 @@ public class OS extends C {
 	public static final int LWA_COLORKEY = 0x00000001;
 	public static final int LWA_ALPHA = 0x00000002;
 	public static final int MAX_LINKID_TEXT = 48;
-//	public static final int MAX_PATH = 260;
+	public static final int MAX_PATH = 260;
 	public static final int MA_NOACTIVATE = 0x3;
-//	public static final int MANIFEST_RESOURCE_ID = 2;
 	public static final int MB_ABORTRETRYIGNORE = 0x2;
 	public static final int MB_APPLMODAL = 0x0;
 	public static final int MB_ICONERROR = 0x10;
@@ -1171,7 +958,9 @@ public class OS extends C {
 	public static final int MCN_SELCHANGE = MCN_FIRST + 1;
 	public static final int MCN_SELECT = MCN_FIRST + 4;
 	public static final int MCS_NOTODAY = 0x0010;
+	public static final int MCS_WEEKNUMBERS = 0x0004;
 	public static final int MDIS_ALLCHILDSTYLES = 0x0001;
+	public static final int MDT_EFFECTIVE_DPI = 0;
 	public static final int MFS_CHECKED = 0x8;
 	public static final int MFS_DISABLED = 0x3;
 	public static final int MFS_GRAYED = 0x3;
@@ -1212,8 +1001,8 @@ public class OS extends C {
 	public static final int MM_TEXT = 0x1;
 	public static final int MNC_CLOSE = 0x1;
 	public static final int MNS_CHECKORBMP = 0x4000000;
+	public static final int MONITOR_DEFAULTTOPRIMARY = 0x1;
 	public static final int MONITOR_DEFAULTTONEAREST = 0x2;
-	public static final int MONITORINFOF_PRIMARY = 0x1;
 	public static final String MONTHCAL_CLASS = "SysMonthCal32"; //$NON-NLS-1$
 	public static final int MOUSEEVENTF_ABSOLUTE = 0x8000;
 	public static final int MOUSEEVENTF_LEFTDOWN = 0x0002;
@@ -1240,7 +1029,6 @@ public class OS extends C {
 	public static final int MSGF_SCROLLBAR = 5;
 	public static final int MSGF_SIZE = 4;
 	public static final int MSGF_USER = 4096;
-	public static final int MWMO_INPUTAVAILABLE = 0x4;
 	public static final int MWT_LEFTMULTIPLY = 2;
 	public static final int NI_COMPOSITIONSTR = 0x15;
 	public static final int NID_READY = 0x80;
@@ -1275,7 +1063,6 @@ public class OS extends C {
 	public static final int NOTIFYICONDATAA_V2_SIZE = NOTIFYICONDATAA_V2_SIZE ();
 	public static final int NOTIFYICONDATAW_V2_SIZE = NOTIFYICONDATAW_V2_SIZE ();
 	public static final int NOTIFYICONDATA_V2_SIZE = IsUnicode ? NOTIFYICONDATAW_V2_SIZE : NOTIFYICONDATAA_V2_SIZE;
-	public static final int NOTSRCCOPY = 0x330008;
 	public static final int NULLREGION = 0x1;
 	public static final int NULL_BRUSH = 0x5;
 	public static final int NULL_PEN = 0x8;
@@ -1344,10 +1131,6 @@ public class OS extends C {
 	public static final int PD_RETURNDEFAULT = 0x00000400;
 	public static final int PD_SELECTION = 0x1;
 	public static final int PD_USEDEVMODECOPIESANDCOLLATE = 0x40000;
-	public static final int PT_CLOSEFIGURE = 1;
-	public static final int PT_LINETO = 2;
-	public static final int PT_BEZIERTO = 4;
-	public static final int PT_MOVETO = 6;
 	public static final int PFM_TABSTOPS = 0x10;
 	public static final int PHYSICALHEIGHT = 0x6f;
 	public static final int PHYSICALOFFSETX = 0x70;
@@ -1437,26 +1220,24 @@ public class OS extends C {
 	public static final int RB_DELETEBAND = 0x402;
 	public static final int RB_GETBANDBORDERS = 0x422;
 	public static final int RB_GETBANDCOUNT = 0x40c;
-	public static final int RB_GETBANDINFO = IsUnicode ? 0x41c : 0x41d;
+	public static final int RB_GETBANDINFO = 0x41c;
 	public static final int RB_GETBANDMARGINS = 0x428;
 	public static final int RB_GETBARHEIGHT = 0x41b;
 	public static final int RB_GETBKCOLOR = 0x414;
 	public static final int RB_GETRECT = 0x409;
 	public static final int RB_GETTEXTCOLOR = 0x416;
 	public static final int RB_IDTOINDEX = 0x410;
-	public static final int RB_INSERTBAND = IsUnicode ? 0x40a : 0x401;
+	public static final int RB_INSERTBAND = 0x40a;
 	public static final int RB_MOVEBAND = 0x427;
-	public static final int RB_SETBANDINFO = IsUnicode ? 0x40b : 0x406;
+	public static final int RB_SETBANDINFO = 0x40b;
 	public static final int RB_SETBKCOLOR = 0x413;
 	public static final int RB_SETTEXTCOLOR = 0x415;
-	public static final int RC_BITBLT = 0x1;
 	public static final int RC_PALETTE = 0x100;
 	public static final int RDW_ALLCHILDREN = 0x80;
 	public static final int RDW_ERASE = 0x4;
 	public static final int RDW_FRAME = 0x400;
 	public static final int RDW_INVALIDATE = 0x1;
 	public static final int RDW_UPDATENOW = 0x100;
-	public static final int READ_CONTROL = 0x20000;
 	public static final String REBARCLASSNAME = "ReBarWindow32"; //$NON-NLS-1$
 	public static final int REG_DWORD = 4;
 	public static final int REG_OPTION_VOLATILE = 0x1;
@@ -1495,9 +1276,6 @@ public class OS extends C {
 	public static final int SB_THUMBTRACK = 0x5;
 	public static final int SB_TOP = 0x6;
 	public static final int SB_VERT = 0x1;
-	public static final int SCF_ALL = 0x4;
-	public static final int SCF_DEFAULT = 0x0;
-	public static final int SCF_SELECTION = 0x1;
 	public static final int SC_CLOSE = 0xf060;
 	public static final int SC_MOVE = 0xf010;
 	public static final int SC_HSCROLL = 0xf080;
@@ -1515,19 +1293,10 @@ public class OS extends C {
 	public static final int SCRBS_DISABLED = 4;
 	public static final int SEM_FAILCRITICALERRORS = 0x1;
 	public static final int SET_FEATURE_ON_PROCESS = 0x2;
-	public static final int SF_RTF = 0x2;
 	public static final int SHADEBLENDCAPS = 120;
-	public static final int SHCMBF_HIDDEN = 0x2;
-	public static final int SHCMBM_OVERRIDEKEY = 0x400 + 403;
-	public static final int SHCMBM_SETSUBMENU = 0x590;
-	public static final int SHGFP_TYPE_CURRENT = 0;
-	public static final int SHCMBM_GETSUBMENU = 0x591;
 	public static final int SHGFI_ICON = 0x000000100;
 	public static final int SHGFI_SMALLICON= 0x1;
 	public static final int SHGFI_USEFILEATTRIBUTES = 0x000000010;
-	public static final int SHMBOF_NODEFAULT = 0x1;
-	public static final int SHMBOF_NOTIFY = 0x2;
-	public static final int SHRG_RETURNCMD = 0x1;
 	public static final int SIGDN_FILESYSPATH = 0x80058000;
 	public static final int SIF_ALL = 0x17;
 	public static final int SIF_DISABLENOSCROLL = 0x8;
@@ -1572,8 +1341,6 @@ public class OS extends C {
 	public static final int SM_CYVSCROLL = 0x14;
 	public static final int SM_DIGITIZER = 94;
 	public static final int SM_MAXIMUMTOUCHES= 95;
-//	public static final int SM_DBCSENABLED = 0x2A;
-//	public static final int SM_IMMENABLED = 0x52;
 	public static final int SPI_GETFONTSMOOTHINGTYPE = 0x200A;
 	public static final int SPI_GETHIGHCONTRAST = 66;
 	public static final int SPI_GETWORKAREA = 0x30;
@@ -1602,7 +1369,6 @@ public class OS extends C {
 	public static final int SSA_GLYPHS = 0x00000080;
 	public static final int SSA_METAFILE = 0x00000800;
 	public static final int SSA_LINK = 0x00001000;
-	public static final int STANDARD_RIGHTS_READ = 0x20000;
 	public static final int STARTF_USESHOWWINDOW = 0x1;
 	public static final int STATE_SYSTEM_INVISIBLE = 0x00008000;
 	public static final int STATE_SYSTEM_OFFSCREEN = 0x00010000;
@@ -1628,15 +1394,14 @@ public class OS extends C {
 	public static final int SW_INVALIDATE = 0x2;
 	public static final int SW_MINIMIZE = 0x6;
 	public static final int SW_PARENTOPENING = 0x3;
-	public static final int SW_RESTORE = IsWinCE ? 0xd : 0x9;
+	public static final int SW_RESTORE = 0x9;
 	public static final int SW_SCROLLCHILDREN = 0x1;
 	public static final int SW_SHOW = 0x5;
-	public static final int SW_SHOWMAXIMIZED = IsWinCE ? 0xb : 0x3;
+	public static final int SW_SHOWMAXIMIZED = 0x3;
 	public static final int SW_SHOWMINIMIZED = 0x2;
 	public static final int SW_SHOWMINNOACTIVE = 0x7;
 	public static final int SW_SHOWNA = 0x8;
 	public static final int SW_SHOWNOACTIVATE = 0x4;
-	public static final int SYNCHRONIZE = 0x100000;
 	public static final int SYSRGN = 0x4;
 	public static final int SYSTEM_FONT = 0xd;
 	public static final int S_OK = 0x0;
@@ -1650,6 +1415,14 @@ public class OS extends C {
 	public static final int TABP_TOPTABITEMBOTHEDGE = 8;
 	public static final int TABP_PANE = 9;
 	public static final int TABP_BODY = 10;
+	public static final int TBCDRF_BLENDICON = 0x200000;
+	public static final int TBCDRF_HILITEHOTTRACK = 0x20000;
+	public static final int TBCDRF_NOBACKGROUND = 0x400000;
+	public static final int TBCDRF_NOEDGES = 0x10000;
+	public static final int TBCDRF_NOETCHEDEFFECT = 0x100000;
+	public static final int TBCDRF_NOMARK = 0x80000;
+	public static final int TBCDRF_NOOFFSET = 0x40000;
+	public static final int TBCDRF_USECDCOLORS = 0x800000;
 	public static final int TBIF_COMMAND = 0x20;
 	public static final int TBIF_STATE = 0x4;
 	public static final int TBIF_IMAGE = 0x1;
@@ -1693,7 +1466,7 @@ public class OS extends C {
 	public static final int TBS_DOWNISLEFT = 0x0400;
 	public static final int TBS_HORZ = 0x0;
 	public static final int TBS_VERT = 0x2;
-	public static final int TB_ADDSTRING = IsUnicode ? 0x44d : 0x41c;
+	public static final int TB_ADDSTRING = 0x44d;
 	public static final int TB_AUTOSIZE = 0x421;
 	public static final int TB_BUTTONCOUNT = 0x418;
 	public static final int TB_BUTTONSTRUCTSIZE = 0x41e;
@@ -1701,9 +1474,9 @@ public class OS extends C {
 	public static final int TB_DELETEBUTTON = 0x416;
 	public static final int TB_ENDTRACK = 0x8;
 	public static final int TB_GETBUTTON = 0x417;
-	public static final int TB_GETBUTTONINFO = IsUnicode ? 0x43f : 0x441;
+	public static final int TB_GETBUTTONINFO = 0x43f;
 	public static final int TB_GETBUTTONSIZE = 0x43a;
-	public static final int TB_GETBUTTONTEXT = IsUnicode ? 0x44b : 0x42d;
+	public static final int TB_GETBUTTONTEXT = 0x44b;
 	public static final int TB_GETDISABLEDIMAGELIST = 0x437;
 	public static final int TB_GETHOTIMAGELIST = 0x435;
 	public static final int TB_GETHOTITEM = 0x0400 + 71;
@@ -1713,11 +1486,11 @@ public class OS extends C {
 	public static final int TB_GETROWS = 0x428;
 	public static final int TB_GETSTATE = 0x412;
 	public static final int TB_GETTOOLTIPS = 0x423;
-	public static final int TB_INSERTBUTTON = IsUnicode ? 0x443 : 0x415;
+	public static final int TB_INSERTBUTTON = 0x443;
 	public static final int TB_LOADIMAGES = 0x432;
-	public static final int TB_MAPACCELERATOR = 0x0400 + (IsUnicode ? 90 : 78);
+	public static final int TB_MAPACCELERATOR = 0x0400 + 90;
 	public static final int TB_SETBITMAPSIZE = 0x420;
-	public static final int TB_SETBUTTONINFO = IsUnicode ? 0x440 : 0x442;
+	public static final int TB_SETBUTTONINFO = 0x440;
 	public static final int TB_SETBUTTONSIZE = 0x41f;
 	public static final int TB_SETDISABLEDIMAGELIST = 0x436;
 	public static final int TB_SETEXTENDEDSTYLE = 0x454;
@@ -1744,10 +1517,10 @@ public class OS extends C {
 	public static final int TCM_GETITEMRECT = 0x130a;
 	public static final int TCM_GETTOOLTIPS = 0x132d;
 	public static final int TCM_HITTEST = 0x130d;
-	public static final int TCM_INSERTITEM = IsUnicode ? 0x133e : 0x1307;
+	public static final int TCM_INSERTITEM = 0x133e;
 	public static final int TCM_SETCURSEL = 0x130c;
 	public static final int TCM_SETIMAGELIST = 0x1303;
-	public static final int TCM_SETITEM = IsUnicode ? 0x133d : 0x1306;
+	public static final int TCM_SETITEM = 0x133d;
 	public static final int TCN_SELCHANGE = 0xfffffdd9;
 	public static final int TCN_SELCHANGING = 0xfffffdd8;
 	public static final int TCS_BOTTOM = 0x0002;
@@ -1771,7 +1544,6 @@ public class OS extends C {
 	public static final int TF_LS_DOT = 2;
 	public static final int TF_LS_DASH = 3;
 	public static final int TF_LS_SQUIGGLE = 4;
-	public static final int TIME_NOSECONDS = 0x2;
 	public static final int TIS_NORMAL = 1;
 	public static final int TIS_HOT = 2;
 	public static final int TIS_SELECTED = 3;
@@ -1818,15 +1590,7 @@ public class OS extends C {
 	public static final int TREIS_NORMAL = 1;
 	public static final int TREIS_SELECTED = 3;
 	public static final int TREIS_SELECTEDNOTFOCUS = 5;
-	public static final int TS_MIN = 0;
 	public static final int TS_TRUE = 1;
-	public static final int TS_DRAW = 2;
-	public static final int TS_NORMAL = 1;
-	public static final int TS_HOT = 2;
-	public static final int TS_PRESSED = 3;
-	public static final int TS_DISABLED = 4;
-	public static final int TS_CHECKED = 5;
-	public static final int TS_HOTCHECKED = 6;
 	public static final int TTDT_AUTOMATIC = 0;
 	public static final int TTDT_RESHOW = 1;
 	public static final int TTDT_AUTOPOP = 2;
@@ -1842,16 +1606,16 @@ public class OS extends C {
 	public static final int TTI_WARNING = 2;
 	public static final int TTI_ERROR= 3;
 	public static final int TTM_ACTIVATE = 0x400 + 1;
-	public static final int TTM_ADDTOOL = IsUnicode ? 0x432 : 0x404;
+	public static final int TTM_ADDTOOL = 0x432;
 	public static final int TTM_ADJUSTRECT = 0x400 + 31;
 	public static final int TTM_GETCURRENTTOOLA = 0x400 + 15;
 	public static final int TTM_GETCURRENTTOOLW = 0x400 + 59;
 	public static final int TTM_GETCURRENTTOOL = 0x400 + (IsUnicode ? 59 : 15);
 	public static final int TTM_GETDELAYTIME = 0x400 + 21;
-	public static final int TTM_DELTOOL = IsUnicode ? 0x433 : 0x405;
-	public static final int TTM_GETTOOLINFO = 0x400 + (IsUnicode ? 53 : 8);
+	public static final int TTM_DELTOOL = 0x433;
+	public static final int TTM_GETTOOLINFO = 0x400 + 53;
 	public static final int TTM_GETTOOLCOUNT = 0x40D;
-	public static final int TTM_NEWTOOLRECT = 0x400 + (IsUnicode ? 52 : 6);
+	public static final int TTM_NEWTOOLRECT = 0x400 + 52;
 	public static final int TTM_POP = 0x400 + 28;
 	public static final int TTM_SETDELAYTIME = 0x400 + 3;
 	public static final int TTM_SETMAXTIPWIDTH = 0x418;
@@ -1861,7 +1625,7 @@ public class OS extends C {
 	public static final int TTM_TRACKPOSITION = 1042;
 	public static final int TTM_TRACKACTIVATE = 1041;
 	public static final int TTM_UPDATE = 0x41D;
-	public static final int TTM_UPDATETIPTEXT = 0x400 + (IsUnicode ? 57 : 12);
+	public static final int TTM_UPDATETIPTEXT = 0x400 + 57;
 	public static final int TTN_FIRST = 0xfffffdf8;
 	public static final int TTN_GETDISPINFO = IsUnicode ? 0xfffffdee : 0xfffffdf8;
 	public static final int TTN_GETDISPINFOW = 0xfffffdee;
@@ -1918,7 +1682,7 @@ public class OS extends C {
 	public static final int TVM_GETCOUNT = 0x1105;
 	public static final int TVM_GETEXTENDEDSTYLE = TV_FIRST + 45;
 	public static final int TVM_GETIMAGELIST = 0x1108;
-	public static final int TVM_GETITEM = IsUnicode ? 0x113e : 0x110c;
+	public static final int TVM_GETITEM = 0x113e;
 	public static final int TVM_GETITEMHEIGHT = 0x111c;
 	public static final int TVM_GETITEMRECT = 0x1104;
 	public static final int TVM_GETITEMSTATE = TV_FIRST + 39;
@@ -1927,15 +1691,16 @@ public class OS extends C {
 	public static final int TVM_GETTOOLTIPS = TV_FIRST + 25;
 	public static final int TVM_GETVISIBLECOUNT = TV_FIRST + 16;
 	public static final int TVM_HITTEST = 0x1111;
-	public static final int TVM_INSERTITEM = IsUnicode ? 0x1132 : 0x1100;
+	public static final int TVM_INSERTITEM = 0x1132;
 	public static final int TVM_MAPACCIDTOHTREEITEM = TV_FIRST + 42;
 	public static final int TVM_MAPHTREEITEMTOACCID = TV_FIRST + 43;
 	public static final int TVM_SELECTITEM = 0x110b;
 	public static final int TVM_SETBKCOLOR = 0x111d;
 	public static final int TVM_SETEXTENDEDSTYLE = TV_FIRST + 44;
 	public static final int TVM_SETIMAGELIST = 0x1109;
+	public static final int TVM_SETINDENT = TV_FIRST + 7;
 	public static final int TVM_SETINSERTMARK = 0x111a;
-	public static final int TVM_SETITEM = IsUnicode ? 0x113f : 0x110d;
+	public static final int TVM_SETITEM = 0x113f;
 	public static final int TVM_SETITEMHEIGHT = TV_FIRST + 27;
 	public static final int TVM_SETSCROLLTIME = TV_FIRST + 33;
 	public static final int TVM_SETTEXTCOLOR = 0x111e;
@@ -1985,11 +1750,9 @@ public class OS extends C {
 	public static final int TVS_TRACKSELECT = 0x200;
 	public static final int UDM_GETACCEL = 0x046C;
 	public static final int UDM_GETRANGE32 = 0x0470;
-	public static final int UDM_GETPOS = 0x468;
 	public static final int UDM_GETPOS32 = 0x0472;
 	public static final int UDM_SETACCEL = 0x046B;
 	public static final int UDM_SETRANGE32 = 0x046f;
-	public static final int UDM_SETPOS = 0x467;
 	public static final int UDM_SETPOS32 = 0x0471;
 	public static final int UDN_DELTAPOS = -722;
 	public static final int UDS_ALIGNLEFT = 0x008;
@@ -2079,12 +1842,6 @@ public class OS extends C {
 	public static final int VK_XBUTTON1 = 0x05;
 	public static final int VK_XBUTTON2 = 0x06;
 	public static final int VK_ADD = 0x6B;
-	public static final int VK_APP1 = 0xc1;
-	public static final int VK_APP2 = 0xc2;
-	public static final int VK_APP3 = 0xc3;
-	public static final int VK_APP4 = 0xc4;
-	public static final int VK_APP5 = 0xc5;
-	public static final int VK_APP6 = 0xc6;
 	public static final int VT_BOOL = 11;
 	public static final int VT_LPWSTR = 31;
 	public static final short VARIANT_TRUE = -1;
@@ -2135,7 +1892,6 @@ public class OS extends C {
 	public static final int WM_GESTURE = 0x0119;
 	public static final int WM_GETDLGCODE = 0x87;
 	public static final int WM_GETFONT = 0x31;
-//	public static final int WM_GETICON = 0x7f;
 	public static final int WM_GETOBJECT = 0x003D;
 	public static final int WM_GETMINMAXINFO = 0x0024;
 	public static final int WM_HELP = 0x53;
@@ -2241,9 +1997,9 @@ public class OS extends C {
 	public static final int WS_EX_TOPMOST = 0x8;
 	public static final int WS_EX_TRANSPARENT = 0x20;
 	public static final int WS_HSCROLL = 0x100000;
-	public static final int WS_MAXIMIZEBOX = IsWinCE ? 0x20000 : 0x10000;
-	public static final int WS_MINIMIZEBOX = IsWinCE ? 0x10000 : 0x20000;
-	public static final int WS_OVERLAPPED = IsWinCE ? WS_BORDER | WS_CAPTION : 0x0;
+	public static final int WS_MAXIMIZEBOX = 0x10000;
+	public static final int WS_MINIMIZEBOX = 0x20000;
+	public static final int WS_OVERLAPPED = 0x0;
 	public static final int WS_OVERLAPPEDWINDOW = 0xcf0000;
 	public static final int WS_POPUP = 0x80000000;
 	public static final int WS_SYSMENU = 0x80000;
@@ -2288,17 +2044,14 @@ public static final native int CRYPT_OBJID_BLOB_sizeof ();
 public static final native int DEVMODEA_sizeof ();
 public static final native int DEVMODEW_sizeof ();
 public static final native int DIBSECTION_sizeof ();
-public static final native int DLLVERSIONINFO_sizeof ();
 public static final native int DOCHOSTUIINFO_sizeof ();
 public static final native int DOCINFO_sizeof ();
 public static final native int DRAWITEMSTRUCT_sizeof ();
 public static final native int DROPFILES_sizeof ();
 public static final native int DTTOPTS_sizeof ();
-public static final native int DWM_BLURBEHIND_sizeof ();
 public static final native int EMR_sizeof ();
 public static final native int EMREXTCREATEFONTINDIRECTW_sizeof ();
 public static final native int EXTLOGFONTW_sizeof ();
-public static final native int EXTLOGPEN_sizeof ();
 public static final native int FILETIME_sizeof ();
 public static final native int FLICK_DATA_sizeof ();
 public static final native int FLICK_POINT_sizeof ();
@@ -2346,13 +2099,13 @@ public static final native int NMLVFINDITEM_sizeof ();
 public static final native int NMLVODSTATECHANGE_sizeof ();
 public static final native int NMREBARCHEVRON_sizeof ();
 public static final native int NMREBARCHILDSIZE_sizeof ();
-public static final native int NMRGINFO_sizeof ();
 public static final native int NMTBHOTITEM_sizeof ();
 public static final native int NMTREEVIEW_sizeof ();
 public static final native int NMTOOLBAR_sizeof ();
 public static final native int NMTTDISPINFOA_sizeof ();
 public static final native int NMTTDISPINFOW_sizeof ();
 public static final native int NMTTCUSTOMDRAW_sizeof ();
+public static final native int NMTBCUSTOMDRAW_sizeof ();
 public static final native int NMTVCUSTOMDRAW_sizeof ();
 public static final native int NMTVDISPINFO_sizeof ();
 public static final native int NMTVITEMCHANGE_sizeof ();
@@ -2365,10 +2118,6 @@ public static final native int NOTIFYICONDATAA_V2_SIZE ();
 public static final native int NOTIFYICONDATAW_V2_SIZE ();
 public static final native int OFNOTIFY_sizeof ();
 public static final native int OPENFILENAME_sizeof ();
-public static final native int OSVERSIONINFOA_sizeof ();
-public static final native int OSVERSIONINFOW_sizeof ();
-public static final native int OSVERSIONINFOEXA_sizeof ();
-public static final native int OSVERSIONINFOEXW_sizeof ();
 public static final native int OUTLINETEXTMETRICA_sizeof ();
 public static final native int OUTLINETEXTMETRICW_sizeof ();
 public static final native int PAINTSTRUCT_sizeof ();
@@ -2393,14 +2142,10 @@ public static final native int SCRIPT_STATE_sizeof ();
 public static final native int SCRIPT_STRING_ANALYSIS_sizeof ();
 public static final native int SCROLLBARINFO_sizeof ();
 public static final native int SCROLLINFO_sizeof ();
-public static final native int SHACTIVATEINFO_sizeof ();
 public static final native int SHDRAGIMAGE_sizeof();
 public static final native int SHELLEXECUTEINFO_sizeof ();
 public static final native int SHFILEINFOA_sizeof ();
 public static final native int SHFILEINFOW_sizeof ();
-public static final native int SHMENUBARINFO_sizeof ();
-public static final native int SHRGINFO_sizeof ();
-public static final native int SIPINFO_sizeof ();
 public static final native int SIZE_sizeof ();
 public static final native int STARTUPINFO_sizeof ();
 public static final native int SYSTEMTIME_sizeof ();
@@ -2579,11 +2324,6 @@ public static final int DragQueryFile (long /*int*/ hDrop, int iFile, TCHAR lpsz
 	return DragQueryFileA (hDrop, iFile, lpszFile1, cch);
 }
 
-public static final boolean DrawState (long /*int*/ hdc, long /*int*/ hbr, long /*int*/ lpOutputFunc, long /*int*/ lData, long /*int*/ wData, int x, int y, int cx, int cy, int fuFlags) {
-	if (IsUnicode) return DrawStateW (hdc, hbr, lpOutputFunc, lData, wData, x, y, cx, cy, fuFlags);
-	return DrawStateA (hdc, hbr, lpOutputFunc, lData, wData, x, y, cx, cy, fuFlags);
-}
-
 public static final int DrawText (long /*int*/ hDC, TCHAR lpString, int nCount, RECT lpRect, int uFormat) {
 	if (IsUnicode) {
 		char [] lpString1 = lpString == null ? null : lpString.chars;
@@ -2600,11 +2340,6 @@ public static final int EnumFontFamilies (long /*int*/ hdc, TCHAR lpszFamily, lo
 	}
 	byte [] lpszFamily1 = lpszFamily == null ? null : lpszFamily.bytes;
 	return EnumFontFamiliesA (hdc, lpszFamily1, lpEnumFontFamProc, lParam);
-}
-
-public static final int EnumFontFamiliesEx (long /*int*/ hdc, LOGFONT lpLogfont, long /*int*/ lpEnumFontFamExProc, long /*int*/ lParam, int dwFlags) {
-	if (IsUnicode) return EnumFontFamiliesExW (hdc, (LOGFONTW)lpLogfont, lpEnumFontFamExProc, lParam, dwFlags);
-	return EnumFontFamiliesExA (hdc, (LOGFONTA)lpLogfont, lpEnumFontFamExProc, lParam, dwFlags);
 }
 
 public static final boolean EnumSystemLocales (long /*int*/ lpLocaleEnumProc, int dwFlags) {
@@ -2644,17 +2379,6 @@ public static final boolean ExtTextOut(long /*int*/ hdc, int X, int Y, int fuOpt
 	}
 	byte [] lpString1 = lpString == null ? null : lpString.bytes;
 	return ExtTextOutA (hdc, X, Y, fuOptions, lprc, lpString1, cbCount, lpDx);
-}
-
-public static final long /*int*/ FindWindow (TCHAR lpClassName, TCHAR lpWindowName) {
-	if (IsUnicode) {
-		char [] lpClassName1 = lpClassName == null ? null : lpClassName.chars;
-		char [] lpWindowName1 = lpWindowName == null ? null : lpWindowName.chars;
-		return FindWindowW (lpClassName1, lpWindowName1);
-	}
-	byte [] lpClassName1 = lpClassName == null ? null : lpClassName.bytes;
-	byte [] lpWindowName1 = lpWindowName == null ? null : lpWindowName.bytes;
-	return FindWindowA (lpClassName1, lpWindowName1);
 }
 
 public static final int FormatMessage (int dwFlags, long /*int*/ lpSource, int dwMessageId, int dwLanguageId, long /*int*/ [] lpBuffer, int nSize, long /*int*/ Arguments) {
@@ -2710,26 +2434,6 @@ public static final int GetClipboardFormatName (int format, TCHAR lpszFormatName
 	return GetClipboardFormatNameA (format, lpszFormatName1, cchMaxCount);
 }
 
-public static final int GetDateFormat (int Locale, int dwFlags, SYSTEMTIME lpDate, TCHAR lpFormat, TCHAR lpDateStr, int cchDate) {
-	if (IsUnicode) {
-		char [] lpString1 = lpFormat == null ? null : lpFormat.chars;
-		char [] lpString2 = lpDateStr == null ? null : lpDateStr.chars;
-		return GetDateFormatW (Locale, dwFlags, lpDate, lpString1, lpString2, cchDate);
-	}
-	byte [] lpString1 = lpFormat == null ? null : lpFormat.bytes;
-	byte [] lpString2 = lpDateStr == null ? null : lpDateStr.bytes;
-	return GetDateFormatA (Locale, dwFlags, lpDate, lpString1, lpString2, cchDate);
-}
-
-public static final int GetKeyNameText (int lParam, TCHAR lpString, int nSize) {
-	if (IsUnicode) {
-		char [] lpString1 = lpString == null ? null : lpString.chars;
-		return GetKeyNameTextW (lParam, lpString1, nSize);
-	}
-	byte [] lpString1 = lpString == null ? null : lpString.bytes;
-	return GetKeyNameTextA (lParam, lpString1, nSize);
-}
-
 public static final int GetLocaleInfo (int Locale, int LCType, TCHAR lpLCData, int cchData) {
 	if (IsUnicode) {
 		char [] lpLCData1 = lpLCData == null ? null : lpLCData.chars;
@@ -2782,11 +2486,6 @@ public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, DIBSECTIO
 	return GetObjectA (hgdiobj, cbBuffer, lpvObject);
 }
 
-public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, EXTLOGPEN lpvObject) {
-	if (IsUnicode) return GetObjectW (hgdiobj, cbBuffer, lpvObject);
-	return GetObjectA (hgdiobj, cbBuffer, lpvObject);
-}
-
 public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, LOGBRUSH lpvObject) {
 	if (IsUnicode) return GetObjectW (hgdiobj, cbBuffer, lpvObject);
 	return GetObjectA (hgdiobj, cbBuffer, lpvObject);
@@ -2795,11 +2494,6 @@ public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, LOGBRUSH 
 public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, LOGFONT lpvObject) {
 	if (IsUnicode) return GetObjectW (hgdiobj, cbBuffer, (LOGFONTW)lpvObject);
 	return GetObjectA (hgdiobj, cbBuffer, (LOGFONTA)lpvObject);
-}
-
-public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, LOGPEN lpvObject) {
-	if (IsUnicode) return GetObjectW (hgdiobj, cbBuffer, lpvObject);
-	return GetObjectA (hgdiobj, cbBuffer, lpvObject);
 }
 
 public static final int GetObject (long /*int*/ hgdiobj, int cbBuffer, long /*int*/ lpvObject) {
@@ -2862,27 +2556,6 @@ public static final boolean GetTextExtentPoint32 (long /*int*/ hdc, TCHAR lpStri
 public static final boolean GetTextMetrics (long /*int*/ hdc, TEXTMETRIC lptm) {
 	if (IsUnicode) return GetTextMetricsW (hdc, (TEXTMETRICW)lptm);
 	return GetTextMetricsA (hdc, (TEXTMETRICA)lptm);
-}
-
-public static final int GetTimeFormat (int Locale, int dwFlags, SYSTEMTIME lpTime, TCHAR lpFormat, TCHAR lpTimeStr, int cchTime) {
-	if (IsUnicode) {
-		char [] lpString1 = lpFormat == null ? null : lpFormat.chars;
-		char [] lpString2 = lpTimeStr == null ? null : lpTimeStr.chars;
-		return GetTimeFormatW (Locale, dwFlags, lpTime, lpString1, lpString2, cchTime);
-	}
-	byte [] lpString1 = lpFormat == null ? null : lpFormat.bytes;
-	byte [] lpString2 = lpTimeStr == null ? null : lpTimeStr.bytes;
-	return GetTimeFormatA (Locale, dwFlags, lpTime, lpString1, lpString2, cchTime);
-}
-
-public static final boolean GetVersionEx (OSVERSIONINFO lpVersionInfo) {
-	if (IsUnicode) return GetVersionExW ((OSVERSIONINFOW)lpVersionInfo);
-	return GetVersionExA ((OSVERSIONINFOA)lpVersionInfo);
-}
-
-public static final boolean GetVersionEx (OSVERSIONINFOEX lpVersionInfo) {
-	if (IsUnicode) return GetVersionExW ((OSVERSIONINFOEXW)lpVersionInfo);
-	return GetVersionExA ((OSVERSIONINFOEXA)lpVersionInfo);
 }
 
 public static final int GetWindowLong (long /*int*/ hWnd, int nIndex) {
@@ -2986,15 +2659,6 @@ public static final boolean InternetSetCookie (TCHAR lpszUrl, TCHAR lpszCookieNa
 	return InternetSetCookieA (url, cookieName, cookieData);
 }
 
-public static final boolean InsertMenu (long /*int*/ hMenu, int uPosition, int uFlags, long /*int*/ uIDNewItem, TCHAR lpNewItem) {
-	if (IsUnicode) {
-		char [] lpNewItem1 = lpNewItem == null ? null : lpNewItem.chars;
-		return InsertMenuW (hMenu, uPosition, uFlags, uIDNewItem, lpNewItem1);
-	}
-	byte [] lpNewItem1 = lpNewItem == null ? null : lpNewItem.bytes;
-	return InsertMenuA (hMenu, uPosition, uFlags, uIDNewItem, lpNewItem1);
-}
-
 public static final boolean InsertMenuItem (long /*int*/ hMenu, int uItem, boolean fByPosition, MENUITEMINFO lpmii) {
 	if (IsUnicode) return InsertMenuItemW (hMenu, uItem, fByPosition, lpmii);
 	return InsertMenuItemA (hMenu, uItem, fByPosition, lpmii);
@@ -3015,36 +2679,9 @@ public static final long /*int*/ LoadIcon (long /*int*/ hInstance, long /*int*/ 
 	return LoadIconA (hInstance, lpIconName);
 }
 
-public static final long /*int*/ LoadImage (long /*int*/ hinst, TCHAR lpszName, int uType, int cxDesired, int cyDesired, int fuLoad) {
-	if (IsUnicode) {
-		char [] lpszName1 = lpszName == null ? null : lpszName.chars;
-		return LoadImageW (hinst, lpszName1, uType, cxDesired, cyDesired, fuLoad);
-	}
-	byte [] lpszName1 = lpszName == null ? null : lpszName.bytes;
-	return LoadImageA (hinst, lpszName1, uType, cxDesired, cyDesired, fuLoad);
-}
-
 public static final long /*int*/ LoadImage (long /*int*/ hinst, long /*int*/ lpszName, int uType, int cxDesired, int cyDesired, int fuLoad) {
 	if (IsUnicode) return LoadImageW (hinst, lpszName, uType, cxDesired, cyDesired, fuLoad);
 	return LoadImageA (hinst, lpszName, uType, cxDesired, cyDesired, fuLoad);
-}
-
-public static final long /*int*/ LoadLibrary (TCHAR lpLibFileName) {
-	if (IsUnicode) {
-		char [] lpLibFileName1 = lpLibFileName == null ? null : lpLibFileName.chars;
-		return LoadLibraryW (lpLibFileName1);
-	}
-	byte [] lpLibFileName1 = lpLibFileName == null ? null : lpLibFileName.bytes;
-	return LoadLibraryA (lpLibFileName1);
-}
-
-public static final int LoadString (long /*int*/ hinst, int uID, TCHAR lpBuffer, int nBufferMax) {
-	if (IsUnicode) {
-		char [] lpBuffer1 = lpBuffer == null ? null : lpBuffer.chars;
-		return LoadStringW (hinst, uID, lpBuffer1, nBufferMax);
-	}
-	byte [] lpBuffer1 = lpBuffer == null ? null : lpBuffer.bytes;
-	return LoadStringA (hinst, uID, lpBuffer1, nBufferMax);
 }
 
 public static final int MapVirtualKey (int uCode, int uMapType) {
@@ -3229,11 +2866,6 @@ public static final int RegOpenKeyEx (long /*int*/ hKey, TCHAR lpSubKey, int ulO
 	}
 	byte [] lpSubKey1 = lpSubKey == null ? null : lpSubKey.bytes;
 	return RegOpenKeyExA (hKey, lpSubKey1, ulOptions, samDesired, phkResult);
-}
-
-public static final int RegQueryInfoKey (long /*int*/ hKey, long /*int*/ lpClass, int[] lpcbClass, long /*int*/ lpReserved, int[] lpSubKeys, int[] lpcbMaxSubKeyLen, int[] lpcbMaxClassLen, int[] lpcValues, int[] lpcbMaxValueNameLen, int[] lpcbMaxValueLen, int[] lpcbSecurityDescriptor, long /*int*/ lpftLastWriteTime){
-	if (IsUnicode) return RegQueryInfoKeyW (hKey, lpClass, lpcbClass, lpReserved, lpSubKeys, lpcbMaxSubKeyLen, lpcbMaxClassLen, lpcValues, lpcbMaxValueNameLen, lpcbMaxValueLen, lpcbSecurityDescriptor, lpftLastWriteTime);
-	return RegQueryInfoKeyA (hKey, lpClass, lpcbClass, lpReserved, lpSubKeys, lpcbMaxSubKeyLen, lpcbMaxClassLen, lpcValues, lpcbMaxValueNameLen, lpcbMaxValueLen, lpcbSecurityDescriptor, lpftLastWriteTime);
 }
 
 public static final int RegQueryValueEx (long /*int*/ hKey, TCHAR lpValueName, long /*int*/ lpReserved, int[] lpType, TCHAR lpData, int[] lpcbData) {
@@ -3511,15 +3143,6 @@ public static final boolean Shell_NotifyIcon (int dwMessage, NOTIFYICONDATA lpDa
 	return Shell_NotifyIconA (dwMessage, (NOTIFYICONDATAA)lpData);
 }
 
-public static final int SHGetFolderPath (long /*int*/ hwndOwner, int nFolder, long /*int*/ hToken, int dwFlags, TCHAR pszPath) {
-	if (IsUnicode) {
-		char [] pszPath1 = pszPath == null ? null : pszPath.chars;
-		return SHGetFolderPathW (hwndOwner, nFolder, hToken, dwFlags, pszPath1);
-	}
-	byte [] pszPath1 = pszPath == null ? null : pszPath.bytes;
-	return SHGetFolderPathA (hwndOwner, nFolder, hToken, dwFlags, pszPath1);
-}
-
 public static final boolean SHGetPathFromIDList (long /*int*/ pidl, TCHAR pszPath) {
 	if (IsUnicode) {
 		char [] pszPath1 = pszPath == null ? null : pszPath.chars;
@@ -3607,22 +3230,12 @@ public static final native boolean AllowSetForegroundWindow (int dwProcessId);
  * @param blendFunction flags=struct
  */
 public static final native boolean AlphaBlend(long /*int*/ hdcDest, int nXOriginDest, int nYOriginDest, int nWidthDest, int nHeightDest, long /*int*/ hdcSrc, int nXOriginSrc, int nYOriginSrc, int nWidthSrc, int nHeightSrc, BLENDFUNCTION blendFunction);
-/**
- * @method flags=dynamic
- * @param hwnd cast=(HWND)
- */
-public static final native boolean AnimateWindow(long /*int*/ hwnd, int dwTime, int dwFlags);
 /** @param hdc cast=(HDC) */
 public static final native boolean Arc (long /*int*/ hdc, int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nXStartArc, int nYStartArc, int nXEndArc, int nYEndArc);
 /** @method flags=dynamic */
 public static final native int AssocQueryStringA(int flags, int str, byte[] pszAssoc, byte[] pszExtra, byte[] pszOut, int[] pcchOut);
 /** @method flags=dynamic */
 public static final native int AssocQueryStringW(int flags, int str, char[] pszAssoc, char[] pszExtra, char[] pszOut, int[] pcchOut);
-/**
- * @param idAttach cast=(DWORD)
- * @param idAttachTo cast=(DWORD)
- */
-public static final native boolean AttachThreadInput (int idAttach, int idAttachTo, boolean fAttach);
 /**
  * @method flags=dynamic
  * @param hdcTarget cast=(HDC)
@@ -3643,16 +3256,8 @@ public static final native boolean BitBlt (long /*int*/ hdcDest, int nXDest, int
 public static final native boolean BringWindowToTop (long /*int*/ hWnd);
 /** @method flags=dynamic */
 public static final native int BufferedPaintInit ();
-/**
- * @method flags=dynamic
- * @param hBufferedPaint cast=(HPAINTBUFFER)
- */
-public static final native int BufferedPaintSetAlpha (long /*int*/ hBufferedPaint, RECT prc, byte alpha);
 /** @method flags=dynamic */
 public static final native int BufferedPaintUnInit ();
-public static final native int Call (long /*int*/ address);
-/** @param address cast=(DLLGETVERSIONPROC) */
-public static final native int Call (long /*int*/ address, DLLVERSIONINFO arg0);
 /**
  * @param hhk cast=(HHOOK)
  * @param wParam cast=(WPARAM)
@@ -3687,12 +3292,6 @@ public static final native long /*int*/ CharLowerA (long /*int*/ ch);
 public static final native long /*int*/ CharUpperW (long /*int*/ ch);
 /** @param ch cast=(LPSTR) */
 public static final native long /*int*/ CharUpperA (long /*int*/ ch);
-/**
- * @param hmenu cast=(HMENU)
- * @param uIDCheckItem cast=(UINT)
- * @param uCheck cast=(UINT)
- */
-public static final native boolean CheckMenuItem (long /*int*/ hmenu, int uIDCheckItem, int uCheck);
 /** @param lpcc cast=(LPCHOOSECOLORW) */
 public static final native boolean ChooseColorW (CHOOSECOLOR lpcc);
 public static final native boolean ChooseColorA (CHOOSECOLOR lpcc);
@@ -3743,34 +3342,6 @@ public static final native int CoInternetSetFeatureEnabled (int FeatureEntry, in
  * @param hrgnSrc2 cast=(HRGN)
  */
 public static final native int CombineRgn (long /*int*/ hrgnDest, long /*int*/ hrgnSrc1, long /*int*/ hrgnSrc2, int fnCombineMode);
-/** @param hwndCB cast=(HWND) */
-public static final native boolean CommandBar_AddAdornments (long /*int*/ hwndCB, int dwFlags, int dwReserved);
-/**
- * @param hInst cast=(HINSTANCE)
- * @param hwndParent cast=(HWND)
- */
-public static final native long /*int*/ CommandBar_Create (long /*int*/ hInst, long /*int*/ hwndParent, int idCmdBar);
-/** @param hwndCB cast=(HWND) */
-public static final native void CommandBar_Destroy (long /*int*/ hwndCB);
-/**
- * @param hwndCB cast=(HWND)
- * @param iButton cast=(WORD)
- */
-public static final native boolean CommandBar_DrawMenuBar (long /*int*/ hwndCB, int iButton);
-/** @param hdnwCB cast=(HWND) */
-public static final native int CommandBar_Height (long /*int*/ hdnwCB);
-/**
- * @param hwndCB cast=(HWND)
- * @param hInst cast=(HINSTANCE)
- * @param pszMenu cast=(LPTSTR)
- * @param iButton cast=(WORD)
- */
-public static final native boolean CommandBar_InsertMenubarEx (long /*int*/ hwndCB, long /*int*/ hInst, long /*int*/ pszMenu, int iButton);
-/**
- * @param hwndCB cast=(HWND)
- * @param fShow cast=(BOOL)
- */
-public static final native boolean CommandBar_Show (long /*int*/ hwndCB, boolean fShow);
 public static final native int CommDlgExtendedError ();
 /** @param hImage cast=(HANDLE) */
 public static final native long /*int*/ CopyImage (long /*int*/ hImage, int uType, int cxDesired, int cyDesired, int fuFlags);
@@ -3996,8 +3567,6 @@ public static final native int DocumentPropertiesW (long /*int*/ hWnd, long /*in
  * @param pDevModeInput cast=(PDEVMODE)
  */
 public static final native int DocumentPropertiesA (long /*int*/ hWnd, long /*int*/ hPrinter, byte[] pDeviceName, long /*int*/ pDevModeOutput, long /*int*/ pDevModeInput, int fMode);
-/** @param hdc cast=(HDC) */
-public static final native boolean DPtoLP (long /*int*/ hdc, POINT lpPoints, int nCount);
 /**
  * @param hwnd cast=(HWND)
  * @param pt flags=struct
@@ -4015,8 +3584,6 @@ public static final native int DragQueryFileA (long /*int*/ hDrop, int iFile, by
  * @param lpszFile cast=(LPWSTR)
  */
 public static final native int DragQueryFileW (long /*int*/ hDrop, int iFile, char[] lpszFile, int cch);
-/** @param hwnd cast=(HWND) */
-public static final native boolean DrawAnimatedRects (long /*int*/ hwnd, int idAni, RECT lprcFrom, RECT lprcTo);
 /** @param hdc cast=(HDC) */
 public static final native boolean DrawEdge (long /*int*/ hdc, RECT qrc, int edge, int grfFlags);
 /** @param hDC cast=(HDC) */
@@ -4031,22 +3598,6 @@ public static final native boolean DrawFrameControl (long /*int*/ hdc, RECT lprc
 public static final native boolean DrawIconEx (long /*int*/ hdc, int xLeft, int yTop, long /*int*/ hIcon, int cxWidth, int cyWidth, int istepIfAniCur, long /*int*/ hbrFlickerFreeDraw, int diFlags);
 /** @param hWnd cast=(HWND) */
 public static final native boolean DrawMenuBar (long /*int*/ hWnd);
-/**
- * @param hdc cast=(HDC)
- * @param hbr cast=(HBRUSH)
- * @param lpOutputFunc cast=(DRAWSTATEPROC)
- * @param lData cast=(LPARAM)
- * @param wData cast=(WPARAM)
- */
-public static final native boolean DrawStateW (long /*int*/ hdc, long /*int*/ hbr, long /*int*/ lpOutputFunc, long /*int*/ lData, long /*int*/ wData, int x, int y, int cx, int cy, int fuFlags);
-/**
- * @param hdc cast=(HDC)
- * @param hbr cast=(HBRUSH)
- * @param lpOutputFunc cast=(DRAWSTATEPROC)
- * @param lData cast=(LPARAM)
- * @param wData cast=(WPARAM)
- */
-public static final native boolean DrawStateA (long /*int*/ hdc, long /*int*/ hbr, long /*int*/ lpOutputFunc, long /*int*/ lData, long /*int*/ wData, int x, int y, int cx, int cy, int fuFlags);
 /**
  * @param hDC cast=(HDC)
  * @param lpString cast=(LPWSTR),flags=no_out critical
@@ -4066,27 +3617,7 @@ public static final native int DrawTextA (long /*int*/ hDC, byte [] lpString, in
  */
 public static final native int DrawThemeBackground (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT pRect, RECT pClipRect);
 /** @method flags=dynamic */
-public static final native int DrawThemeEdge (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT pDestRect, int uEdge, int uFlags, RECT pContentRect);
-/** @method flags=dynamic */
-public static final native int DrawThemeIcon (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT pRect, long /*int*/ himl, int iImageIndex);
-/** @method flags=dynamic */
-public static final native int DrawThemeParentBackground (long /*int*/ hwnd, long /*int*/ hdc, RECT prc);
-/** @method flags=dynamic */
 public static final native int DrawThemeText (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, char[] pszText, int iCharCount, int dwTextFlags, int dwTextFlags2, RECT pRect);
-/** @method flags=dynamic */
-public static final native int DrawThemeTextEx (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, char[] pszText, int iCharCount, int dwFlags, RECT pRect, DTTOPTS pOptions);
-/**
- * @method flags=dynamic
- * @param hWnd cast=(HWND)
- */
-public static final native int DwmEnableBlurBehindWindow (long /*int*/ hWnd, DWM_BLURBEHIND pBlurBehind);
-/**
- * @method flags=dynamic
- * @param hWnd cast=(HWND)
- */
-public static final native int DwmExtendFrameIntoClientArea (long /*int*/ hWnd, MARGINS pMarInset);
-/** @method flags=dynamic */
-public static final native int DwmIsCompositionEnabled (boolean[] pfEnabled);
 /** @param hdc cast=(HDC) */
 public static final native boolean Ellipse (long /*int*/ hdc, int nLeftRect, int nTopRect, int nRightRect, int nBottomRect);
 /** @param hMenu cast=(HMENU) */
@@ -4124,8 +3655,6 @@ public static final native int EndDoc (long /*int*/ hdc);
 public static final native int EndPage (long /*int*/ hdc);
 /** @param hWnd cast=(HWND) */
 public static final native int EndPaint (long /*int*/ hWnd, PAINTSTRUCT lpPaint);
-/** @param hdc cast=(HDC) */
-public static final native boolean EndPath(long /*int*/ hdc);
 /**
  * @method flags=dynamic
  * @param hdc cast=(HDC)
@@ -4156,29 +3685,10 @@ public static final native int EnumFontFamiliesW (long /*int*/ hdc, char [] lpsz
  */
 public static final native int EnumFontFamiliesA (long /*int*/ hdc, byte [] lpszFamily, long /*int*/ lpEnumFontFamProc, long /*int*/ lParam);
 /**
- * @param hdc cast=(HDC)
- * @param lpLogfont cast=(LPLOGFONTW)
- * @param lpEnumFontFamExProc cast=(FONTENUMPROCW)
- * @param lParam cast=(LPARAM)
- */
-public static final native int EnumFontFamiliesExW (long /*int*/ hdc, LOGFONTW lpLogfont, long /*int*/ lpEnumFontFamExProc, long /*int*/ lParam, int dwFlags);
-/**
- * @param hdc cast=(HDC)
- * @param lpLogfont cast=(LPLOGFONTA)
- * @param lpEnumFontFamExProc cast=(FONTENUMPROCA)
- * @param lParam cast=(LPARAM)
- */
-public static final native int EnumFontFamiliesExA (long /*int*/ hdc, LOGFONTA lpLogfont, long /*int*/ lpEnumFontFamExProc, long /*int*/ lParam, int dwFlags);
-/**
  * @param lprc1 cast=(CONST RECT *),flags=no_out
  * @param lprc2 cast=(CONST RECT *),flags=no_out
  */
 public static final native boolean EqualRect (RECT lprc1, RECT lprc2);
-/**
- * @param hSrcRgn1 cast=(HRGN)
- * @param hSrcRgn2 cast=(HRGN)
- */
-public static final native boolean EqualRgn (long /*int*/ hSrcRgn1, long /*int*/ hSrcRgn2);
 /** @param hdc cast=(HDC) */
 public static final native int ExcludeClipRect (long /*int*/ hdc, int nLeftRect, int nTopRect, int nRightRect, int nBottomRect);
 public static final native int ExpandEnvironmentStringsW (char [] lpSrc, char [] lsDst, int nSize);
@@ -4226,18 +3736,6 @@ public static final native boolean FileTimeToSystemTime (FILETIME lpFileTime, SY
  * @param hbr cast=(HBRUSH)
  */
 public static final native int FillRect (long /*int*/ hDC, RECT lprc, long /*int*/ hbr);
-/** @param hdc cast=(HDC) */
-public static final native boolean FillPath (long /*int*/ hdc);
-/**
- * @param lpClassName cast=(LPSTR)
- * @param lpWindowName cast=(LPSTR)
- */
-public static final native long /*int*/ FindWindowA (byte [] lpClassName, byte [] lpWindowName);
-/**
- * @param lpClassName cast=(LPWSTR)
- * @param lpWindowName cast=(LPWSTR)
- */
-public static final native long /*int*/ FindWindowW (char [] lpClassName, char [] lpWindowName);
 /**
  * @param lpSource cast=(LPCVOID)
  * @param lpBuffer cast=(LPSTR)
@@ -4250,15 +3748,12 @@ public static final native int FormatMessageA (int dwFlags, long /*int*/ lpSourc
  * @param Arguments cast=(va_list*)
  */
 public static final native int FormatMessageW (int dwFlags, long /*int*/ lpSource, int dwMessageId, int dwLanguageId, long /*int*/ [] lpBuffer, int nSize, long /*int*/ Arguments);
-/** @param hLibModule cast=(HMODULE) */
-public static final native boolean FreeLibrary (long /*int*/ hLibModule);
 /** @param dwLimit cast=(DWORD) */
 public static final native int GdiSetBatchLimit (int dwLimit);
 public static final native int GET_WHEEL_DELTA_WPARAM(long /*int*/ wParam);
 public static final native int GET_X_LPARAM(long /*int*/ lp);
 public static final native int GET_Y_LPARAM(long /*int*/ lp);
 public static final native int GetACP ();
-public static final native short GetAsyncKeyState (int nVirtKey);
 public static final native long /*int*/ GetActiveWindow ();
 /** @param hDC cast=(HDC) */
 public static final native int GetBkColor (long /*int*/ hDC);
@@ -4336,20 +3831,6 @@ public static final native int GetCurrentThreadId ();
 public static final native int GetCurrentProcessExplicitAppUserModelID(long /*int*/[] AppID);
 public static final native long /*int*/ GetCursor ();
 public static final native boolean GetCursorPos (POINT lpPoint);
-/**
- * @param Locale cast=(LCID)
- * @param dwFlags cast=(DWORD)
- * @param lpFormat cast=(LPWSTR)
- * @param lpDateStr cast=(LPWSTR)
- */
-public static final native int GetDateFormatW(int Locale, int dwFlags, SYSTEMTIME lpDate, char [] lpFormat, char [] lpDateStr, int cchDate);
-/**
- * @param Locale cast=(LCID)
- * @param dwFlags cast=(DWORD)
- * @param lpFormat cast=(LPSTR)
- * @param lpDateStr cast=(LPSTR)
- */
-public static final native int GetDateFormatA(int Locale, int dwFlags, SYSTEMTIME lpDate, byte [] lpFormat, byte [] lpDateStr, int cchDate);
 /** @param hwnd cast=(HWND) */
 public static final native long /*int*/ GetDC (long /*int*/ hwnd);
 /**
@@ -4376,6 +3857,8 @@ public static final native int GetDIBits (long /*int*/ hdc, long /*int*/ hbmp, i
 /** @param hDlg cast=(HWND) */
 public static final native long /*int*/ GetDlgItem (long /*int*/ hDlg, int nIDDlgItem);
 public static final native int GetDoubleClickTime ();
+/** @method flags=dynamic */
+public static final native int GetDpiForMonitor (long /*int*/ hmonitor, int dpiType, int [] dpiX, int [] dpiY);
 public static final native long /*int*/ GetFocus ();
 /** @param hdc cast=(HDC) */
 public static final native int GetFontLanguageInfo (long /*int*/ hdc);
@@ -4409,10 +3892,6 @@ public static final native long /*int*/ GetKeyboardLayout (int idThread);
 public static final native short GetKeyState (int nVirtKey);
 /** @param lpKeyState cast=(PBYTE) */
 public static final native boolean GetKeyboardState (byte [] lpKeyState);
-/** @param lpString cast=(LPWSTR) */
-public static final native int GetKeyNameTextW (int lParam, char [] lpString, int nSize);
-/** @param lpString cast=(LPSTR) */
-public static final native int GetKeyNameTextA (int lParam, byte [] lpString, int nSize);
 /** @param hWnd cast=(HWND) */
 public static final native long /*int*/ GetLastActivePopup (long /*int*/ hWnd);
 public static final native int GetLastError ();
@@ -4469,17 +3948,14 @@ public static final native int GetMessageTime ();
  * @param hrgn cast=(HRGN)
  */
 public static final native int GetMetaRgn (long /*int*/ hdc, long /*int*/ hrgn);
-/** @method flags=dynamic */
-public static final native int GetThemeBitmap (long /*int*/ hTheme, int iPartId, int iStateId, int iPropId, int dwFlags, long /*int*/[] hBitmap);
-/** @method flags=dynamic */
-public static final native int GetThemeColor (long /*int*/ hTheme, int iPartId, int iStateId, int iPropId, int[] pColor);
+/**
+ * @method flags=dynamic
+ * @param prc flags=no_out
+ * @param psz flags=no_in
+ */
+public static final native int GetThemePartSize(long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT prc, int eSize, SIZE psz);
 /** @method flags=dynamic */
 public static final native int GetThemeTextExtent (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, char[] pszText, int iCharCount, int dwTextFlags, RECT pBoundingRect, RECT pExtentRect);
-/** @param hdc cast=(HDC) */
-public static final native int GetTextCharset (long /*int*/ hdc);
-public static final native int GetTickCount ();
-/** @param hdc cast=(HDC) */
-public static final native int GetMapMode (long /*int*/ hdc);
 /**
  * @param hModule cast=(HMODULE)
  * @param lpFilename cast=(LPWSTR)
@@ -4535,16 +4011,6 @@ public static final native int GetObjectW (long /*int*/ hgdiobj, int cbBuffer, D
  * @param hgdiobj cast=(HGDIOBJ)
  * @param lpvObject flags=no_in
  */
-public static final native int GetObjectA (long /*int*/ hgdiobj, int cbBuffer, EXTLOGPEN lpvObject);
-/**
- * @param hgdiobj cast=(HGDIOBJ)
- * @param lpvObject flags=no_in
- */
-public static final native int GetObjectW (long /*int*/ hgdiobj, int cbBuffer, EXTLOGPEN lpvObject);
-/**
- * @param hgdiobj cast=(HGDIOBJ)
- * @param lpvObject flags=no_in
- */
 public static final native int GetObjectA (long /*int*/ hgdiobj, int cbBuffer, LOGBRUSH lpvObject);
 /**
  * @param hgdiobj cast=(HGDIOBJ)
@@ -4563,16 +4029,6 @@ public static final native int GetObjectA (long /*int*/ hgdiobj, int cbBuffer, L
 public static final native int GetObjectW (long /*int*/ hgdiobj, int cbBuffer, LOGFONTW lpvObject);
 /**
  * @param hgdiobj cast=(HGDIOBJ)
- * @param lpvObject flags=no_in
- */
-public static final native int GetObjectA (long /*int*/ hgdiobj, int cbBuffer, LOGPEN lpvObject);
-/**
- * @param hgdiobj cast=(HGDIOBJ)
- * @param lpvObject flags=no_in
- */
-public static final native int GetObjectW (long /*int*/ hgdiobj, int cbBuffer, LOGPEN lpvObject);
-/**
- * @param hgdiobj cast=(HGDIOBJ)
  * @param lpvObject cast=(LPVOID),flags=no_in
  */
 public static final native int GetObjectA (long /*int*/ hgdiobj, int cbBuffer, long /*int*/ lpvObject);
@@ -4588,12 +4044,6 @@ public static final native boolean GetOpenFileNameA (OPENFILENAME lpofn);
 public static final native int GetOutlineTextMetricsW (long /*int*/ hdc, int cbData, OUTLINETEXTMETRICW lpOTM);
 /** @param hdc cast=(HDC) */
 public static final native int GetOutlineTextMetricsA (long /*int*/ hdc, int cbData, OUTLINETEXTMETRICA lpOTM);
-/**
- * @param hdc cast=(HDC)
- * @param lpPoints cast=(LPPOINT)
- * @param lpTypes cast=(LPBYTE)
- */
-public static final native int GetPath (long /*int*/ hdc, int[] lpPoints, byte[] lpTypes, int nSize);
 /**
  * @param hPalette cast=(HPALETTE)
  * @param logPalette cast=(LPPALETTEENTRY),flags=no_in critical
@@ -4617,14 +4067,7 @@ public static final native boolean OpenPrinterW (char[] pPrinterName, long /*int
  * @param pDefault cast=(LPPRINTER_DEFAULTS)
  */
 public static final native boolean OpenPrinterA (byte[] pPrinterName, long /*int*/ [] phPrinter, long /*int*/ pDefault);
-/**
- * @param hModule cast=(HMODULE)
- * @param lpProcName cast=(LPCTSTR)
- */
-public static final native long /*int*/ GetProcAddress (long /*int*/ hModule, byte [] lpProcName);
 public static final native long /*int*/ GetProcessHeap ();
-/** @param ProcessHeaps cast=(PHANDLE) */
-public static final native int GetProcessHeaps (int NumberOfHeaps, long /*int*/[] ProcessHeaps);
 /**
  * @param lpAppName cast=(LPWSTR)
  * @param lpKeyName cast=(LPWSTR)
@@ -4716,39 +4159,6 @@ public static final native boolean GetTextMetricsW (long /*int*/ hdc, TEXTMETRIC
  * @param lptm flags=no_in
  */
 public static final native boolean GetTextMetricsA (long /*int*/ hdc, TEXTMETRICA lptm);
-/** @method flags=dynamic */
-public static final native int GetThemeInt (long /*int*/ hTheme, int iPartId, int iStateId, int iPropId, int[] piVal);
-/** @method flags=dynamic */
-public static final native int GetThemeMargins (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, int iPropId, RECT prc, MARGINS pMargins);
-/** @method flags=dynamic */
-public static final native int GetThemeBackgroundContentRect (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT pBoundingRect, RECT pContentRect);
-/**
- * @method flags=dynamic
- * @param pContentRect flags=no_out
- */
-public static final native int GetThemeBackgroundExtent (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT pContentRect, RECT pExtentRect);
-/** @method flags=dynamic */
-public static final native int GetThemePartSize (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, RECT prc, int eSize, SIZE psz);
-/** @method flags=dynamic */
-public static final native int GetThemeMetric (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, int iPropId, int[] piVal);
-/** @method flags=dynamic */
-public static final native int GetThemeRect (long /*int*/ hTheme, int iPartId, int iStateId, int iPropId, RECT pRect);
-/** @method flags=dynamic */
-public static final native int GetThemeSysSize (long /*int*/ hTheme, int iSizeID);
-/**
- * @param Locale cast=(LCID)
- * @param dwFlags cast=(DWORD)
- * @param lpFormat cast=(LPWSTR)
- * @param lpTimeStr cast=(LPWSTR)
- */
-public static final native int GetTimeFormatW(int Locale, int dwFlags, SYSTEMTIME lpTime, char [] lpFormat, char [] lpTimeStr, int cchTime);
-/**
- * @param Locale cast=(LCID)
- * @param dwFlags cast=(DWORD)
- * @param lpFormat cast=(LPSTR)
- * @param lpTimeStr cast=(LPSTR)
- */
-public static final native int GetTimeFormatA(int Locale, int dwFlags, SYSTEMTIME lpTime, byte [] lpFormat, byte [] lpTimeStr, int cchTime);
 /**
  * @method flags=dynamic
  * @param hTouchInput cast=(HTOUCHINPUT)
@@ -4767,12 +4177,7 @@ public static final native boolean GetUpdateRect (long /*int*/ hWnd, RECT lpRect
  * @param hRgn cast=(HRGN)
  */
 public static final native int GetUpdateRgn (long /*int*/ hWnd, long /*int*/ hRgn, boolean bErase);
-/** @param lpVersionInfo cast=(LPOSVERSIONINFOW) */
-public static final native boolean GetVersionExW (OSVERSIONINFOEXW lpVersionInfo);
-/** @param lpVersionInfo cast=(LPOSVERSIONINFOA) */
-public static final native boolean GetVersionExA (OSVERSIONINFOEXA lpVersionInfo);
-public static final native boolean GetVersionExW (OSVERSIONINFOW lpVersionInfo);
-public static final native boolean GetVersionExA (OSVERSIONINFOA lpVersionInfo);
+public static final native int GetVersion ();
 /** @param hWnd cast=(HWND) */
 public static final native long /*int*/ GetWindow (long /*int*/ hWnd, int uCmd);
 /** @param hWnd cast=(HWND) */
@@ -4811,20 +4216,10 @@ public static final native int GetWindowTextLengthW (long /*int*/ hWnd);
 /** @param hWnd cast=(HWND) */
 public static final native int GetWindowTextLengthA (long /*int*/ hWnd);
 /**
- * @method flags=dynamic
- * @param hWnd cast=(HWND)
- */
-public static final native long /*int*/ GetWindowTheme (long /*int*/ hWnd);
-/**
  * @param hWnd cast=(HWND)
  * @param lpdwProcessId cast=(LPDWORD)
  */
 public static final native int GetWindowThreadProcessId (long /*int*/ hWnd, int [] lpdwProcessId);
-/**
- * @param hdc cast=(HDC)
- * @param lpXform cast=(LPXFORM)
- */
-public static final native boolean GetWorldTransform (long /*int*/ hdc, float[] lpXform);
 public static final native double GID_ROTATE_ANGLE_FROM_ARGUMENT(long dwArgument);
 /** @param lpString cast=(LPCWSTR) */
 public static final native int GlobalAddAtomW (char [] lpString);
@@ -4857,18 +4252,8 @@ public static final native long /*int*/ HeapAlloc (long /*int*/ hHeap, int dwFla
  * @param lpMem cast=(LPVOID)
  */
 public static final native boolean HeapFree (long /*int*/ hHeap, int dwFlags, long /*int*/ lpMem);
-/**
- * @param hHeap cast=(HANDLE)
- * @param lpMem cast=(LPCVOID)
- */
-public static final native boolean HeapValidate (long /*int*/ hHeap, int dwFlags, long /*int*/ lpMem);
 /** @param hWnd cast=(HWND) */
 public static final native boolean HideCaret (long /*int*/ hWnd);
-/**
- * @method flags=dynamic
- * @param ptTest flags=struct
- */
-public static final native int HitTestThemeBackground (long /*int*/ hTheme, long /*int*/ hdc, int iPartId, int iStateId, int dwOptions, RECT pRect, long /*int*/ hrgn, POINT ptTest, short[] pwHitTestCode);
 /**
  * @param lpsz cast=(LPOLESTR)
  * @param lpiid cast=(LPIID)
@@ -4898,20 +4283,7 @@ public static final native boolean ImageList_DragLeave (long /*int*/ hwndLock);
 public static final native boolean ImageList_DragMove (int x, int y);
 /** @param fShow cast=(BOOL) */
 public static final native boolean ImageList_DragShowNolock (boolean fShow);
-/**
- * @param himl cast=(HIMAGELIST)
- * @param hdcDst cast=(HDC)
- * @param fStyle cast=(UINT)
- */
-public static final native boolean ImageList_Draw (long /*int*/ himl, int i, long /*int*/ hdcDst, int x, int y, int fStyle);
 public static final native void ImageList_EndDrag ();
-/**
- * @param ppt cast=(POINT *)
- * @param pptHotspot cast=(POINT *)
- */
-public static final native long /*int*/ ImageList_GetDragImage (POINT ppt, POINT pptHotspot);
-/** @param himl cast=(HIMAGELIST) */
-public static final native long /*int*/ ImageList_GetIcon (long /*int*/ himl, int i, int flags);
 /**
  * @param himl cast=(HIMAGELIST)
  * @param cx cast=(int *)
@@ -4943,8 +4315,6 @@ public static final native long /*int*/ ImmAssociateContext (long /*int*/ hWnd, 
 public static final native long /*int*/ ImmCreateContext ();
 /** @param hIMC cast=(HIMC) */
 public static final native boolean ImmDestroyContext (long /*int*/ hIMC);
-/** @method flags=dynamic */
-public static final native boolean ImmDisableTextFrameService (int idThread);
 /**
  * @param hKL cast=(HKL)
  * @param hIMC cast=(HIMC)
@@ -5019,11 +4389,6 @@ public static final native boolean ImmSetConversionStatus (long /*int*/ hIMC, in
 public static final native boolean ImmSetOpenStatus (long /*int*/ hIMC, boolean fOpen);
 public static final native void InitCommonControls ();
 public static final native boolean InitCommonControlsEx (INITCOMMONCONTROLSEX lpInitCtrls);
-public static final native boolean InSendMessage ();
-/** @param hMenu cast=(HMENU) */
-public static final native boolean InsertMenuW (long /*int*/ hMenu, int uPosition, int uFlags, long /*int*/ uIDNewItem, char [] lpNewItem);
-/** @param hMenu cast=(HMENU) */
-public static final native boolean InsertMenuA (long /*int*/ hMenu, int uPosition, int uFlags, long /*int*/ uIDNewItem, byte [] lpNewItem);
 /**
  * @param hMenu cast=(HMENU)
  * @param lpmii cast=(LPMENUITEMINFOW)
@@ -5080,27 +4445,12 @@ public static final native boolean InvalidateRgn (long /*int*/ hWnd, long /*int*
 /** @method flags=dynamic */
 public static final native boolean IsAppThemed ();
 /**
- * @param lp cast=(LPVOID)
- * @param ucb cast=(UINT_PTR)
- */
-public static final native boolean IsBadReadPtr (long /*int*/ lp, int ucb);
-/**
- * @param lp cast=(LPVOID)
- * @param ucb cast=(UINT_PTR)
- */
-public static final native boolean IsBadWritePtr (long /*int*/ lp, int ucb);
-public static final native boolean IsDBCSLeadByte (byte TestChar);
-/**
  * @method flags=dynamic
  * @param hWnd cast=(HWND)
  */
 public static final native boolean IsHungAppWindow (long /*int*/ hWnd);
 /** @param hWnd cast=(HWND) */
 public static final native boolean IsIconic (long /*int*/ hWnd);
-/** @method flags=no_gen */
-public static final native boolean IsPPC ();
-/** @method flags=no_gen */
-public static final native boolean IsSP ();
 /**
  * @method flags=dynamic
  * @param hWnd cast=(HWND)
@@ -5151,40 +4501,14 @@ public static final native long /*int*/ LoadIconA (long /*int*/ hInstance, long 
  * @param hinst cast=(HINSTANCE)
  * @param lpszName cast=(LPWSTR)
  */
-public static final native long /*int*/ LoadImageW (long /*int*/ hinst, char [] lpszName, int uType, int cxDesired, int cyDesired, int fuLoad);
-/**
- * @param hinst cast=(HINSTANCE)
- * @param lpszName cast=(LPSTR)
- */
-public static final native long /*int*/ LoadImageA (long /*int*/ hinst, byte [] lpszName, int uType, int cxDesired, int cyDesired, int fuLoad);
-/**
- * @param hinst cast=(HINSTANCE)
- * @param lpszName cast=(LPWSTR)
- */
 public static final native long /*int*/ LoadImageW (long /*int*/ hinst, long /*int*/ lpszName, int uType, int cxDesired, int cyDesired, int fuLoad);
 /**
  * @param hinst cast=(HINSTANCE)
  * @param lpszName cast=(LPSTR)
  */
 public static final native long /*int*/ LoadImageA (long /*int*/ hinst, long /*int*/ lpszName, int uType, int cxDesired, int cyDesired, int fuLoad);
-/**
- * @param hinst cast=(HINSTANCE)
- * @param lpBuffer cast=(LPWSTR)
- */
-public static final native int LoadStringW (long /*int*/ hinst, int uID, char [] lpBuffer, int nBufferMax);
-/**
- * @param hinst cast=(HINSTANCE)
- * @param lpBuffer cast=(LPSTR)
- */
-public static final native int LoadStringA (long /*int*/ hinst, int uID, byte [] lpBuffer, int nBufferMax);
-/** @param lpLibFileName cast=(LPWSTR) */
-public static final native long /*int*/ LoadLibraryW (char [] lpLibFileName);
-/** @param lpLibFileName cast=(LPSTR) */
-public static final native long /*int*/ LoadLibraryA (byte [] lpLibFileName);
 /** @param hMem cast=(HLOCAL) */
 public static final native long /*int*/ LocalFree (long /*int*/ hMem);
-/** @param hWndLock cast=(HWND) */
-public static final native boolean LockWindowUpdate (long /*int*/ hWndLock);
 public static final native int LODWORD (long l);
 public static final native int LOWORD (long /*int*/ l);
 /** @param hdc cast=(HDC) */
@@ -5207,8 +4531,6 @@ public static final native int MapWindowPoints (long /*int*/ hWndFrom, long /*in
  * @param lpPoints cast=(LPPOINT)
  */
 public static final native int MapWindowPoints (long /*int*/ hWndFrom, long /*int*/ hWndTo, RECT lpPoints, int cPoints);
-/** @method flags=dynamic */
-public static final native boolean MCIWndRegisterClass ();
 public static final native boolean MessageBeep (int uType);
 /**
  * @param hWnd cast=(HWND)
@@ -5426,11 +4748,6 @@ public static final native void MoveMemory (DOCHOSTUIINFO Destination, long /*in
 public static final native void MoveMemory (DRAWITEMSTRUCT Destination, long /*int*/ Source, int Length);
 /**
  * @param Destination cast=(PVOID),flags=no_in
- * @param Source cast=(CONST VOID *)
- */
-public static final native void MoveMemory (EXTLOGPEN Destination, long /*int*/ Source, int Length);
-/**
- * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *),flags=no_out
  */
 public static final native void MoveMemory (FLICK_DATA Destination, long /*int*/ [] Source, int Length);
@@ -5498,17 +4815,17 @@ public static final native void MoveMemory (NMHDR Destination, long /*int*/ Sour
  * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *)
  */
-public static final native void MoveMemory (NMRGINFO Destination, long /*int*/ Source, int Length);
-/**
- * @param Destination cast=(PVOID),flags=no_in
- * @param Source cast=(CONST VOID *)
- */
 public static final native void MoveMemory (NMCUSTOMDRAW Destination, long /*int*/ Source, int Length);
 /**
  * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *)
  */
 public static final native void MoveMemory (NMLVCUSTOMDRAW Destination, long /*int*/ Source, int Length);
+/**
+ * @param Destination cast=(PVOID),flags=no_in
+ * @param Source cast=(CONST VOID *)
+ */
+public static final native void MoveMemory (NMTBCUSTOMDRAW Destination, long /*int*/ Source, int Length);
 /**
  * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *)
@@ -5543,12 +4860,12 @@ public static final native void MoveMemory (long /*int*/ Destination, NMLVCUSTOM
  * @param Destination cast=(PVOID)
  * @param Source cast=(CONST VOID *),flags=no_out
  */
-public static final native void MoveMemory (long /*int*/ Destination, NMTVCUSTOMDRAW Source, int Length);
+public static final native void MoveMemory (long /*int*/ Destination, NMTBCUSTOMDRAW Source, int Length);
 /**
  * @param Destination cast=(PVOID)
  * @param Source cast=(CONST VOID *),flags=no_out
  */
-public static final native void MoveMemory (long /*int*/ Destination, NMTTCUSTOMDRAW Source, int Length);
+public static final native void MoveMemory (long /*int*/ Destination, NMTVCUSTOMDRAW Source, int Length);
 /**
  * @param Destination cast=(PVOID)
  * @param Source cast=(CONST VOID *),flags=no_out
@@ -5569,11 +4886,6 @@ public static final native void MoveMemory (NMLVDISPINFO Destination, long /*int
  * @param Source cast=(CONST VOID *)
  */
 public static final native void MoveMemory (NMTVDISPINFO Destination, long /*int*/ Source, int Length);
-/**
- * @param Destination cast=(PVOID),flags=no_in
- * @param Source cast=(CONST VOID *)
- */
-public static final native void MoveMemory (NMLVFINDITEM Destination, long /*int*/ Source, int Length);
 /**
  * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *)
@@ -5624,12 +4936,6 @@ public static final native void MoveMemory (NMTTDISPINFOW Destination, long /*in
  * @param Source cast=(CONST VOID *)
  */
 public static final native void MoveMemory (NMTTDISPINFOA Destination, long /*int*/ Source, int Length);
-public static final native void MoveMemory (RECT Destination, long /*int*/[] Source, int Length);
-/**
- * @param Destination cast=(PVOID),flags=no_in
- * @param Source cast=(CONST VOID *)
- */
-public static final native void MoveMemory (SHDRAGIMAGE Destination, long /*int*/ Source, int Length);
 /**
  * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *)
@@ -5660,11 +4966,6 @@ public static final native void MoveMemory (TEXTMETRICA Destination, long /*int*
  * @param Source cast=(CONST VOID *)
  */
 public static final native void MoveMemory (TOUCHINPUT Destination, long /*int*/ Source, int Length);
-/**
- * @param Destination cast=(PVOID),flags=no_in
- * @param Source cast=(CONST VOID *)
- */
-public static final native void MoveMemory (TVITEM Destination, long /*int*/ Source, int Length);
 /**
  * @param Destination cast=(PVOID),flags=no_in
  * @param Source cast=(CONST VOID *)
@@ -5740,14 +5041,6 @@ public static final native void MoveMemory (long /*int*/ Destination, GESTURECON
  * @param lPoint cast=(LPPOINT)
  */
 public static final native boolean MoveToEx (long /*int*/ hdc, int x1, int x2, long /*int*/ lPoint);
-/**
- * @param nCount cast=(DWORD)
- * @param pHandles cast=(LPHANDLE)
- * @param dwMilliseconds cast=(DWORD)
- * @param dwWakeMask cast=(DWORD)
- * @param dwFlags cast=(DWORD)
- */
-public static final native int MsgWaitForMultipleObjectsEx (int nCount, long /*int*/ pHandles, int dwMilliseconds, int dwWakeMask, int dwFlags);
 /**
  * @param lpMultiByteStr cast=(LPCSTR),flags=no_out critical
  * @param lpWideCharStr cast=(LPWSTR),flags=no_in critical
@@ -5934,36 +5227,6 @@ public static final native int RegOpenKeyExW (long /*int*/ hKey, char[] lpSubKey
  * @param phkResult cast=(PHKEY)
  */
 public static final native int RegOpenKeyExA (long /*int*/ hKey, byte[] lpSubKey, int ulOptions, int samDesired, long /*int*/[] phkResult);
-/**
- * @param hKey cast=(HKEY)
- * @param lpClass cast=(LPWSTR)
- * @param lpcbClass cast=(LPDWORD)
- * @param lpReserved cast=(LPDWORD)
- * @param lpSubKeys cast=(LPDWORD)
- * @param lpcbMaxSubKeyLen cast=(LPDWORD)
- * @param lpcbMaxClassLen cast=(LPDWORD)
- * @param lpcValues cast=(LPDWORD)
- * @param lpcbMaxValueNameLen cast=(LPDWORD)
- * @param lpcbMaxValueLen cast=(LPDWORD)
- * @param lpcbSecurityDescriptor cast=(LPDWORD)
- * @param lpftLastWriteTime cast=(PFILETIME)
- */
-public static final native int RegQueryInfoKeyW (long /*int*/ hKey, long /*int*/ lpClass, int[] lpcbClass, long /*int*/ lpReserved, int[] lpSubKeys, int[] lpcbMaxSubKeyLen, int[] lpcbMaxClassLen, int[] lpcValues, int[] lpcbMaxValueNameLen, int[] lpcbMaxValueLen, int[] lpcbSecurityDescriptor, long /*int*/ lpftLastWriteTime);
-/**
- * @param hKey cast=(HKEY)
- * @param lpClass cast=(LPSTR)
- * @param lpcbClass cast=(LPDWORD)
- * @param lpReserved cast=(LPDWORD)
- * @param lpSubKeys cast=(LPDWORD)
- * @param lpcbMaxSubKeyLen cast=(LPDWORD)
- * @param lpcbMaxClassLen cast=(LPDWORD)
- * @param lpcValues cast=(LPDWORD)
- * @param lpcbMaxValueNameLen cast=(LPDWORD)
- * @param lpcbMaxValueLen cast=(LPDWORD)
- * @param lpcbSecurityDescriptor cast=(LPDWORD)
- * @param lpftLastWriteTime cast=(PFILETIME)
- */
-public static final native int RegQueryInfoKeyA (long /*int*/ hKey, long /*int*/ lpClass, int[] lpcbClass, long /*int*/ lpReserved, int[] lpSubKeys, int[] lpcbMaxSubKeyLen, int[] lpcbMaxClassLen, int[] lpcValues, int[] lpcbMaxValueNameLen, int[] lpcbMaxValueLen, int[] lpcbSecurityDescriptor, long /*int*/ lpftLastWriteTime);
 /**
  * @param hKey cast=(HKEY)
  * @param lpValueName cast=(LPWSTR)
@@ -6200,7 +5463,6 @@ public static final native long /*int*/ SelectPalette (long /*int*/ hDC, long /*
 /** @param pInputs cast=(LPINPUT) */
 public static final native int SendInput (int nInputs, long /*int*/ pInputs, int cbSize);
 /**
- * @method flags=no_gen
  * @param hWnd cast=(HWND)
  * @param wParam cast=(WPARAM)
  * @param lParam cast=(LPARAM)
@@ -6619,8 +5881,6 @@ public static final native boolean SetBrushOrgEx (long /*int*/ hdc, int nXOrg, i
 /** @param hWnd cast=(HWND) */
 public static final native long /*int*/ SetCapture (long /*int*/ hWnd);
 public static final native boolean SetCaretPos (int X, int Y);
-/** @param hMem cast=(HANDLE) */
-public static final native long /*int*/ SetClipboardData (int uFormat, long /*int*/ hMem);
 /** @method flags=dynamic */
 public static final native int SetCurrentProcessExplicitAppUserModelID (char[] AppID);
 /** @param hCursor cast=(HCURSOR) */
@@ -6665,13 +5925,6 @@ public static final native boolean SetLayeredWindowAttributes(long /*int*/ hwnd,
  * @param dwLayout cast=(DWORD)
  */
 public static final native int SetLayout (long /*int*/ hdc, int dwLayout);
-/** @param hdc cast=(HDC) */
-public static final native int SetMapMode (long /*int*/ hdc, int fnMapMode);
-/**
- * @param hdc cast=(HDC)
- * @param dwFlag cast=(DWORD)
- */
-public static final native int SetMapperFlags (long /*int*/ hdc, int dwFlag);
 /**
  * @param hWnd cast=(HWND)
  * @param hMenu cast=(HMENU)
@@ -6731,8 +5984,6 @@ public static final native boolean SetPropW (long /*int*/ hWnd, long /*int*/ lpS
  * @param hData cast=(HANDLE)
  */
 public static final native boolean SetPropA (long /*int*/ hWnd, long /*int*/ lpString, long /*int*/ hData);
-/** @param hdc cast=(HDC) */
-public static final native int SetTextAlign (long /*int*/ hdc, int fMode);
 /**
  * @param hdc cast=(HDC)
  * @param colorRef cast=(COLORREF)
@@ -6743,10 +5994,6 @@ public static final native int SetTextColor (long /*int*/ hdc, int colorRef);
  * @param lpTimerFunc cast=(TIMERPROC)
  */
 public static final native long /*int*/ SetTimer (long /*int*/ hWnd, long /*int*/ nIDEvent, int Elapse, long /*int*/ lpTimerFunc);
-/** @param hdc cast=(HDC) */
-public static final native boolean SetViewportExtEx (long /*int*/ hdc, int nXExtent, int nYExtent, SIZE lpSize);
-/** @param hdc cast=(HDC) */
-public static final native boolean SetViewportOrgEx (long /*int*/ hdc, int X, int Y, POINT lpPoint);
 /** @param hWnd cast=(HWND) */
 public static final native int SetWindowLongW (long /*int*/ hWnd, int nIndex, int dwNewLong);
 /** @param hWnd cast=(HWND) */
@@ -6761,8 +6008,6 @@ public static final native long /*int*/ SetWindowLongPtrW (long /*int*/ hWnd, in
  * @param dwNewLong cast=(LONG_PTR)
  */
 public static final native long /*int*/ SetWindowLongPtrA (long /*int*/ hWnd, int nIndex, long /*int*/ dwNewLong);
-/** @param hdc cast=(HDC) */
-public static final native boolean SetWindowExtEx (long /*int*/ hdc, int nXExtent, int nYExtent, SIZE lpSize);
 /** @param hdc cast=(HDC) */
 public static final native boolean SetWindowOrgEx (long /*int*/ hdc, int X, int Y, POINT lpPoint);
 /** @param hWnd cast=(HWND) */
@@ -6812,8 +6057,6 @@ public static final native boolean SetWorldTransform(long /*int*/ hdc, float[] l
 /** @param lpbi cast=(LPBROWSEINFOW) */
 public static final native long /*int*/ SHBrowseForFolderW (BROWSEINFO lpbi);
 public static final native long /*int*/ SHBrowseForFolderA (BROWSEINFO lpbi);
-/** @param pmb cast=(PSHMENUBARINFO) */
-public static final native boolean SHCreateMenuBar (SHMENUBARINFO pmb);
 /**
  * @param pszPath cast=(LPCWSTR)
  * @param psfi cast=(SHFILEINFOW *)
@@ -6824,24 +6067,6 @@ public static final native long /*int*/ SHGetFileInfoW (char [] pszPath, int dwF
  * @param psfi cast=(SHFILEINFOA *)
  */
 public static final native long /*int*/ SHGetFileInfoA (byte [] pszPath, int dwFileAttributes, SHFILEINFOA psfi, int cbFileInfo, int uFlags);
-/**
- * @param hwndOwner cast=(HWND)
- * @param hToken cast=(HANDLE)
- * @param pszPath cast=(LPWSTR)
- */
-public static final native int SHGetFolderPathW (long /*int*/ hwndOwner, int nFolder, long /*int*/ hToken, int dwFlags, char[] pszPath);
-/**
- * @param hwndOwner cast=(HWND)
- * @param hToken cast=(HANDLE)
- * @param pszPath cast=(LPSTR)
- */
-public static final native int SHGetFolderPathA (long /*int*/ hwndOwner, int nFolder, long /*int*/ hToken, int dwFlags, byte[] pszPath);
-/** @param hwnd cast=(HWND) */
-public static final native boolean SHHandleWMSettingChange (long /*int*/ hwnd, long /*int*/ wParam, long /*int*/ lParam, SHACTIVATEINFO psai);
-public static final native int SHRecognizeGesture (SHRGINFO shrg);
-public static final native void SHSendBackToFocusWindow (int uMsg, long /*int*/ wp, long /*int*/ lp);
-/** @param hwnd cast=(HWND) */
-public static final native boolean SHSipPreference (long /*int*/ hwnd, int st);
 /** @param lpExecInfo cast=(LPSHELLEXECUTEINFOW) */
 public static final native boolean ShellExecuteExW (SHELLEXECUTEINFO lpExecInfo);
 public static final native boolean ShellExecuteExA (SHELLEXECUTEINFO lpExecInfo);
@@ -6863,21 +6088,16 @@ public static final native boolean SHGetPathFromIDListA (long /*int*/ pidl, byte
 public static final native int SHCreateItemInKnownFolder (byte [] kfid, int dwKFFlags, char [] pszItem, byte [] riid, long /*int*/ [] ppv);
 /** @method flags=dynamic */
 public static final native int SHCreateItemFromRelativeName (long /*int*/ psiParent, char [] pszName, long /*int*/ pbc, byte [] riid, long /*int*/ [] ppv);
-/**
- * @param bVk cast=(BYTE)
- * @param hwnd cast=(HWND)
- */
-public static final native boolean SHSetAppKeyWndAssoc (byte bVk, long /*int*/ hwnd);
+/** @method flags=dynamic */
+public static final native int SHCreateItemFromParsingName (char [] pszName, long /*int*/ pbc, byte [] riid, long /*int*/ [] ppv);
 /** @param hWnd cast=(HWND) */
 public static final native boolean ShowCaret (long /*int*/ hWnd);
-public static final native int ShowCursor (boolean bShow);
 /** @param hWnd cast=(HWND) */
 public static final native boolean ShowOwnedPopups (long /*int*/ hWnd, boolean fShow);
 /** @param hWnd cast=(HWND) */
 public static final native boolean ShowScrollBar (long /*int*/ hWnd, int wBar, boolean bShow);
 /** @param hWnd cast=(HWND) */
 public static final native boolean ShowWindow (long /*int*/ hWnd, int nCmdShow);
-public static final native boolean SipGetInfo (SIPINFO pSipInfo);
 /**
  * @param hdc cast=(HDC)
  * @param lpdi cast=(LPDOCINFOW)
@@ -6947,12 +6167,6 @@ public static final native boolean TranslateMDISysAccel (long /*int*/ hWndClient
 public static final native boolean TranslateMessage (MSG lpmsg);
 /** @method flags=dynamic */
 public static final native boolean TransparentBlt (long /*int*/ hdcDest, int nXOriginDest, int nYOriginDest, int nWidthDest, int hHeightDest, long /*int*/ hdcSrc, int nXOriginSrc, int nYOriginSrc, int nWidthSrc, int nHeightSrc, int crTransparent);
-/**
- * @param hdcDest cast=(HDC)
- * @param hSrc cast=(HANDLE)
- * @param TransparentColor cast=(COLORREF)
- */
-public static final native boolean TransparentImage (long /*int*/ hdcDest, int DstX, int DstY, int DstCx, int DstCy,long /*int*/ hSrc, int SrcX, int SrcY, int SrcCx, int SrcCy, int TransparentColor);
 /** @param hhk cast=(HHOOK) */
 public static final native boolean UnhookWindowsHookEx (long /*int*/ hhk);
 /**
@@ -6965,14 +6179,6 @@ public static final native boolean UnregisterClassW (char [] lpClassName, long /
  * @param hInstance cast=(HINSTANCE)
  */
 public static final native boolean UnregisterClassA (byte [] lpClassName, long /*int*/ hInstance);
-/**
- * @method flags=dynamic
- * @param hwnd cast=(HWND)
- * @param hdcDst cast=(HDC)
- * @param hdcSrc cast=(HDC)
- * @param crKey cast=(COLORREF)
- */
-public static final native boolean UpdateLayeredWindow (long /*int*/ hwnd, long /*int*/ hdcDst, POINT pptDst, SIZE psize, long /*int*/ hdcSrc, POINT pptSrc, int crKey, BLENDFUNCTION pblend, int dwFlags);
 /**
  * @method flags=dynamic
  * @param hwnd cast=(HWND)

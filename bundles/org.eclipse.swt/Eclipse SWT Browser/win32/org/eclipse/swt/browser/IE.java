@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2003, 2016 IBM Corporation and others.
+ * Copyright (c) 2003, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.swt.browser;
 
+import java.io.*;
 import java.net.*;
 import java.util.*;
 
@@ -112,7 +113,7 @@ class IE extends WebBrowser {
 	static final String EXTENSION_PDF = ".pdf";	//$NON-NLS-1$
 	static final String HTML_DOCUMENT = "HTML Document";	//$NON-NLS-1$
 	static final int MAX_PDF = 20;
-	static final char SEPARATOR_OS = System.getProperty ("file.separator").charAt (0); //$NON-NLS-1$
+	static final char SEPARATOR_OS = File.separatorChar;
 	static final String PROPERTY_IEVERSION = "org.eclipse.swt.browser.IEVersion"; //$NON-NLS-1$
 	static final String VALUE_DEFAULT = "default"; //$NON-NLS-1$
 
@@ -146,12 +147,10 @@ class IE extends WebBrowser {
 
 	static {
 		NativeClearSessions = () -> {
-			if (OS.IsPPC) return;
 			OS.InternetSetOption (0, OS.INTERNET_OPTION_END_BROWSER_SESSION, 0, 0);
 		};
 
 		NativeGetCookie = () -> {
-			if (OS.IsPPC) return;
 			TCHAR url = new TCHAR (0, CookieUrl, true);
 			TCHAR cookieData = new TCHAR (0, 8192);
 			int[] size = new int[] {cookieData.length ()};
@@ -177,7 +176,6 @@ class IE extends WebBrowser {
 		};
 
 		NativeSetCookie = () -> {
-			if (OS.IsPPC) return;
 			TCHAR url = new TCHAR (0, CookieUrl, true);
 			TCHAR value = new TCHAR (0, CookieValue, true);
 			CookieResult = OS.InternetSetCookie (url, null, value);
@@ -456,7 +454,6 @@ public void create(Composite parent, int style) {
 		if (auto != null) {
 			switch (event.type) {
 				case BeforeNavigate2: {
-					isRefresh = false; /* refreshes do not come through here */
 
 					/* don't send client events if the initial navigate to about:blank has not completed */
 					if (performingInitialNavigate) break;
@@ -476,7 +473,7 @@ public void create(Composite parent, int style) {
 							Variant cancel1 = event.arguments[6];
 							if (cancel1 != null) {
 								long /*int*/ pCancel1 = cancel1.getByRef();
-								COM.MoveMemory(pCancel1, new short[] {COM.VARIANT_FALSE}, 2);
+								OS.MoveMemory(pCancel1, new short[] {OS.VARIANT_FALSE}, 2);
 							}
 							isAboutBlank = false;
 							break;
@@ -499,7 +496,7 @@ public void create(Composite parent, int style) {
 						TCHAR filePath1 = new TCHAR(0, url1, true);
 						TCHAR urlResult1 = new TCHAR(0, OS.INTERNET_MAX_URL_LENGTH);
 						int[] size1 = new int[] {urlResult1.length()};
-						if (!OS.IsWinCE && OS.UrlCreateFromPath(filePath1, urlResult1, size1, 0) == COM.S_OK) {
+						if (OS.UrlCreateFromPath(filePath1, urlResult1, size1, 0) == COM.S_OK) {
 							url1 = urlResult1.toString(0, size1[0]);
 						} else {
 							url1 = PROTOCOL_FILE + url1.replace('\\', '/');
@@ -511,7 +508,7 @@ public void create(Composite parent, int style) {
 						Variant cancel2 = event.arguments[6];
 						if (cancel2 != null) {
 							long /*int*/ pCancel2 = cancel2.getByRef();
-							COM.MoveMemory(pCancel2, new short[] {COM.VARIANT_TRUE}, 2);
+							OS.MoveMemory(pCancel2, new short[] {OS.VARIANT_TRUE}, 2);
 						}
 						break;
 					}
@@ -528,7 +525,7 @@ public void create(Composite parent, int style) {
 					Variant cancel3 = event.arguments[6];
 					if (cancel3 != null) {
 						long /*int*/ pCancel3 = cancel3.getByRef();
-						COM.MoveMemory(pCancel3, new short[] {doit1 ? COM.VARIANT_FALSE : COM.VARIANT_TRUE}, 2);
+						OS.MoveMemory(pCancel3, new short[] {doit1 ? OS.VARIANT_FALSE : OS.VARIANT_TRUE}, 2);
 					}
 					if (doit1) {
 						varResult1 = event.arguments[0];
@@ -583,7 +580,7 @@ public void create(Composite parent, int style) {
 						TCHAR filePath2 = new TCHAR(0, url2, true);
 						TCHAR urlResult2 = new TCHAR(0, OS.INTERNET_MAX_URL_LENGTH);
 						int[] size2 = new int[] {urlResult2.length()};
-						if (!OS.IsWinCE && OS.UrlCreateFromPath(filePath2, urlResult2, size2, 0) == COM.S_OK) {
+						if (OS.UrlCreateFromPath(filePath2, urlResult2, size2, 0) == COM.S_OK) {
 							url2 = urlResult2.toString(0, size2[0]);
 						} else {
 							url2 = PROTOCOL_FILE + url2.replace('\\', '/');
@@ -801,7 +798,7 @@ public void create(Composite parent, int style) {
 								Variant cancel4 = event.arguments[4];
 								if (cancel4 != null) {
 									long /*int*/ pCancel4 = cancel4.getByRef();
-									COM.MoveMemory(pCancel4, new short[] {COM.VARIANT_TRUE}, 2);
+									OS.MoveMemory(pCancel4, new short[] {OS.VARIANT_TRUE}, 2);
 								}
 								browser.getDisplay().asyncExec(() -> {
 									if (browser.isDisposed()) return;
@@ -851,10 +848,10 @@ public void create(Composite parent, int style) {
 						IDispatch iDispatch = variant5.getDispatch();
 						Variant ppDisp = event.arguments[0];
 						long /*int*/ byref = ppDisp.getByRef();
-						if (byref != 0) COM.MoveMemory(byref, new long /*int*/[] {iDispatch.getAddress()}, OS.PTR_SIZEOF);
+						if (byref != 0) OS.MoveMemory(byref, new long /*int*/[] {iDispatch.getAddress()}, C.PTR_SIZEOF);
 					}
 					if (newEvent2.required) {
-						COM.MoveMemory(pCancel5, new short[]{doit2 ? COM.VARIANT_FALSE : COM.VARIANT_TRUE}, 2);
+						OS.MoveMemory(pCancel5, new short[]{doit2 ? OS.VARIANT_FALSE : OS.VARIANT_TRUE}, 2);
 					}
 					break;
 				}
@@ -1000,7 +997,7 @@ public void create(Composite parent, int style) {
 					long /*int*/ pCancel6 = cancel6.getByRef();
 					Variant arg15 = event.arguments[0];
 					boolean isChildWindow = arg15.getBoolean();
-					COM.MoveMemory(pCancel6, new short[]{isChildWindow ? COM.VARIANT_FALSE : COM.VARIANT_TRUE}, 2);
+					OS.MoveMemory(pCancel6, new short[]{isChildWindow ? OS.VARIANT_FALSE : OS.VARIANT_TRUE}, 2);
 					break;
 				}
 				case WindowSetHeight: {
@@ -1338,13 +1335,13 @@ boolean navigate(String url, String postData, String headers[], boolean silent) 
 		rgdispidNamedArgs[index++] = rgdispid[3];
 	}
 	boolean oldValue = false;
-	if (silent && !OS.IsWinCE && IEVersion >= 7) {
+	if (silent && IEVersion >= 7) {
 		int hResult = OS.CoInternetIsFeatureEnabled(OS.FEATURE_DISABLE_NAVIGATION_SOUNDS, OS.GET_FEATURE_FROM_PROCESS);
 		oldValue = hResult == COM.S_OK;
 		OS.CoInternetSetFeatureEnabled(OS.FEATURE_DISABLE_NAVIGATION_SOUNDS, OS.SET_FEATURE_ON_PROCESS, true);
 	}
 	Variant pVarResult = auto.invoke(rgdispid[0], rgvarg, rgdispidNamedArgs);
-	if (silent && !OS.IsWinCE && IEVersion >= 7) {
+	if (silent && IEVersion >= 7) {
 		OS.CoInternetSetFeatureEnabled(OS.FEATURE_DISABLE_NAVIGATION_SOUNDS, OS.SET_FEATURE_ON_PROCESS, oldValue);
 	}
 	for (int i = 0; i < count; i++) {
@@ -1496,13 +1493,13 @@ public boolean setText(final String html, boolean trusted) {
 	int[] rgdispidNamedArgs = new int[1];
 	rgdispidNamedArgs[0] = rgdispid[1];
 	boolean oldValue = false;
-	if (!OS.IsWinCE && IEVersion >= 7) {
+	if (IEVersion >= 7) {
 		int hResult = OS.CoInternetIsFeatureEnabled(OS.FEATURE_DISABLE_NAVIGATION_SOUNDS, OS.GET_FEATURE_FROM_PROCESS);
 		oldValue = hResult == COM.S_OK;
 		OS.CoInternetSetFeatureEnabled(OS.FEATURE_DISABLE_NAVIGATION_SOUNDS, OS.SET_FEATURE_ON_PROCESS, true);
 	}
 	Variant pVarResult = auto.invoke(rgdispid[0], rgvarg, rgdispidNamedArgs);
-	if (!OS.IsWinCE && IEVersion >= 7) {
+	if (IEVersion >= 7) {
 		OS.CoInternetSetFeatureEnabled(OS.FEATURE_DISABLE_NAVIGATION_SOUNDS, OS.SET_FEATURE_ON_PROCESS, oldValue);
 	}
 	rgvarg[0].dispose();

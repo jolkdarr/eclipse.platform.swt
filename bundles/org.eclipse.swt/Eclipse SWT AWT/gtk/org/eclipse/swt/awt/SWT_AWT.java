@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -86,7 +86,13 @@ static synchronized void initializeSwing() {
 	* that make SWT exit.  The fix is to hide all X
 	* errors when AWT is running.
 	*/
-	OS.gdk_error_trap_push();
+	if (GTK.GTK3) {
+		if (OS.isX11()) {
+			GDK.gdk_x11_display_error_trap_push(GDK.gdk_display_get_default());
+		}
+	} else {
+		GDK.gdk_error_trap_push();
+	}
 	try {
 		/* Initialize the default focus traversal policy */
 		Class<?> clazz = Class.forName("javax.swing.UIManager");
@@ -138,6 +144,7 @@ public static Frame getFrame (Composite parent) {
  * @since 3.0
  */
 public static Frame new_Frame (final Composite parent) {
+	if (OS.IsWin32) SWT.error (SWT.ERROR_NOT_IMPLEMENTED);
 	if (parent == null) SWT.error (SWT.ERROR_NULL_ARGUMENT);
 	if ((parent.getStyle () & SWT.EMBEDDED) == 0) {
 		SWT.error (SWT.ERROR_INVALID_ARGUMENT);
@@ -183,12 +190,12 @@ public static Frame new_Frame (final Composite parent) {
 					long /*int*/ awtHandle = getAWTHandle(window);
 					if (awtHandle == 0) return;
 					long /*int*/ xWindow;
-					if (OS.GTK3) {
-						xWindow = OS.gdk_x11_window_get_xid (OS.gtk_widget_get_window (shell.handle));
+					if (GTK.GTK3) {
+						xWindow = GDK.gdk_x11_window_get_xid (GTK.gtk_widget_get_window (shell.handle));
 					} else {
-						xWindow = OS.gdk_x11_drawable_get_xid(OS.gtk_widget_get_window(OS.gtk_widget_get_toplevel(shell.handle)));
+						xWindow = GDK.gdk_x11_drawable_get_xid(GTK.gtk_widget_get_window(GTK.gtk_widget_get_toplevel(shell.handle)));
 					}
-					OS.XSetTransientForHint(OS.gdk_x11_display_get_xdisplay(OS.gdk_display_get_default()), awtHandle, xWindow);
+					OS.XSetTransientForHint(GDK.gdk_x11_display_get_xdisplay(GDK.gdk_display_get_default()), awtHandle, xWindow);
 				});
 			}
 		}
@@ -258,6 +265,7 @@ public static Frame new_Frame (final Composite parent) {
  * @since 3.0
  */
 public static Shell new_Shell (final Display display, final Canvas parent) {
+	if (OS.IsWin32) SWT.error (SWT.ERROR_NOT_IMPLEMENTED);
 	if (display == null) SWT.error (SWT.ERROR_NULL_ARGUMENT);
 	if (parent == null) SWT.error (SWT.ERROR_NULL_ARGUMENT);
 	long /*int*/ handle = 0;

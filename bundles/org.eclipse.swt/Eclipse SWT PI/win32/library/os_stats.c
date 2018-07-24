@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -28,11 +28,9 @@ char * OS_nativeFunctionNames[] = {
 	"AdjustWindowRectEx",
 	"AllowSetForegroundWindow",
 	"AlphaBlend",
-	"AnimateWindow",
 	"Arc",
 	"AssocQueryStringA",
 	"AssocQueryStringW",
-	"AttachThreadInput",
 	"BITMAPINFOHEADER_1sizeof",
 	"BITMAP_1sizeof",
 	"BLENDFUNCTION_1sizeof",
@@ -46,7 +44,6 @@ char * OS_nativeFunctionNames[] = {
 	"BitBlt",
 	"BringWindowToTop",
 	"BufferedPaintInit",
-	"BufferedPaintSetAlpha",
 	"BufferedPaintUnInit",
 	"CANDIDATEFORM_1sizeof",
 	"CERT_1CONTEXT_1sizeof",
@@ -62,16 +59,6 @@ char * OS_nativeFunctionNames[] = {
 	"CRYPT_1BIT_1BLOB_1sizeof",
 	"CRYPT_1INTEGER_1BLOB_1sizeof",
 	"CRYPT_1OBJID_1BLOB_1sizeof",
-#ifndef JNI64
-	"Call__I",
-#else
-	"Call__J",
-#endif
-#ifndef JNI64
-	"Call__ILorg_eclipse_swt_internal_win32_DLLVERSIONINFO_2",
-#else
-	"Call__JLorg_eclipse_swt_internal_win32_DLLVERSIONINFO_2",
-#endif
 	"CallNextHookEx",
 	"CallWindowProcA",
 	"CallWindowProcW",
@@ -81,7 +68,6 @@ char * OS_nativeFunctionNames[] = {
 	"CharLowerW",
 	"CharUpperA",
 	"CharUpperW",
-	"CheckMenuItem",
 	"ChooseColorA",
 	"ChooseColorW",
 	"ChooseFontA",
@@ -101,13 +87,6 @@ char * OS_nativeFunctionNames[] = {
 	"CoTaskMemFree",
 	"CombineRgn",
 	"CommDlgExtendedError",
-	"CommandBar_1AddAdornments",
-	"CommandBar_1Create",
-	"CommandBar_1Destroy",
-	"CommandBar_1DrawMenuBar",
-	"CommandBar_1Height",
-	"CommandBar_1InsertMenubarEx",
-	"CommandBar_1Show",
 	"CopyImage",
 	"CreateAcceleratorTableA",
 	"CreateAcceleratorTableW",
@@ -161,14 +140,11 @@ char * OS_nativeFunctionNames[] = {
 	"DEVMODEA_1sizeof",
 	"DEVMODEW_1sizeof",
 	"DIBSECTION_1sizeof",
-	"DLLVERSIONINFO_1sizeof",
 	"DOCHOSTUIINFO_1sizeof",
 	"DOCINFO_1sizeof",
-	"DPtoLP",
 	"DRAWITEMSTRUCT_1sizeof",
 	"DROPFILES_1sizeof",
 	"DTTOPTS_1sizeof",
-	"DWM_1BLURBEHIND_1sizeof",
 	"DefFrameProcA",
 	"DefFrameProcW",
 	"DefMDIChildProcA",
@@ -194,30 +170,19 @@ char * OS_nativeFunctionNames[] = {
 	"DragFinish",
 	"DragQueryFileA",
 	"DragQueryFileW",
-	"DrawAnimatedRects",
 	"DrawEdge",
 	"DrawFocusRect",
 	"DrawFrameControl",
 	"DrawIconEx",
 	"DrawMenuBar",
-	"DrawStateA",
-	"DrawStateW",
 	"DrawTextA",
 	"DrawTextW",
 	"DrawThemeBackground",
-	"DrawThemeEdge",
-	"DrawThemeIcon",
-	"DrawThemeParentBackground",
 	"DrawThemeText",
-	"DrawThemeTextEx",
 	"DuplicateHandle",
-	"DwmEnableBlurBehindWindow",
-	"DwmExtendFrameIntoClientArea",
-	"DwmIsCompositionEnabled",
 	"EMREXTCREATEFONTINDIRECTW_1sizeof",
 	"EMR_1sizeof",
 	"EXTLOGFONTW_1sizeof",
-	"EXTLOGPEN_1sizeof",
 	"Ellipse",
 	"EnableMenuItem",
 	"EnableScrollBar",
@@ -227,19 +192,15 @@ char * OS_nativeFunctionNames[] = {
 	"EndDoc",
 	"EndPage",
 	"EndPaint",
-	"EndPath",
 	"EnumDisplayMonitors",
 	"EnumEnhMetaFile",
 	"EnumFontFamiliesA",
-	"EnumFontFamiliesExA",
-	"EnumFontFamiliesExW",
 	"EnumFontFamiliesW",
 	"EnumSystemLanguageGroupsA",
 	"EnumSystemLanguageGroupsW",
 	"EnumSystemLocalesA",
 	"EnumSystemLocalesW",
 	"EqualRect",
-	"EqualRgn",
 	"ExcludeClipRect",
 	"ExpandEnvironmentStringsA",
 	"ExpandEnvironmentStringsW",
@@ -253,13 +214,9 @@ char * OS_nativeFunctionNames[] = {
 	"FLICK_1DATA_1sizeof",
 	"FLICK_1POINT_1sizeof",
 	"FileTimeToSystemTime",
-	"FillPath",
 	"FillRect",
-	"FindWindowA",
-	"FindWindowW",
 	"FormatMessageA",
 	"FormatMessageW",
-	"FreeLibrary",
 	"GCP_1RESULTS_1sizeof",
 	"GESTURECONFIG_1sizeof",
 	"GESTUREINFO_1sizeof",
@@ -272,7 +229,6 @@ char * OS_nativeFunctionNames[] = {
 	"GdiSetBatchLimit",
 	"GetACP",
 	"GetActiveWindow",
-	"GetAsyncKeyState",
 	"GetBkColor",
 	"GetCapture",
 	"GetCaretPos",
@@ -304,13 +260,12 @@ char * OS_nativeFunctionNames[] = {
 	"GetDCEx",
 	"GetDIBColorTable",
 	"GetDIBits",
-	"GetDateFormatA",
-	"GetDateFormatW",
 	"GetDesktopWindow",
 	"GetDeviceCaps",
 	"GetDialogBaseUnits",
 	"GetDlgItem",
 	"GetDoubleClickTime",
+	"GetDpiForMonitor",
 	"GetFocus",
 	"GetFontLanguageInfo",
 	"GetForegroundWindow",
@@ -319,8 +274,6 @@ char * OS_nativeFunctionNames[] = {
 	"GetGlyphIndicesW",
 	"GetGraphicsMode",
 	"GetIconInfo",
-	"GetKeyNameTextA",
-	"GetKeyNameTextW",
 	"GetKeyState",
 	"GetKeyboardLayout",
 	"GetKeyboardLayoutList",
@@ -332,7 +285,6 @@ char * OS_nativeFunctionNames[] = {
 	"GetLibraryHandle",
 	"GetLocaleInfoA",
 	"GetLocaleInfoW",
-	"GetMapMode",
 	"GetMenu",
 	"GetMenuBarInfo",
 	"GetMenuDefaultItem",
@@ -369,11 +321,6 @@ char * OS_nativeFunctionNames[] = {
 	"GetObjectA__JILorg_eclipse_swt_internal_win32_DIBSECTION_2",
 #endif
 #ifndef JNI64
-	"GetObjectA__IILorg_eclipse_swt_internal_win32_EXTLOGPEN_2",
-#else
-	"GetObjectA__JILorg_eclipse_swt_internal_win32_EXTLOGPEN_2",
-#endif
-#ifndef JNI64
 	"GetObjectA__IILorg_eclipse_swt_internal_win32_LOGBRUSH_2",
 #else
 	"GetObjectA__JILorg_eclipse_swt_internal_win32_LOGBRUSH_2",
@@ -382,11 +329,6 @@ char * OS_nativeFunctionNames[] = {
 	"GetObjectA__IILorg_eclipse_swt_internal_win32_LOGFONTA_2",
 #else
 	"GetObjectA__JILorg_eclipse_swt_internal_win32_LOGFONTA_2",
-#endif
-#ifndef JNI64
-	"GetObjectA__IILorg_eclipse_swt_internal_win32_LOGPEN_2",
-#else
-	"GetObjectA__JILorg_eclipse_swt_internal_win32_LOGPEN_2",
 #endif
 #ifndef JNI64
 	"GetObjectW__III",
@@ -404,11 +346,6 @@ char * OS_nativeFunctionNames[] = {
 	"GetObjectW__JILorg_eclipse_swt_internal_win32_DIBSECTION_2",
 #endif
 #ifndef JNI64
-	"GetObjectW__IILorg_eclipse_swt_internal_win32_EXTLOGPEN_2",
-#else
-	"GetObjectW__JILorg_eclipse_swt_internal_win32_EXTLOGPEN_2",
-#endif
-#ifndef JNI64
 	"GetObjectW__IILorg_eclipse_swt_internal_win32_LOGBRUSH_2",
 #else
 	"GetObjectW__JILorg_eclipse_swt_internal_win32_LOGBRUSH_2",
@@ -418,23 +355,15 @@ char * OS_nativeFunctionNames[] = {
 #else
 	"GetObjectW__JILorg_eclipse_swt_internal_win32_LOGFONTW_2",
 #endif
-#ifndef JNI64
-	"GetObjectW__IILorg_eclipse_swt_internal_win32_LOGPEN_2",
-#else
-	"GetObjectW__JILorg_eclipse_swt_internal_win32_LOGPEN_2",
-#endif
 	"GetOpenFileNameA",
 	"GetOpenFileNameW",
 	"GetOutlineTextMetricsA",
 	"GetOutlineTextMetricsW",
 	"GetPaletteEntries",
 	"GetParent",
-	"GetPath",
 	"GetPixel",
 	"GetPolyFillMode",
-	"GetProcAddress",
 	"GetProcessHeap",
-	"GetProcessHeaps",
 	"GetProfileStringA",
 	"GetProfileStringW",
 	"GetPropA",
@@ -456,33 +385,17 @@ char * OS_nativeFunctionNames[] = {
 	"GetSystemMenu",
 	"GetSystemMetrics",
 	"GetSystemPaletteEntries",
-	"GetTextCharset",
 	"GetTextColor",
 	"GetTextExtentPoint32A",
 	"GetTextExtentPoint32W",
 	"GetTextMetricsA",
 	"GetTextMetricsW",
-	"GetThemeBackgroundContentRect",
-	"GetThemeBackgroundExtent",
-	"GetThemeBitmap",
-	"GetThemeColor",
-	"GetThemeInt",
-	"GetThemeMargins",
-	"GetThemeMetric",
 	"GetThemePartSize",
-	"GetThemeRect",
-	"GetThemeSysSize",
 	"GetThemeTextExtent",
-	"GetTickCount",
-	"GetTimeFormatA",
-	"GetTimeFormatW",
 	"GetTouchInputInfo",
 	"GetUpdateRect",
 	"GetUpdateRgn",
-	"GetVersionExA__Lorg_eclipse_swt_internal_win32_OSVERSIONINFOA_2",
-	"GetVersionExA__Lorg_eclipse_swt_internal_win32_OSVERSIONINFOEXA_2",
-	"GetVersionExW__Lorg_eclipse_swt_internal_win32_OSVERSIONINFOEXW_2",
-	"GetVersionExW__Lorg_eclipse_swt_internal_win32_OSVERSIONINFOW_2",
+	"GetVersion",
 	"GetWindow",
 	"GetWindowDC",
 	"GetWindowLongA",
@@ -497,9 +410,7 @@ char * OS_nativeFunctionNames[] = {
 	"GetWindowTextLengthA",
 	"GetWindowTextLengthW",
 	"GetWindowTextW",
-	"GetWindowTheme",
 	"GetWindowThreadProcessId",
-	"GetWorldTransform",
 	"GlobalAddAtomA",
 	"GlobalAddAtomW",
 	"GlobalAlloc",
@@ -516,9 +427,7 @@ char * OS_nativeFunctionNames[] = {
 	"HIWORD",
 	"HeapAlloc",
 	"HeapFree",
-	"HeapValidate",
 	"HideCaret",
-	"HitTestThemeBackground",
 	"ICONINFO_1sizeof",
 	"IIDFromString",
 	"INITCOMMONCONTROLSEX_1sizeof",
@@ -532,10 +441,7 @@ char * OS_nativeFunctionNames[] = {
 	"ImageList_1DragLeave",
 	"ImageList_1DragMove",
 	"ImageList_1DragShowNolock",
-	"ImageList_1Draw",
 	"ImageList_1EndDrag",
-	"ImageList_1GetDragImage",
-	"ImageList_1GetIcon",
 	"ImageList_1GetIconSize",
 	"ImageList_1GetImageCount",
 	"ImageList_1Remove",
@@ -545,7 +451,6 @@ char * OS_nativeFunctionNames[] = {
 	"ImmAssociateContext",
 	"ImmCreateContext",
 	"ImmDestroyContext",
-	"ImmDisableTextFrameService",
 	"ImmEscapeA",
 	"ImmEscapeW",
 	"ImmGetCompositionFontA",
@@ -587,13 +492,10 @@ char * OS_nativeFunctionNames[] = {
 	"ImmSetCompositionWindow",
 	"ImmSetConversionStatus",
 	"ImmSetOpenStatus",
-	"InSendMessage",
 	"InitCommonControls",
 	"InitCommonControlsEx",
-	"InsertMenuA",
 	"InsertMenuItemA",
 	"InsertMenuItemW",
-	"InsertMenuW",
 	"InternetGetCookieA",
 	"InternetGetCookieW",
 	"InternetSetCookieA",
@@ -604,13 +506,8 @@ char * OS_nativeFunctionNames[] = {
 	"InvalidateRect",
 	"InvalidateRgn",
 	"IsAppThemed",
-	"IsBadReadPtr",
-	"IsBadWritePtr",
-	"IsDBCSLeadByte",
 	"IsHungAppWindow",
 	"IsIconic",
-	"IsPPC",
-	"IsSP",
 	"IsTouchWindow",
 	"IsWindowEnabled",
 	"IsWindowVisible",
@@ -636,39 +533,15 @@ char * OS_nativeFunctionNames[] = {
 	"LoadCursorW",
 	"LoadIconA",
 	"LoadIconW",
-#ifndef JNI64
-	"LoadImageA__IIIIII",
-#else
-	"LoadImageA__JJIIII",
-#endif
-#ifndef JNI64
-	"LoadImageA__I_3BIIII",
-#else
-	"LoadImageA__J_3BIIII",
-#endif
-#ifndef JNI64
-	"LoadImageW__IIIIII",
-#else
-	"LoadImageW__JJIIII",
-#endif
-#ifndef JNI64
-	"LoadImageW__I_3CIIII",
-#else
-	"LoadImageW__J_3CIIII",
-#endif
-	"LoadLibraryA",
-	"LoadLibraryW",
-	"LoadStringA",
-	"LoadStringW",
+	"LoadImageA",
+	"LoadImageW",
 	"LocalFree",
-	"LockWindowUpdate",
 	"MAKELPARAM",
 	"MAKELRESULT",
 	"MAKEWORD",
 	"MAKEWPARAM",
 	"MARGINS_1sizeof",
 	"MCHITTESTINFO_1sizeof",
-	"MCIWndRegisterClass",
 	"MEASUREITEMSTRUCT_1sizeof",
 	"MENUBARINFO_1sizeof",
 	"MENUINFO_1sizeof",
@@ -776,9 +649,9 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory__JLorg_eclipse_swt_internal_win32_NMLVDISPINFO_2I",
 #endif
 #ifndef JNI64
-	"MoveMemory__ILorg_eclipse_swt_internal_win32_NMTTCUSTOMDRAW_2I",
+	"MoveMemory__ILorg_eclipse_swt_internal_win32_NMTBCUSTOMDRAW_2I",
 #else
-	"MoveMemory__JLorg_eclipse_swt_internal_win32_NMTTCUSTOMDRAW_2I",
+	"MoveMemory__JLorg_eclipse_swt_internal_win32_NMTBCUSTOMDRAW_2I",
 #endif
 #ifndef JNI64
 	"MoveMemory__ILorg_eclipse_swt_internal_win32_NMTTDISPINFOA_2I",
@@ -917,11 +790,6 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_EMR_2JI",
 #endif
 #ifndef JNI64
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_EXTLOGPEN_2II",
-#else
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_EXTLOGPEN_2JI",
-#endif
-#ifndef JNI64
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_FLICK_1DATA_2_3II",
 #else
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_FLICK_1DATA_2_3JI",
@@ -1002,11 +870,6 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMLVDISPINFO_2JI",
 #endif
 #ifndef JNI64
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMLVFINDITEM_2II",
-#else
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMLVFINDITEM_2JI",
-#endif
-#ifndef JNI64
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMLVODSTATECHANGE_2II",
 #else
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMLVODSTATECHANGE_2JI",
@@ -1022,9 +885,9 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMREBARCHILDSIZE_2JI",
 #endif
 #ifndef JNI64
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMRGINFO_2II",
+	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMTBCUSTOMDRAW_2II",
 #else
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMRGINFO_2JI",
+	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMTBCUSTOMDRAW_2JI",
 #endif
 #ifndef JNI64
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_NMTBHOTITEM_2II",
@@ -1093,11 +956,6 @@ char * OS_nativeFunctionNames[] = {
 #endif
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_POINT_2_3JI",
 #ifndef JNI64
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_RECT_2_3II",
-#else
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_RECT_2_3JI",
-#endif
-#ifndef JNI64
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_SAFEARRAY_2II",
 #else
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_SAFEARRAY_2JI",
@@ -1118,11 +976,6 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_SCRIPT_1PROPERTIES_2JI",
 #endif
 #ifndef JNI64
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_SHDRAGIMAGE_2II",
-#else
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_SHDRAGIMAGE_2JI",
-#endif
-#ifndef JNI64
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_TEXTMETRICA_2II",
 #else
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_TEXTMETRICA_2JI",
@@ -1136,11 +989,6 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_TOUCHINPUT_2II",
 #else
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_TOUCHINPUT_2JI",
-#endif
-#ifndef JNI64
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_TVITEM_2II",
-#else
-	"MoveMemory__Lorg_eclipse_swt_internal_win32_TVITEM_2JI",
 #endif
 #ifndef JNI64
 	"MoveMemory__Lorg_eclipse_swt_internal_win32_UDACCEL_2II",
@@ -1190,7 +1038,6 @@ char * OS_nativeFunctionNames[] = {
 	"MoveMemory___3SJI",
 #endif
 	"MoveToEx",
-	"MsgWaitForMultipleObjectsEx",
 #ifndef JNI64
 	"MultiByteToWideChar__IIII_3CI",
 #else
@@ -1208,7 +1055,7 @@ char * OS_nativeFunctionNames[] = {
 	"NMLVODSTATECHANGE_1sizeof",
 	"NMREBARCHEVRON_1sizeof",
 	"NMREBARCHILDSIZE_1sizeof",
-	"NMRGINFO_1sizeof",
+	"NMTBCUSTOMDRAW_1sizeof",
 	"NMTBHOTITEM_1sizeof",
 	"NMTOOLBAR_1sizeof",
 	"NMTREEVIEW_1sizeof",
@@ -1226,10 +1073,6 @@ char * OS_nativeFunctionNames[] = {
 	"NotifyWinEvent",
 	"OFNOTIFY_1sizeof",
 	"OPENFILENAME_1sizeof",
-	"OSVERSIONINFOA_1sizeof",
-	"OSVERSIONINFOEXA_1sizeof",
-	"OSVERSIONINFOEXW_1sizeof",
-	"OSVERSIONINFOW_1sizeof",
 	"OUTLINETEXTMETRICA_1sizeof",
 	"OUTLINETEXTMETRICW_1sizeof",
 	"OffsetRect",
@@ -1282,8 +1125,6 @@ char * OS_nativeFunctionNames[] = {
 	"RegEnumKeyExW",
 	"RegOpenKeyExA",
 	"RegOpenKeyExW",
-	"RegQueryInfoKeyA",
-	"RegQueryInfoKeyW",
 #ifndef JNI64
 	"RegQueryValueExA__I_3BI_3I_3B_3I",
 #else
@@ -1334,31 +1175,20 @@ char * OS_nativeFunctionNames[] = {
 	"SCRIPT_1STRING_1ANALYSIS_1sizeof",
 	"SCROLLBARINFO_1sizeof",
 	"SCROLLINFO_1sizeof",
-	"SHACTIVATEINFO_1sizeof",
 	"SHBrowseForFolderA",
 	"SHBrowseForFolderW",
+	"SHCreateItemFromParsingName",
 	"SHCreateItemFromRelativeName",
 	"SHCreateItemInKnownFolder",
-	"SHCreateMenuBar",
 	"SHDRAGIMAGE_1sizeof",
 	"SHELLEXECUTEINFO_1sizeof",
 	"SHFILEINFOA_1sizeof",
 	"SHFILEINFOW_1sizeof",
 	"SHGetFileInfoA",
 	"SHGetFileInfoW",
-	"SHGetFolderPathA",
-	"SHGetFolderPathW",
 	"SHGetMalloc",
 	"SHGetPathFromIDListA",
 	"SHGetPathFromIDListW",
-	"SHHandleWMSettingChange",
-	"SHMENUBARINFO_1sizeof",
-	"SHRGINFO_1sizeof",
-	"SHRecognizeGesture",
-	"SHSendBackToFocusWindow",
-	"SHSetAppKeyWndAssoc",
-	"SHSipPreference",
-	"SIPINFO_1sizeof",
 	"SIZE_1sizeof",
 	"STARTUPINFO_1sizeof",
 	"SYSTEMTIME_1sizeof",
@@ -1730,7 +1560,6 @@ char * OS_nativeFunctionNames[] = {
 	"SetBrushOrgEx",
 	"SetCapture",
 	"SetCaretPos",
-	"SetClipboardData",
 	"SetCurrentProcessExplicitAppUserModelID",
 	"SetCursor",
 	"SetCursorPos",
@@ -1744,8 +1573,6 @@ char * OS_nativeFunctionNames[] = {
 	"SetGraphicsMode",
 	"SetLayeredWindowAttributes",
 	"SetLayout",
-	"SetMapMode",
-	"SetMapperFlags",
 	"SetMenu",
 	"SetMenuDefaultItem",
 	"SetMenuInfo",
@@ -1764,12 +1591,8 @@ char * OS_nativeFunctionNames[] = {
 	"SetRectRgn",
 	"SetScrollInfo",
 	"SetStretchBltMode",
-	"SetTextAlign",
 	"SetTextColor",
 	"SetTimer",
-	"SetViewportExtEx",
-	"SetViewportOrgEx",
-	"SetWindowExtEx",
 	"SetWindowLongA",
 	"SetWindowLongPtrA",
 	"SetWindowLongPtrW",
@@ -1789,11 +1612,9 @@ char * OS_nativeFunctionNames[] = {
 	"Shell_1NotifyIconA",
 	"Shell_1NotifyIconW",
 	"ShowCaret",
-	"ShowCursor",
 	"ShowOwnedPopups",
 	"ShowScrollBar",
 	"ShowWindow",
-	"SipGetInfo",
 	"StartDocA",
 	"StartDocW",
 	"StartPage",
@@ -1835,7 +1656,6 @@ char * OS_nativeFunctionNames[] = {
 	"TranslateMDISysAccel",
 	"TranslateMessage",
 	"TransparentBlt",
-	"TransparentImage",
 	"TreeView_1GetItemRect",
 	"UDACCEL_1sizeof",
 	"UnhookWindowsHookEx",
@@ -1843,7 +1663,6 @@ char * OS_nativeFunctionNames[] = {
 	"UnregisterClassA",
 	"UnregisterClassW",
 	"UnregisterTouchWindow",
-	"UpdateLayeredWindow",
 	"UpdateWindow",
 	"UrlCreateFromPathA",
 	"UrlCreateFromPathW",

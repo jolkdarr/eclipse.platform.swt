@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2017 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -48,6 +48,10 @@ import org.eclipse.swt.events.VerifyListener;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.GlyphMetrics;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.graphics.Rectangle;
@@ -58,6 +62,7 @@ import org.eclipse.swt.widgets.Caret;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -707,7 +712,7 @@ public void test_marginsCorrect(){
     assertEquals(leftMargin, singleText.getLeftMargin());
     singleText.setLeftMargin(leftMargin);
     assertEquals(leftMargin, singleText.getLeftMargin());
-    singleText.dispose();        
+    singleText.dispose();
 }
 @Test
 public void test_copy() {
@@ -752,7 +757,7 @@ public void test_copy() {
 	text.setSelectionRange(0, text.getCharCount());
 	text.copy();
 	clipboardText = (String) clipboard.getContents(transfer);
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "\r\nLine1\r\nLine2\r\nLine3\r\n\r\nLine4\r\n";
 	}
 	else {
@@ -765,7 +770,7 @@ public void test_copy() {
 	text.setSelectionRange(0, text.getCharCount());
 	text.copy();
 	clipboardText = (String) clipboard.getContents(transfer);
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "Line1\r\nLine2";
 	}
 	else {
@@ -820,7 +825,7 @@ public void test_cut() {
 	text.setSelectionRange(0, text.getCharCount());
 	text.cut();
 	clipboardText = (String) clipboard.getContents(transfer);
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "\r\nLine1\r\nLine2\r\nLine3\r\n\r\nLine4\r\n";
 	}
 	else {
@@ -833,7 +838,7 @@ public void test_cut() {
 	text.setSelectionRange(0, text.getCharCount());
 	text.cut();
 	clipboardText = (String) clipboard.getContents(transfer);
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "Line1\r\nLine2";
 	}
 	else {
@@ -1365,6 +1370,7 @@ public void test_getOffsetAtLineI() {
 	text.setText("");
 	assertEquals(":g:", 0, text.getOffsetAtLine(0));
 }
+@SuppressWarnings("deprecation")
 @Test
 public void test_getOffsetAtLocationLorg_eclipse_swt_graphics_Point() {
 	boolean exceptionThrown = false;
@@ -1426,6 +1432,38 @@ public void test_getOffsetAtLocationLorg_eclipse_swt_graphics_Point() {
 	assertTrue(":m:", text.getOffsetAtLocation(text.getLocationAtOffset(2)) == 2);
 	text.setHorizontalIndex(0);
 	assertTrue(":n:", text.getOffsetAtLocation(text.getLocationAtOffset(2)) == 2);
+}
+
+@Test
+public void test_getOffsetAtPointLorg_eclipse_swt_graphics_Point() {
+	Point location;
+	final int XINSET = isBidiCaret() ? 2 : 0;
+
+	assertEquals(":a:",  0, text.getOffsetAtPoint(new Point(XINSET, 0)));
+	assertEquals(":b:", -1, text.getOffsetAtPoint(new Point(-1, 0)));
+	assertEquals(":c:", -1, text.getOffsetAtPoint(new Point(0, -1)));
+
+	text.setText("Line0\r\nLine1");
+	location = text.getLocationAtOffset(5);
+	assertTrue  (":d:", text.getOffsetAtPoint(new Point(10, 0)) > 0);
+	assertEquals(":e:",  5, text.getOffsetAtPoint(new Point(location.x - 1, 0)));
+	location = text.getLocationAtOffset(7);
+	assertEquals(":f:",  7, text.getOffsetAtPoint(location));
+	assertEquals(":g:", -1, text.getOffsetAtPoint(new Point(100, 0)));
+	assertEquals(":h:", -1, text.getOffsetAtPoint(new Point(100, 50)));
+
+	text.setTopIndex(1);
+	assertEquals(":i:",  0, text.getOffsetAtPoint(new Point(XINSET, -5)));
+	assertEquals(":j:",  7, text.getOffsetAtPoint(new Point(XINSET, 0)));
+
+	text.setHorizontalIndex(1);
+	assertEquals(":k:",  0, text.getOffsetAtPoint(new Point(XINSET + -5, -5)));
+	assertEquals(":l:",  7, text.getOffsetAtPoint(new Point(XINSET + -5, 0)));
+
+	// 1GL4ZVE
+	assertEquals(":m:",  2, text.getOffsetAtPoint(text.getLocationAtOffset(2)));
+	text.setHorizontalIndex(0);
+	assertEquals(":n:",  2, text.getOffsetAtPoint(text.getLocationAtOffset(2)));
 }
 
 void testStyles (String msg, int[] resultRanges, int[] expectedRanges, StyleRange[] resultStyles, StyleRange[] expectedStyles) {
@@ -2315,7 +2353,7 @@ public void test_paste(){
 	// test line delimiter conversion
 	clipboard.setContents(new String[]{"\rLine1\nLine2\r\nLine3\n\rLine4\n"}, new Transfer[]{transfer});
 	text.paste();
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "\r\nLine1\r\nLine2\r\nLine3\r\n\r\nLine4\r\n";
 	}
 	else {
@@ -2327,7 +2365,7 @@ public void test_paste(){
 	// test line delimiter conversion
 	clipboard.setContents(new String[]{"Line1\r\nLine2"}, new Transfer[]{transfer});
 	text.paste();
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "Line1\r\nLine2";
 	}
 	else {
@@ -2339,7 +2377,7 @@ public void test_paste(){
 	// test line delimiter conversion
 	clipboard.setContents(new String[]{"Line1\rLine2"}, new Transfer[]{transfer});
 	text.paste();
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "Line1\r\nLine2";
 	}
 	else {
@@ -2352,7 +2390,7 @@ public void test_paste(){
 	// test line delimiter conversion
 	clipboard.setContents(new String[]{"Line1\nLine2"}, new Transfer[]{transfer});
 	text.paste();
-	if (SwtTestUtil.isWindows) {
+	if (SwtTestUtil.isWindowsOS) {
 		convertedText = "Line1\r\nLine2";
 	}
 	else {
@@ -4854,6 +4892,44 @@ public void test_clickUpdatesCaretPosition() {
 }
 
 @Test
+public void test_caretSizeAndPositionVariableGlyphMetrics() {
+	text.setText("abcd");
+	text.setMargins(2, 0, 0, 0); // keep leftMargin as it affects behavior
+	text.setLineSpacing(0);
+	StyleRange range = new StyleRange(2, 1, null, null);
+	range.metrics = new GlyphMetrics(100, 0, 10);
+	text.setStyleRange(range);
+	text.setCaretOffset(0);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	// +5: caret takes 5 more pixels
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+	text.setCaretOffset(1);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+	text.setCaretOffset(2);
+	assertEquals(text.getLineHeight(0), text.getCaret().getSize().y);
+	assertEquals(0, text.getCaret().getBounds().y);
+	text.setCaretOffset(3);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+	text.setCaretOffset(4);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+	text.setCaretOffset(3);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+	text.setCaretOffset(2);
+	assertEquals(text.getLineHeight(0), text.getCaret().getSize().y);
+	assertEquals(0, text.getCaret().getBounds().y);
+	text.setCaretOffset(1);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+	text.setCaretOffset(0);
+	assertEquals(text.getLineHeight(), text.getCaret().getSize().y);
+	assertEquals(text.getLineHeight(0) - text.getCaret().getSize().y, text.getCaret().getBounds().y);
+}
+
+@Test
 public void test_doubleClickSelectsWord() {
 	text.setText("Test1 Test2");
 
@@ -5124,6 +5200,53 @@ public void test_insertInBlockSelection() {
 			.startsWith("SampleFoo Test Selection" + System.getProperty("line.separator")
 					+ "SampleFoo Test Selection" + System.getProperty("line.separator") + "Sample Test Selection"
 					+ System.getProperty("line.separator")));
+}
+
+@Test
+public void test_setStyleRanges_render() throws InterruptedException {
+	Assume.assumeFalse("Bug 536588 prevents test to work on Mac", SwtTestUtil.isCocoa);
+	shell.setVisible(true);
+	text.setText("abc");
+	text.setMargins(0, 0, 0, 0);
+	text.pack();
+	processEvents(1000, () -> hasPixel(text, text.getBackground()) && !hasPixel(text, text.getDisplay().getSystemColor(SWT.COLOR_RED)));
+	assertTrue(hasPixel(text, text.getBackground()));
+	assertFalse(hasPixel(text, text.getDisplay().getSystemColor(SWT.COLOR_RED)));
+	text.setStyleRanges(new StyleRange[] {
+			new StyleRange(0, 1, null, text.getDisplay().getSystemColor(SWT.COLOR_RED)),
+			new StyleRange(2, 1, null, text.getDisplay().getSystemColor(SWT.COLOR_RED)),
+	});
+	processEvents(100, () ->
+		hasPixel(text, text.getBackground()) &&
+		hasPixel(text, text.getDisplay().getSystemColor(SWT.COLOR_RED)));
+	assertTrue(hasPixel(text, text.getBackground()));
+	assertTrue(hasPixel(text, text.getDisplay().getSystemColor(SWT.COLOR_RED)));
+	text.replaceStyleRanges(0, 3, new StyleRange[] {
+			new StyleRange(0, 3, null, text.getDisplay().getSystemColor(SWT.COLOR_RED)),
+	});
+	processEvents(1000, () -> !hasPixel(text, text.getBackground()) && hasPixel(text, text.getDisplay().getSystemColor(SWT.COLOR_RED)));
+	assertFalse(hasPixel(text, text.getBackground()));
+	assertTrue(hasPixel(text, text.getDisplay().getSystemColor(SWT.COLOR_RED)));
+}
+
+private boolean hasPixel(StyledText text, Color expectedColor) {
+	GC gc = new GC(text);
+	final Image image = new Image(text.getDisplay(), text.getSize().x, text.getSize().y);
+	gc.copyArea(image, 0, 0);
+	gc.dispose();
+	ImageData imageData = image.getImageData();
+	RGB expectedRGB = expectedColor.getRGB();
+	for (int x = 1; x < image.getBounds().width - 1; x++) { // ignore first and last columns
+		for (int y = 0; y < image.getBounds().height; y++) {
+			RGB pixelRGB = imageData.palette.getRGB(imageData.getPixel(x, y));
+			if (expectedRGB.equals(pixelRGB)) {
+				image.dispose();
+				return true;
+			}
+		}
+	}
+	image.dispose();
+	return false;
 }
 
 private String blockSelectionTestText() {

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2016 IBM Corporation and others.
+ * Copyright (c) 2008, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -35,9 +35,8 @@ public void generate(JNIClass clazz) {
 	List<Integer> keys = new ArrayList<>();
 	keys.addAll(set);
 	Collections.reverse(keys);
-	StringBuffer buffer = new StringBuffer(source);
-	for (Iterator<Integer> iterator = keys.iterator(); iterator.hasNext();) {
-		Integer index = iterator.next();
+	StringBuilder buffer = new StringBuilder(source);
+	for (Integer index : keys) {
 		String doc = inserts.get(index);
 		buffer.insert(index.intValue(), doc);
 	}
@@ -99,11 +98,10 @@ public void generate(JNIMethod method) {
 		String doc = "/** " + tags.get(0) + " */" + delimiter;
 		inserts.put(Integer.valueOf(((ASTMethod)method).start), doc);
 	} else {
-		StringBuffer buffer = new StringBuffer();
+		StringBuilder buffer = new StringBuilder();
 		buffer.append("/**");
 		buffer.append(delimiter);
-		for (Iterator<String> iterator = tags.iterator(); iterator.hasNext();) {
-			String tag = iterator.next();
+		for (String tag : tags) {
 			buffer.append(" * ");
 			buffer.append(tag);
 			buffer.append(delimiter);

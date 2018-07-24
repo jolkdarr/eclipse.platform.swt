@@ -507,6 +507,9 @@ public void test_setActive() {
 	/* Create shell2 and make it active. */
 	Shell shell2 = new Shell();
 	shell2.open();
+	if (SwtTestUtil.isCocoa) {
+		drainEventQueue(shell.getDisplay(), 5000); //workaround for Bug 536564
+	}
 
 	/* Test setActive for visible shell. */
 	shell.setVisible(true);
@@ -532,6 +535,24 @@ public void test_setActive() {
 	assertTrue("non-visible dialog shell was made active", testShell.getDisplay().getActiveShell() != testShell);
 
 	shell2.dispose();
+}
+
+private static void drainEventQueue(Display display, int millis) {
+	if (millis == 0) {
+		while (!display.isDisposed() && display.readAndDispatch()) {
+		}
+		return;
+	}
+	long end = System.currentTimeMillis() + millis;
+	while (!display.isDisposed() && System.currentTimeMillis() < end) {
+		if (!display.readAndDispatch ()) {
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
 }
 
 @Override
@@ -716,6 +737,22 @@ public void test_setSizeII() {
 		}
 	}
 
+}
+
+@Test
+public void test_setSizeCustomResize() {
+	/*
+	 * Bug 319612: test the case where Shells with SWT.RESIZE and SWT.ON_TOP
+	 * were shrinking in size. Only applicable to GTK (both GTK2 and GTK3).
+	 */
+	if (SwtTestUtil.isGTK) {
+		Shell testShell = new Shell (shell, SWT.RESIZE | SWT.ON_TOP);
+		Point size = new Point (200, 200);
+		testShell.setSize(size);
+		testShell.open();
+		assertEquals(size, testShell.getSize());
+		testShell.dispose();
+	}
 }
 
 @Override

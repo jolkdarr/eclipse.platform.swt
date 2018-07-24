@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2016 IBM Corporation and others.
+ * Copyright (c) 2000, 2018 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -11,6 +11,8 @@
 package org.eclipse.swt.examples.clipboard;
 
 import static org.eclipse.swt.events.SelectionListener.widgetSelectedAdapter;
+
+import java.io.File;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
@@ -217,7 +219,7 @@ void createRTFTransfer(Composite copyParent, Composite pasteParent){
 		String textData = copyRtfText.getText();
 		if (textData.length() > 0) {
 			status.setText("");
-			StringBuffer buffer = new StringBuffer();
+			StringBuilder buffer = new StringBuilder();
 			buffer.append("{\\rtf1\\ansi\\uc1{\\colortbl;\\red255\\green0\\blue0;}\\uc1\\b\\i ");
 			for (int i = 0; i < textData.length(); i++) {
 				char ch = textData.charAt(i);
@@ -324,12 +326,11 @@ void createFileTransfer(Composite copyParent, Composite pasteParent){
 		FileDialog dialog = new FileDialog(shell, SWT.OPEN | SWT.MULTI);
 		String result = dialog.open();
 		if (result != null && result.length() > 0){
-			String separator = System.getProperty("file.separator");
 			String path = dialog.getFilterPath();
 			String[] names = dialog.getFileNames();
 			for (String name : names) {
 				TableItem item = new TableItem(copyFileTable, SWT.NONE);
-				item.setText(path+separator+name);
+				item.setText(path+File.separator+name);
 			}
 		}
 	}));

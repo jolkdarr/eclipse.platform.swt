@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2000, 2012 IBM Corporation and others.
+ * Copyright (c) 2000, 2017 IBM Corporation and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -184,11 +184,11 @@ void _setImages (Image [] images) {
 			pixbufs = OS.g_list_append (pixbufs, pixbuf);
 		}
 	}
-	OS.gtk_window_set_icon_list (topHandle (), pixbufs);
+	GTK.gtk_window_set_icon_list (topHandle (), pixbufs);
 	long /*int*/ [] data = new long /*int*/ [1];
 	long /*int*/ temp = pixbufs;
 	while (temp != 0) {
-		OS.memmove (data, temp, OS.PTR_SIZEOF);
+		C.memmove (data, temp, C.PTR_SIZEOF);
 		OS.g_object_unref (data [0]);
 		temp = OS.g_list_next (temp);
 	}
@@ -236,11 +236,11 @@ Control computeTabRoot () {
 
 void createAccelGroup () {
 	if (accelGroup != 0) return;
-	accelGroup = OS.gtk_accel_group_new ();
+	accelGroup = GTK.gtk_accel_group_new ();
 	if (accelGroup == 0) error (SWT.ERROR_NO_HANDLES);
 	//FIXME - what should we do for Decorations
 	long /*int*/ shellHandle = topHandle ();
-	OS.gtk_window_add_accel_group (shellHandle, accelGroup);
+	GTK.gtk_window_add_accel_group (shellHandle, accelGroup);
 }
 
 @Override
@@ -252,7 +252,7 @@ void createWidget (int index) {
 void destroyAccelGroup () {
 	if (accelGroup == 0) return;
 	long /*int*/ shellHandle = topHandle ();
-	OS.gtk_window_remove_accel_group (shellHandle, accelGroup);
+	GTK.gtk_window_remove_accel_group (shellHandle, accelGroup);
 	//TEMPORARY CODE
 //	OS.g_object_unref (accelGroup);
 	accelGroup = 0;
@@ -560,7 +560,7 @@ public void setDefaultButton (Button button) {
 		buttonHandle = button.handle;
 	}
 	saveDefault = defaultButton = button;
-	OS.gtk_window_set_default (topHandle (), buttonHandle);
+	GTK.gtk_window_set_default (topHandle (), buttonHandle);
 }
 
 /**
@@ -783,7 +783,7 @@ boolean traverseReturn () {
 	*/
 	if (!button.isVisible () || !button.isEnabled ()) return true;
 	long /*int*/ shellHandle = _getShell ().topHandle ();
-	return OS.gtk_window_activate_default (shellHandle);
+	return GTK.gtk_window_activate_default (shellHandle);
 }
 
 }

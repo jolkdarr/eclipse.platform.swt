@@ -952,7 +952,7 @@ public class FileViewer {
 				fileSize += file.length();
 			}
 			diskSpaceLabel.setText(getResourceString("details.FileSize.text",
-				new Object[] { new Long(fileSize) }));
+				new Object[] { Long.valueOf(fileSize) }));
 		} else {
 			// No files selected
 			diskSpaceLabel.setText("");
@@ -1358,25 +1358,14 @@ public class FileViewer {
 				//System.out.println(getResourceString("simulate.CopyFromTo.text",
 				//	new Object[] { oldFile.getPath(), newFile.getPath() }));
 			} else {
-				FileReader in = null;
-				FileWriter out = null;
-				try {
-					in = new FileReader(oldFile);
-					out = new FileWriter(newFile);
-
+				try (FileReader in = new FileReader(oldFile);
+						FileWriter out = new FileWriter(newFile);){
 					int count;
 					while ((count = in.read()) != -1) out.write(count);
 				} catch (FileNotFoundException e) {
 					return false;
 				} catch (IOException e) {
 					return false;
-				} finally {
-					try {
-						if (in != null) in.close();
-						if (out != null) out.close();
-					} catch (IOException e) {
-						return false;
-					}
 				}
 			}
 		}
@@ -1580,7 +1569,7 @@ public class FileViewer {
 			iconImage = iconCache.stockImages[iconCache.iconClosedFolder];
 		} else {
 			sizeString = getResourceString("filesize.KB",
-				new Object[] { new Long((file.length() + 512) / 1024) });
+				new Object[] { Long.valueOf((file.length() + 512) / 1024) });
 
 			int dot = nameString.lastIndexOf('.');
 			if (dot != -1) {
